@@ -26,12 +26,13 @@ jobs:
       - name: Ensure NSIS
         shell: pwsh
         run: |
+          $dir = "${env:ProgramFiles(x86)}\NSIS"
           if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
-            $dir = "${env:ProgramFiles(x86)}\NSIS"
             if (-not (Test-Path "$dir\makensis.exe")) { choco install nsis -y --no-progress }
             Add-Content -Path $env:GITHUB_PATH -Value $dir
+            $env:Path += ";$dir"
           }
-          makensis /V1 | Select-Object -First 1
+          (Get-Command makensis).Source
       - name: Build desktop binary
         run: go build -tags desktop,production -o build/out/DengShell.exe .
       - name: Prepare Windows image
