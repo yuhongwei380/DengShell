@@ -54,37 +54,41 @@ window.DengLocalPrompt = (() => {
     box.scrollTop = box.scrollHeight;
   }
   async function continuous(box, host, runId) {
-    const status = line(box, '持续探测中，可随时停止…\n');
-    const actions = node('div', 'local-prompt-actions');
-    const stop = node('button', 'local-prompt-stop');
-    stop.type = 'button';
-    stop.textContent = '停止';
+    const status = line(box, '持续探测中，按 Ctrl+C 停止…\n');
+    // Console-style interrupt: Ctrl+C stops the probe unless it would copy a
+    // text selection.
     let stopped = false;
-    stop.onclick = () => { stopped = true; stop.disabled = true; };
-    actions.append(stop);
-    box.append(actions);
-    box.scrollTop = box.scrollHeight;
-    let sent = 0, received = 0, header = false;
-    for (;;) {
-      let payload = null, failure = null;
-      try { payload = await post('/api/quick-connect/ping', { host, count: 1 }); }
-      catch (error) { failure = error; }
-      if (runId !== generation) return; // a newer command owns the scratchpad
-      if (failure) {
-        sent++;
-        line(box, `${sent}  ${failure.message || failure}\n`);
-      } else {
-        if (!header) { header = true; status.textContent = `本机 ICMP → ${host} (${payload?.resolved || host})\n`; }
-        sent++;
-        if (payload?.ok) received++;
-        line(box, `${sent}  ${payload?.output || ''}\n`);
+    const onKey = event => {
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
+        if (window.getSelection()?.toString()) return;
+        event.preventDefault();
+        stopped = true;
       }
-      box.append(actions);
-      if (stopped) break;
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      if (stopped || runId !== generation) break;
+    };
+    document.addEventListener('keydown', onKey);
+    let sent = 0, received = 0, header = false;
+    try {
+      for (;;) {
+        let payload = null, failure = null;
+        try { payload = await post('/api/quick-connect/ping', { host, count: 1 }); }
+        catch (error) { failure = error; }
+        if (runId !== generation) return; // a newer command owns the scratchpad
+        if (failure) {
+          sent++;
+          line(box, `${sent}  ${failure.message || failure}\n`);
+        } else {
+          if (!header) { header = true; status.textContent = `本机 ICMP → ${host} (${payload?.resolved || host})\n`; }
+          sent++;
+          if (payload?.ok) received++;
+          line(box, `${sent}  ${payload?.output || ''}\n`);
+        }
+        if (stopped) break;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        if (stopped || runId !== generation) break;
+      }
+    } finally {
+      document.removeEventListener('keydown', onKey);
     }
-    actions.remove();
     if (!header) status.textContent = `本机 ICMP → ${host}\n`;
     line(box, `收到 ${received} / ${sent} 个响应（已停止）\n\n`);
     box.scrollTop = box.scrollHeight;
