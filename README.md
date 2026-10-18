@@ -6,6 +6,8 @@ DengShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 V
 
 本说明对应 **v26.10.0 · 构建 20261018114**。本分支更新源为 GitHub Releases，界面字体为阿里巴巴普惠体 3.0。R20 以来的累计变化汇总在 [更新日志](CHANGELOG.md)。
 
+> **项目来源**：本项目源自上游 [BitsFlowCloud/DengShell](https://github.com/BitsFlowCloud/DengShell) 的 **DengShell v0.03 分支**，在此基础上独立维护。上游改动不再自动同步，已移植的上游改进（构建 107–114）见更新日志。
+
 > **版本号规则**：`vX.Y.Z` —— X 为年份后两位，Y 为月份（不补零），Z 为当月第几个版本（从 0 起）。例如 2026 年 10 月首个发布为 `v26.10.0`。内部构建号 `ApplicationBuild` 为 `YYYYMMDD` + 三位序号，每次发布递增，用于更新防回退。
 
 ## 内容导航
@@ -450,6 +452,8 @@ SWAP 支持常用容量及自定义大小，并根据文件系统和交换区类
 ## 开源许可
 
 DengShell 应用代码采用 [MIT License](LICENSE)，可按许可使用、修改和分发。
+
+本项目源自 [BitsFlowCloud/DengShell](https://github.com/BitsFlowCloud/DengShell) 的 DengShell v0.03 分支；上游代码同样以 MIT 许可发布，感谢上游作者。
 
 项目使用 Go、Wails 与 xterm.js 等组件。第三方库、字体和图标保留各自许可证；相应许可文件随源码和发行包提供。
 
