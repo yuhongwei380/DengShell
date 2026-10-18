@@ -216,6 +216,7 @@ async function applyAppearance() {
     for (const state of sessions.values()) state.term.options.fontFamily = terminalFontFamily;
   }
   terminalFont = normalizeTerminalFontSize(next.terminalFontSize);
+  document.documentElement.style.setProperty('--terminal-font-size', `${terminalFont}px`);
   for (const state of sessions.values()) { state.term.options.fontSize = terminalFont; state.term.options.fontWeight = boldForFont(next.fontId) ? '700' : '400'; }
   const background = allBackgrounds().find(item => item.id === next.backgroundId) || allBackgrounds()[0];
   if (activeBackgroundID !== background.id) {
