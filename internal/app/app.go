@@ -16,10 +16,7 @@ import (
 )
 
 type App struct {
-	ai               aiState
-	aiWindows        aiWindowState
 	rdp              rdpState
-	syncState        syncState
 	securityLock     securityLockState
 	sshDiagnostics   sshDiagnosticLog
 	uiFontMu         sync.Mutex
@@ -61,7 +58,6 @@ func New(configDir string) (*App, error) {
 		return nil, err
 	}
 	a.initializeUIFonts()
-	a.initializeSync()
 	a.updateCleanup.Add(1)
 	go func(dir string) { defer a.updateCleanup.Done(); a.runUpdateCleanup(dir) }(s.dir)
 	return a, nil
@@ -98,10 +94,7 @@ func (a *App) Close() {
 	}
 	a.mu.Unlock()
 	a.cancel()
-	a.closeAI()
-	a.closeAIWindows()
 	a.closeRDP()
-	a.closeSync()
 	a.updateCleanup.Wait()
 	a.updateCheck.mu.Lock()
 	if job := a.updateCheck.job; job != nil && job.Status != "downloading" && job.releaseLease != nil {
@@ -151,16 +144,12 @@ func (a *App) Handler(assets fs.FS) http.Handler {
 	mux.HandleFunc("GET /api/ui-fonts/runtime", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, a.uiFontRuntime()) })
 	mux.HandleFunc("GET /api/config", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, a.configWithQuickProfiles()) })
 	a.registerSecurityLockHTTP(mux)
-	a.registerSyncHTTP(mux)
-	a.registerAIHTTP(mux)
-	a.registerAIWindowHTTP(mux)
 	a.registerWindowHandoffHTTP(mux)
 	a.registerCommandHistoryHTTP(mux)
 	a.registerPathHistoryHTTP(mux)
 	a.registerDirectoryFavoritesHTTP(mux)
 	a.registerWindowViewsHTTP(mux)
 	a.registerConnectionManagementHTTP(mux)
-	a.registerFinalShellImportHTTP(mux)
 	a.registerSettingsHTTP(mux)
 	a.registerFontLibraryHTTP(mux)
 	a.registerDiagnosticsHTTP(mux)

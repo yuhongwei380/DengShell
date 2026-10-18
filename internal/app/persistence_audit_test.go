@@ -2,7 +2,6 @@ package app
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -103,86 +102,5 @@ func TestSecurityLockRejectsTOTPReplayAcrossInstances(t *testing.T) {
 	}
 	if status, err := b.Unlock(proof); err == nil || !status.Locked {
 		t.Fatal("second instance replayed an already accepted TOTP")
-	}
-}
-
-func TestSyncAuthenticationChangesDoNotReuseUnrelatedCredentials(t *testing.T) {
-	for _, sourceAuth := range []string{"password", "key"} {
-		for _, targetAuth := range []string{"password", "key", "agent"} {
-			t.Run(sourceAuth+"_to_"+targetAuth, func(t *testing.T) {
-				s, err := OpenStore(t.TempDir())
-				if err != nil {
-					t.Fatal(err)
-				}
-				p, err := s.Save(Profile{Name: "fixture", Host: "fixture.invalid", User: "root", Auth: sourceAuth, Secret: "local-only-credential", KeyPath: "/fixture/local-key"}, false)
-				if err != nil {
-					t.Fatal(err)
-				}
-				expected, err := s.syncProjection(false)
-				if err != nil {
-					t.Fatal(err)
-				}
-				next := make(map[string]json.RawMessage, len(expected))
-				for k, v := range expected {
-					next[k] = v
-				}
-				var remote Profile
-				if err := json.Unmarshal(next["server/"+p.ID], &remote); err != nil {
-					t.Fatal(err)
-				}
-				remote.Auth = targetAuth
-				remote.Name = "remote edit"
-				next["server/"+p.ID] = syncRaw(remote)
-				if err := s.applySync(expected, next, false); err != nil {
-					t.Fatal(err)
-				}
-				got, err := s.Get(p.ID)
-				if err != nil {
-					t.Fatal(err)
-				}
-				if sourceAuth == targetAuth {
-					if got.Secret != "local-only-credential" || got.KeyPath != p.KeyPath {
-						t.Fatal("compatible device-local credentials were lost")
-					}
-				} else if got.Secret != "" || got.KeyPath != "" || got.KeyID != "" {
-					t.Fatal("an authentication change reused a different credential type")
-				}
-			})
-		}
-	}
-}
-
-func TestSyncSharedSecretsRemoveObsoleteLocalKeyPath(t *testing.T) {
-	s, err := OpenStore(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	p, err := s.Save(Profile{Name: "fixture", Host: "fixture.invalid", User: "root", Auth: "key", Secret: "old-key-passphrase", KeyPath: "/fixture/local-key"}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expected, err := s.syncProjection(true)
-	if err != nil {
-		t.Fatal(err)
-	}
-	next := make(map[string]json.RawMessage, len(expected))
-	for k, v := range expected {
-		next[k] = v
-	}
-	var remote Profile
-	if err := json.Unmarshal(next["server/"+p.ID], &remote); err != nil {
-		t.Fatal(err)
-	}
-	remote.Auth, remote.Secret = "password", "new-remote-password"
-	next["server/"+p.ID] = syncRaw(remote)
-	if err := s.applySync(expected, next, true); err != nil {
-		t.Fatal(err)
-	}
-	got, err := s.Get(p.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got.Auth != "password" || got.Secret != remote.Secret || got.KeyPath != "" || got.KeyID != "" {
-		t.Fatal("password-authenticated profile retained its obsolete local private key")
 	}
 }

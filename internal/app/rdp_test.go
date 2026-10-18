@@ -61,41 +61,6 @@ func TestRDPProfilePersistenceAndCredentialIsolation(t *testing.T) {
 	}
 }
 
-func TestRDPSyncDoesNotReuseSSHCredentials(t *testing.T) {
-	s, err := OpenStore(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	p, err := s.Save(Profile{Name: "sync fixture", Host: "fixture.invalid", User: "root", Secret: "ssh-only-secret"}, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, err := s.syncProjection(false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	next := make(map[string]json.RawMessage, len(before))
-	for k, v := range before {
-		next[k] = v
-	}
-	var remote Profile
-	if err = json.Unmarshal(before["server/"+p.ID], &remote); err != nil {
-		t.Fatal(err)
-	}
-	remote.Protocol = "rdp"
-	remote.Port = 3389
-	remote.Domain = "EXAMPLE"
-	remote.RDPClipboard = true
-	next["server/"+p.ID] = syncRaw(remote)
-	if err = s.applySync(before, next, false); err != nil {
-		t.Fatal(err)
-	}
-	got, err := s.Get(p.ID)
-	if err != nil || got.Secret != "" || got.Protocol != "rdp" || got.Domain != "EXAMPLE" || !got.RDPClipboard {
-		t.Fatal("RDP sync failed credential isolation", err)
-	}
-}
-
 func rdpTestDial(b *rdpBridge, token, target string) (net.Conn, error) {
 	d, err := proxy.SOCKS5("tcp", b.listener.Addr().String(), &proxy.Auth{User: "dengshell", Password: token}, &net.Dialer{Timeout: time.Second})
 	if err != nil {

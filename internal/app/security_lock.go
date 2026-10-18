@@ -160,12 +160,7 @@ func (a *App) initializeSecurityLock() error {
 			case <-tick.C:
 				s.mu.Lock()
 				s.lockDue(s.clock())
-				locked := s.locked
 				s.mu.Unlock()
-				if locked {
-					a.cancelAIRequests()
-					a.suspendAIWindows("locked")
-				}
 			}
 		}
 	}()
@@ -216,10 +211,7 @@ func (a *App) SecurityLockStatus() SecurityLockStatus {
 	status := s.status()
 	s.mu.Unlock()
 	if status.Locked {
-		a.cancelAIRequests()
-		a.suspendAIWindows("locked")
 		a.stopRDPLocked()
-		a.pauseSyncForLock()
 	}
 	return status
 }
@@ -232,12 +224,7 @@ func (a *App) RequireUnlocked() error {
 func (a *App) LockNow() (SecurityLockStatus, error) {
 	s := &a.securityLock
 	s.mu.Lock()
-	defer func() {
-		s.mu.Unlock()
-		if a.SecurityLockStatus().Locked {
-			a.pauseSyncForLock()
-		}
-	}()
+	defer s.mu.Unlock()
 	if !s.policy.Enabled {
 		return s.status(), errors.New("请先在设置中启用安全锁定")
 	}
@@ -555,5 +542,5 @@ func (a *App) registerSecurityLockHTTP(mux *http.ServeMux) {
 // while locked. Existing SSH streams remain connected; their input is gated in
 // the relay as well. Polling/keepalives do not count as human activity.
 func lockControlPath(path string) bool {
-	return strings.HasPrefix(path, "/api/security-lock/") || path == "/api/ai/cancel" || path == "/api/windows/alive" || strings.HasPrefix(path, "/api/windows/handoff/") && strings.HasSuffix(path, "/cancel")
+	return strings.HasPrefix(path, "/api/security-lock/") || path == "/api/windows/alive" || strings.HasPrefix(path, "/api/windows/handoff/") && strings.HasSuffix(path, "/cancel")
 }

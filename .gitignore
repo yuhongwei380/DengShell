@@ -71,7 +71,9 @@ Thumbs.db
 /build/windows/_*.txt
 **/_edge_profile/
 **/_*_test.html
-/finalshell_oot_pot/
+
+# WSL prompt-style test artifacts (mangled Windows temp paths)
+internal/app/C*Users*AppData*
 
 # 上游参考副本（本地拷贝，不入库）
 /DengShell-test/

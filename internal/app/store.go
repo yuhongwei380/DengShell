@@ -20,7 +20,6 @@ type Profile struct {
 	RDPClipboard bool        `json:"rdpClipboard,omitempty"`
 	Temporary    bool        `json:"temporary,omitempty"`
 	NeedsProxy   bool        `json:"needsProxy,omitempty"`
-	FinalShellID string      `json:"finalShellId,omitempty"`
 	ID           string      `json:"id"`
 	Name         string      `json:"name"`
 	Notes        string      `json:"notes,omitempty"`
@@ -102,7 +101,6 @@ func (s *Store) List() Config {
 	return result
 }
 func publicProfile(p Profile) Profile {
-	p.FinalShellID = ""
 	p.HasSecret = p.Secret != ""
 	p.Secret = ""
 	p.Proxy = p.Proxy.public()
@@ -130,7 +128,6 @@ func (s *Store) saveProfile(p Profile, clearSecret, allowNewID bool) (Profile, e
 		return Profile{}, err
 	}
 	p.Temporary = false
-	p.FinalShellID = ""
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	p.Name = strings.TrimSpace(p.Name)
@@ -207,7 +204,6 @@ func (s *Store) saveProfile(p Profile, clearSecret, allowNewID bool) (Profile, e
 	index := -1
 	for i, entry := range s.config.Servers {
 		if entry.ID == p.ID {
-			p.FinalShellID = entry.FinalShellID
 			if entry.DeletedAt != nil {
 				return Profile{}, errors.New("服务器已在回收站，请先恢复")
 			}
@@ -230,11 +226,7 @@ func (s *Store) saveProfile(p Profile, clearSecret, allowNewID bool) (Profile, e
 		}
 	}
 	if p.Auth == "key" && p.KeyPath == "" && p.KeyID == "" {
-		// An imported draft may be renamed or regrouped before its key is
-		// supplied. Only a pre-existing incomplete import qualifies.
-		if index < 0 || s.config.Servers[index].FinalShellID == "" || s.config.Servers[index].Auth != "key" || s.config.Servers[index].KeyID != "" || s.config.Servers[index].KeyPath != "" {
-			return Profile{}, errors.New("请选择私钥文件")
-		}
+		return Profile{}, errors.New("请选择私钥文件")
 	}
 	if p.ID == "" {
 		p.ID = randomID()

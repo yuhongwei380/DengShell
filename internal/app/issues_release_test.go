@@ -5,8 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
@@ -113,80 +111,6 @@ func TestClearCompletedTransfersPreservesActiveAndRetryable(t *testing.T) {
 		t.Fatal("bulk clear changed an unfinished/failed transfer")
 	}
 }
-func TestFinalShellProxyImportsBlockedUntilConfigured(t *testing.T) {
-	a, err := New(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer a.Close()
-	dir := t.TempDir()
-	raw := finalShellFixture("proxy", 1)
-	raw["proxy_id"] = "external-proxy"
-	writeFinalShellFixture(t, dir, "with-proxy", raw)
-	result, err := a.store.importFinalShell(context.Background(), dir)
-	if err != nil || result.Imported != 1 || result.NeedsProxy != 1 {
-		t.Fatalf("import: %+v %v", result, err)
-	}
-	p, _ := a.store.Get(result.Items[0].ProfileID)
-	if !p.NeedsProxy {
-		t.Fatal("proxy requirement lost")
-	}
-	if _, err = a.Connect(context.Background(), p.ID, ""); err == nil || !strings.Contains(err.Error(), "代理") {
-		t.Fatal("import silently dialed directly")
-	}
-	p.NeedsProxy = false
-	if _, err = a.store.Save(p, false); err != nil {
-		t.Fatal(err)
-	}
-	p, _ = a.store.Get(p.ID)
-	if p.NeedsProxy {
-		t.Fatal("explicit direct choice did not clear draft")
-	}
-}
-
-// Optional regression against the user's read-only export: import into an
-// isolated Store, report counts only and never connect to exported hosts.
-func TestFinalShellProvidedExport(t *testing.T) {
-	directory := os.Getenv("DENG_FINALSHELL_EXPORT_QA")
-	if directory == "" {
-		t.Skip("set DENG_FINALSHELL_EXPORT_QA for private read-only export")
-	}
-	s, err := OpenStore(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	before := map[string][]byte{}
-	filepath.WalkDir(directory, func(name string, d os.DirEntry, e error) error {
-		if e == nil && !d.IsDir() {
-			before[name], _ = os.ReadFile(name)
-		}
-		return e
-	})
-	result, err := s.importFinalShell(context.Background(), directory)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if result.Imported == 0 {
-		t.Fatalf("imported=%d failed=%d", result.Imported, result.Failed)
-	}
-	for _, item := range result.Items {
-		if item.Status == "failed" && item.Message != "仅支持 FinalShell SSH 连接（类型 100）" {
-			t.Fatal("SSH export failed: " + item.Message)
-		}
-	}
-	repeat, err := s.importFinalShell(context.Background(), directory)
-	if err != nil || repeat.Imported != 0 || repeat.Skipped != result.Imported {
-		t.Fatal("repeated export import duplicated profiles")
-	}
-	for name, data := range before {
-		after, _ := os.ReadFile(name)
-		if !bytes.Equal(data, after) {
-			t.Fatal("export was changed")
-		}
-	}
-	t.Logf("Imported %d connections; %d require proxy configuration; repeat imported zero; original files unchanged", result.Imported, result.NeedsProxy)
-}
-
 func TestLockedWindowSocketExitPreservesOtherWindow(t *testing.T) {
 	a, first, address := newRelayFixture(t)
 	one := dialRelayTest(t, address)

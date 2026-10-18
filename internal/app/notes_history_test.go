@@ -16,12 +16,19 @@ import (
 	"time"
 )
 
-func TestProfileNotesPersistenceValidationAndSync(t *testing.T) {
-	a, b, _ := syncTestPair(t, false)
-	p := syncSaveProfile(t, a, "备注测试")
+func TestProfileNotesPersistenceAndValidation(t *testing.T) {
+	a, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	p, err := a.store.saveProfile(Profile{Name: "备注测试", Host: "fixture.invalid", User: "root"}, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	notes := "续费：https://example.test/billing\n到期：2027-01-01\n<script>literal text</script>"
 	p.Notes = notes
-	p, err := a.store.Save(p, false)
+	p, err = a.store.Save(p, false)
 	if err != nil || p.Notes != notes {
 		t.Fatal("save notes", err)
 	}
@@ -37,27 +44,11 @@ func TestProfileNotesPersistenceValidationAndSync(t *testing.T) {
 	if err != nil || got.Notes != notes {
 		t.Fatal("reopen lost notes", err)
 	}
-	// The native configuration document round-trip and backup keep the new field.
+	// The native configuration document round-trip keeps the new field.
 	raw, _ := json.Marshal(reopened.config)
 	var restored Config
 	if json.Unmarshal(raw, &restored) != nil || restored.Servers[0].Notes != notes {
 		t.Fatal("config round-trip lost notes")
-	}
-	syncCycle(t, a)
-	syncCycle(t, b)
-	got, err = b.store.Get(p.ID)
-	if err != nil || got.Notes != notes || got.Secret != "" {
-		t.Fatal("default sync notes/secret behavior", err)
-	}
-	got.Notes = ""
-	if _, err = b.store.Save(got, false); err != nil {
-		t.Fatal(err)
-	}
-	syncCycle(t, b)
-	syncCycle(t, a)
-	got, _ = a.store.Get(p.ID)
-	if got.Notes != "" {
-		t.Fatal("cleared notes returned during sync")
 	}
 	for _, invalid := range []string{strings.Repeat("字", 21), strings.Repeat("a", 41), "一\n二\n三\n四", "一\r二\r三\r四", "bad\x00note"} {
 		got.Notes = invalid
@@ -82,8 +73,15 @@ func TestProfileNotesEditLimitsAndLegacyPreservation(t *testing.T) {
 			t.Fatal("invalid boundary accepted")
 		}
 	}
-	a, b, _ := syncTestPair(t, false)
-	p := syncSaveProfile(t, a, "旧备注")
+	a, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	p, err := a.store.saveProfile(Profile{Name: "旧备注", Host: "fixture.invalid", User: "root"}, false, true)
+	if err != nil {
+		t.Fatal(err)
+	}
 	legacy := strings.Repeat("历史资料\r\n", 80)
 	// Simulate a profile already saved by an earlier client/import.
 	a.store.mu.Lock()
@@ -98,12 +96,6 @@ func TestProfileNotesEditLimitsAndLegacyPreservation(t *testing.T) {
 	saved, err := a.store.Save(p, false)
 	if err != nil || saved.Notes != legacy {
 		t.Fatal("unchanged legacy notes must be preserved", err)
-	}
-	syncCycle(t, a)
-	syncCycle(t, b)
-	remote, err := b.store.Get(p.ID)
-	if err != nil || remote.Notes != legacy {
-		t.Fatal("legacy sync lost notes", err)
 	}
 	p.Notes = normalizeProfileNoteLines(legacy)
 	if _, err = a.store.Save(p, false); err != nil {
@@ -120,14 +112,6 @@ func TestProfileNotesEditLimitsAndLegacyPreservation(t *testing.T) {
 	// Import validation remains backwards compatible and does not truncate.
 	if validateProfileNotes(legacy) != nil {
 		t.Fatal("legacy import rejected")
-	}
-}
-
-func TestFinalShellDescriptionImportsAsNotes(t *testing.T) {
-	data := []byte(`{"id":"sample","name":"sample","host":"fixture.invalid","port":22,"user_name":"root","authentication_type":1,"conection_type":100,"description":"到期：2027-01-01\n续费：https://example.test"}`)
-	p, _, err := parseFinalShellProfile(data)
-	if err != nil || p.Notes != "到期：2027-01-01\n续费：https://example.test" {
-		t.Fatal("FinalShell description lost", err)
 	}
 }
 
@@ -236,14 +220,6 @@ func TestPathHistoryPersistenceIsolationBoundsAndRollback(t *testing.T) {
 	public, _ := json.Marshal(store.List())
 	if bytes.Contains(public, []byte("/private/")) {
 		t.Fatal("global config API exposed local path history")
-	}
-	projection, err := store.syncProjection(false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw, _ := json.Marshal(projection)
-	if bytes.Contains(raw, []byte("/private/")) {
-		t.Fatal("local history entered sync")
 	}
 	if _, err = store.pathHistory("server-a", one, nil, true); err != nil {
 		t.Fatal(err)

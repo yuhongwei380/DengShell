@@ -48,9 +48,7 @@ func TestDirectoryFavoritesPersistenceIsolationAndLimits(t *testing.T) {
 		t.Fatal(got, err)
 	}
 	pub, _ := json.Marshal(s.List())
-	proj, _ := s.syncProjection(false)
-	raw, _ := json.Marshal(proj)
-	if bytes.Contains(pub, []byte("/private/")) || bytes.Contains(raw, []byte("/private/")) {
+	if bytes.Contains(pub, []byte("/private/")) {
 		t.Fatal("private favorites leaked")
 	}
 	if _, err = s.directoryFavorites("a", one, "/private/a", "DELETE"); err != nil {
