@@ -66,6 +66,11 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
+
+# Local build and test artifacts (Windows dev loop)
+/build/windows/_*.txt
+**/_edge_profile/
+**/_*_test.html
 /finalshell_oot_pot/
 
 # 上游参考副本（本地拷贝，不入库）

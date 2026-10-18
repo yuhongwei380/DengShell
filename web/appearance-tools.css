@@ -33,9 +33,10 @@ button,input,select,textarea { font-family:inherit; }
   [data-files-position="right"] .file-toolbar .path-form { flex-basis:calc(100% - 100px); }
   [data-files-position="right"] .file-content { grid-template-columns:104px minmax(0,1fr); padding-inline:4px; }
   [data-files-position="right"] .file-table { min-width:360px; }
+  [data-files-position="right"] .follow-label { margin-left:0; }
 }
 @container (max-width:480px) {
-  .files-panel .file-tabs { flex-wrap:wrap; overflow:visible; }
+  .files-panel .file-tabs { flex-wrap:wrap; overflow:visible; height:auto; flex:none; }
   [data-files-position="right"] .file-content { grid-template-columns:minmax(0,1fr); }
   [data-files-position="right"] .file-content > .directory-tree { display:none; }
 }

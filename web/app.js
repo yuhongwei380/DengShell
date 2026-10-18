@@ -376,7 +376,7 @@ function createTerminal(state) {
       // first output. Window handoffs must not add text to a running shell.
       if (state.announceConnectionReady) { state.announceConnectionReady = false; showConnectionProgress(state, '✅  连接主机成功！'); if (state.sftpAvailable === false && !state.sftpPending) showConnectionProgress(state, 'ℹ️  SFTP 文件服务不可用，SSH 终端可正常使用。'); }
       if (state.sftpPending) void refreshFileStatus(state);
-      acceptShellIntegration(state, message.integration); state.ready = true; state.handoffProvisional = false; state.ownershipUncertain = false; terminal.options.disableStdin = !!state.detaching || !state.connected; state.restoring = false; state.restoration = null;
+      acceptShellIntegration(state, message.integration); state.ready = true; applyPendingFollow(state); state.handoffProvisional = false; state.ownershipUncertain = false; terminal.options.disableStdin = !!state.detaching || !state.connected; state.restoring = false; state.restoration = null;
       if (!state.terminalOutputStarted && !state.terminalBackgroundTimer) state.terminalBackgroundTimer = setTimeout(() => { state.terminalBackgroundTimer = null; if (!state.closed && state.connected && sessions.get(state.id) === state) { state.terminalBackgroundReady = true; if (current() === state) { pollStats(); pollLatency(); } } }, 1000);
       if (activeID === state.id) renderSessionInfo(); if (activeID === state.id) { fitActive(); terminal.focus(); }
     }
@@ -513,7 +513,7 @@ function renderSessionInfo() {
   $('#terminal-meta-host').textContent = profile ? `${profile.user}@${sessionDisplayName(state)}` : 'SSH 终端'; $('#terminal-state').textContent = state?.handoffProvisional ? '正在接收标签…' : state?.pendingConnection ? '正在连接…' : state?.connectionFailed ? '连接未完成' : state?.connected ? '已连接' : state?.disconnectDiagnostic ? `已断开 · ${state.disconnectDiagnostic.code}` : '待连接';
   $('#terminal-state').title = state?.disconnectDiagnostic?.message || '';
   $('#command-history').disabled = false; $('#command-input').disabled = !!state && !state.connected; $('#command-input').placeholder = state ? '输入命令并回车发送 · ↑↓ 历史' : '本机：输入 ssh 用户@主机 或 ping 主机'; window.DengQuickConnect?.reflect(); $('#command-input').value = ''; resizeCommandInput(); $('#reconnect').disabled = !state || !!(state.pendingConnection || state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain); $('#disconnect').disabled = !state?.connected || !!(state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain);
-  $('#follow-terminal').checked = !!state?.follow; $('#follow-terminal').disabled = !state?.ready || !filesUsable(state);
+  $('#follow-terminal').checked = state ? !!state.follow : pendingFollow; $('#follow-terminal').disabled = !!state && (!state.ready || !filesUsable(state));
   renderMonitor(state?.connected ? state.stats : null); renderLatency(); renderCommands(); window.DengCommonApps?.render(); window.DengProcessView?.reflect(); updateStatus();
 }
 $('#command-form').onsubmit = event => { event.preventDefault(); const state = current(); const input = $('#command-input'); if (!state && input.value.trim()) { const command = input.value; input.value = ''; safe(() => window.DengQuickConnect.run(command))(); return; } if (!state?.ready || !input.value) return; if (!pasteTerminalText(state, input.value, { execute: true })) return; input.value = ''; resizeCommandInput(); };
@@ -524,9 +524,17 @@ $('#clear-terminal').onclick = () => { current()?.term.clear(); current()?.term.
 let terminalFont = normalizeTerminalFontSize(appearance.terminalFontSize);
 function changeFont(amount) { terminalFont = normalizeTerminalFontSize(terminalFont + amount); for (const state of sessions.values()) state.term.options.fontSize = terminalFont; persistAppearance({ terminalFontSize: terminalFont }).catch(error => toast(error.message)); renderAppearanceControls(); fitActive(); }
 $('#font-up').onclick = () => changeFont(.5); $('#font-down').onclick = () => changeFont(-.5);
+// 未连接时勾选只是记录意图，连接并就绪后自动生效；不持久化，重启后默认关闭。
+let pendingFollow = false;
+function applyPendingFollow(state) {
+  if (!pendingFollow || !state?.connected || state.follow || !state.shellIntegration?.ready) return;
+  state.follow = true; renderSessionInfo();
+  if (filesUsable(state) && state.terminalDirectory && state.terminalDirectory !== state.cwd) navigate(state.terminalDirectory, state).catch(error => toast(error?.message || String(error)));
+}
 $('#follow-terminal').onchange = safe(async event => {
-  const state = current(); if (!state?.connected) return;
-  if (!event.target.checked) { state.follow = false; return; }
+  const state = current();
+  if (!state?.connected) { pendingFollow = event.target.checked; return; }
+  if (!event.target.checked) { state.follow = false; pendingFollow = false; return; }
   if (!state.shellIntegration?.ready) {
     event.target.checked = false;
     toast('目录跟随需要 Bash / Zsh / Fish 提示符集成，请等待终端就绪或重新连接。');
