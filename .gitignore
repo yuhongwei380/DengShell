@@ -75,8 +75,5 @@ Thumbs.db
 # WSL prompt-style test artifacts (mangled Windows temp paths)
 internal/app/C*Users*AppData*
 
-# 上游参考副本（本地拷贝，不入库）
-/DengShell-test/
-
 # The verified embedded RDP engine is a committed release input.
 !internal/rdpengine/payload/windows-amd64.zip
