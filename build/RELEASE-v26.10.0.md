@@ -19,5 +19,6 @@ Phoenix 分支（[yuhongwei380/DengShell](https://github.com/yuhongwei380/DengSh
 ## 升级说明
 
 - 本轮提供 Windows 安装版、绿色 ZIP，Linux DEB、RPM、pacman 与通用安装包，以及源码。
+- 页面中的 `up.exe` / `up.exe.json` 等 `up.*` 文件是**内置自动更新的载荷**（改名后的新版程序 + 校验描述），由已安装客户端启动检查后自动下载替换，无需手动下载运行；首次安装请选 `DengShell-Setup-x64.exe` 或对应平台的安装包。
 - 由本分支此前发行包安装的 Windows、DEB、pacman 客户端可通过内置更新获取后续版本；上游旧客户端仍检查原官网，不会收到本分支更新，需手动安装一次本分支发行包。
 - 连接、密钥、字体及背景沿用原配置目录。
