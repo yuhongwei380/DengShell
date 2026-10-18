@@ -227,7 +227,8 @@ func (a *App) registerQuickConnectHTTP(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("POST /api/quick-connect/ping", func(w http.ResponseWriter, r *http.Request) {
 		var input struct {
-			Host string `json:"host"`
+			Host  string `json:"host"`
+			Count int    `json:"count"`
 		}
 		if !decode(w, r, &input) {
 			return
@@ -236,6 +237,13 @@ func (a *App) registerQuickConnectHTTP(mux *http.ServeMux) {
 		if !validQuickHost(host) {
 			respond(w, nil, errors.New("ping 后只接受主机名或 IP"))
 			return
+		}
+		count := input.Count
+		if count <= 0 {
+			count = 3
+		}
+		if count > 3 {
+			count = 3
 		}
 		select {
 		case quickPingSlots <- struct{}{}:
@@ -251,10 +259,22 @@ func (a *App) registerQuickConnectHTTP(mux *http.ServeMux) {
 			respond(w, nil, err)
 			return
 		}
+		if count == 1 {
+			// Single probe for the streaming "-t" prompt; the frontend owns the
+			// header, numbering and summary so it can stop at any time.
+			probe := ProbeICMP(ctx, target, 2*time.Second)
+			line := fmt.Sprintf("%s %s", probe.Status, probe.Error)
+			ok := probe.Responded && probe.Status == "reply"
+			if ok {
+				line = fmt.Sprintf("%s  %.2f ms", probe.Address, probe.Milliseconds)
+			}
+			writeJSON(w, map[string]any{"output": line, "ok": ok, "resolved": target})
+			return
+		}
 		var output strings.Builder
 		fmt.Fprintf(&output, "本机 ICMP → %s (%s)\n", host, target)
 		received := 0
-		for i := 0; i < 3; i++ {
+		for i := 0; i < count; i++ {
 			if err := ctx.Err(); err != nil {
 				break
 			}
@@ -266,7 +286,7 @@ func (a *App) registerQuickConnectHTTP(mux *http.ServeMux) {
 				fmt.Fprintf(&output, "%d  %s %s\n", i+1, probe.Status, probe.Error)
 			}
 		}
-		fmt.Fprintf(&output, "收到 %d / 3 个响应", received)
+		fmt.Fprintf(&output, "收到 %d / %d 个响应", received, count)
 		writeJSON(w, map[string]any{"output": output.String(), "ok": received > 0})
 	})
 }

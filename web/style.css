@@ -371,6 +371,9 @@ svg use { pointer-events: none; }
 /* Local prompt scratchpad: ping results print here while no session is active. */
 .local-prompt-output { position: absolute; inset: 8px 20px 8px; margin: 0; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: 12.5px; line-height: 1.6; color: #c4dae7; }
 .local-prompt-output .local-prompt-line { color: #8fd3b8; }
+.local-prompt-actions { margin: 2px 0 6px; }
+.local-prompt-stop { padding: 3px 14px; border-radius: 8px; background: #769bb33b; color: #c4dae7; font-size: 11px; }
+.local-prompt-stop:disabled { opacity: .5; cursor: default; }
 .welcome-state { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; font-family: Inter, "Noto Sans CJK SC", system-ui, sans-serif; padding: 12px; text-align: center; }
 .welcome-icon { color: #9bbbc9; background: #8eaec114; width: 54px; height: 54px; display: grid; place-items: center; border-radius: 18px; }
 .welcome-icon svg { width: 27px; height: 27px; }
