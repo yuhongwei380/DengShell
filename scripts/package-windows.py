@@ -9,8 +9,8 @@ def nsis_string(value):
     return str(value).replace('$', '$$').replace('"', '$\\"')
 
 def build(stage, output):
-    application_build = int(re.search(r"const ApplicationBuild uint64 = (\d+)", (ROOT / "internal/app/updates.go").read_text()).group(1))
-    source = (ROOT / "internal/app/updates.go").read_text()
+    application_build = int(re.search(r"const ApplicationBuild uint64 = (\d+)", (ROOT / "internal/app/updates.go").read_text(encoding='utf-8')).group(1))
+    source = (ROOT / "internal/app/updates.go").read_text(encoding='utf-8')
     version = re.search(r'const ApplicationVersion = "([^"]+)"', source).group(1)
     package_version = re.search(r'const ApplicationPackageVersion = "([^"]+)"', source).group(1)
     stage, output = stage.resolve(), output.resolve()

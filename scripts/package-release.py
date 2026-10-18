@@ -8,9 +8,9 @@ private configuration, or the desktop source checkout.
 from pathlib import Path
 import argparse, hashlib, json, re, shutil, subprocess, tarfile, zipfile
 ROOT = Path(__file__).resolve().parent.parent
-BUILD = int(re.search(r'const ApplicationBuild uint64 = (\d+)', (ROOT/'internal/app/updates.go').read_text()).group(1))
-VERSION = re.search(r'const ApplicationVersion = "([^"]+)"', (ROOT/'internal/app/updates.go').read_text()).group(1)
-PACKAGE_VERSION = re.search(r'const ApplicationPackageVersion = "([^"]+)"', (ROOT/'internal/app/updates.go').read_text()).group(1)
+BUILD = int(re.search(r'const ApplicationBuild uint64 = (\d+)', (ROOT/'internal/app/updates.go').read_text(encoding='utf-8')).group(1))
+VERSION = re.search(r'const ApplicationVersion = "([^"]+)"', (ROOT/'internal/app/updates.go').read_text(encoding='utf-8')).group(1)
+PACKAGE_VERSION = re.search(r'const ApplicationPackageVersion = "([^"]+)"', (ROOT/'internal/app/updates.go').read_text(encoding='utf-8')).group(1)
 # Old pacman updaters bind pkgrel to the last three build digits.
 # Public release naming is independent of this internal package revision.
 LABEL = f'{VERSION}-{BUILD}'
@@ -48,10 +48,12 @@ def distribution(folder, binary, windows, source_ref=VERSION):
         for p in (ROOT/'native-rdp').glob('*'):
             if p.is_file() and ('LICENSE' in p.name or p.name in ('sources.json','NOTICE.txt')): copy(p,folder/'data/licenses/rdp'/p.name)
     for name in ['CONNECTION-CONFIG.md','config.example.json','COMMON-APPS.md','ONLINE-UPDATE-DESIGN.md','UPDATER-CONTRACT.md','SIGNED-UPDATES.md','COMMANDS-AND-EDITORS.md','FUNCTIONAL-AUDIT-2026-10-03.md',f'FUNCTIONAL-AUDIT-{VERSION}.md',f'RELEASE-{VERSION}.md']:
+        if name.startswith('FUNCTIONAL-AUDIT-') and not (ROOT/'build'/name).is_file():
+            continue  # Per-version functional audits are optional; the 2026-10-03 baseline always ships.
         copy(ROOT/'build'/name,folder/'data/docs'/name)
-    readme = (ROOT/'README.md').read_text()
+    readme = (ROOT/'README.md').read_text(encoding='utf-8')
     readme = re.sub(r'(?<=[(])((?:build|docs)/[^)]+)(?=[)])', lambda m: f'https://github.com/yuhongwei380/DengShell/blob/{source_ref}/' + m.group(1), readme)
-    (folder/'data/docs/README.md').write_text(readme)
+    (folder/'data/docs/README.md').write_text(readme, encoding='utf-8')
     copy(ROOT/'CHANGELOG.md',folder/'data/docs/CHANGELOG.md')
     copy(ROOT/('build/windows/README.txt' if windows else 'build/linux/README.txt'),folder/'data/docs/使用说明.txt')
     return folder
@@ -106,6 +108,7 @@ def package(args):
     for name in ['COMMANDS-AND-EDITORS.md','FONT-REFORM-REPORT.md','FUNCTIONAL-AUDIT-2026-10-03.md',f'FUNCTIONAL-AUDIT-{VERSION}.md','linux/Arch.Dockerfile']:
         sourcefiles.append(ROOT/'build'/name)
     for p in sorted(set(sourcefiles)):
+        if not p.is_file(): continue
         if not runtime_credential_file(p): copy(p,source/p.relative_to(ROOT))
     copy(linuxbinary.parent/'build-info.json',source/'build/linux/native/build-info.json')
     zip_tree(source,out/'DengShell-source.zip',Path('DengShell'))
@@ -119,16 +122,16 @@ def package(args):
             release_notes = json.loads(descriptor.read_text())['notes']
         copy(artifact,site/name)
         info={'schemaVersion':2,'build':BUILD,'product':'DengShell','platform':platform,'version':VERSION,'notes':release_notes,'sha256':digest(artifact),'size':artifact.stat().st_size,'executableSHA256':digest(binary)}
-        (site/(name+'.json')).write_text(json.dumps(info,ensure_ascii=False,indent=2)+'\n')
+        (site/(name+'.json')).write_text(json.dumps(info,ensure_ascii=False,indent=2)+'\n', encoding='utf-8')
         subprocess.run([str(args.signer.resolve()), '-key', str(args.signing_key.resolve()),
                         '-in', str(site/(name+'.json')), '-out', str(site/(name+'.json'))], check=True)
     for name in ['DengShell-windows-x64.zip','DengShell-Setup-x64.exe','DengShell-linux-x64.deb','DengShell-linux-x64.rpm','DengShell-linux-x64.tar.gz','DengShell-linux-x64.pkg.tar.zst','DengShell-source.zip']:
         copy(out/name,site/'downloads'/name)
     files={p.name:{'bytes':p.stat().st_size,'sha256':digest(p)} for p in sorted(out.iterdir()) if p.suffix in ['.exe','.zip','.gz','.deb','.rpm','.zst']}
     manifest={'version':VERSION,'build':LABEL,'applicationBuild':BUILD,'artifacts':files,'embeddedAssets':assets,'executableHashes':{'windows-amd64':digest(winbinary),'linux-amd64':digest(linuxbinary)}}
-    (out/'release.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n')
-    (out/'SHA256SUMS.txt').write_text(''.join(f"{v['sha256']}  {n}\n" for n,v in files.items()))
-    (site/'downloads/SHA256SUMS.txt').write_text(''.join(f'{digest(p)}  {p.relative_to(site)}\n' for p in sorted(site.rglob('*')) if p.is_file() and p.suffix in ['.zip','.deb','.exe','.gz','.rpm','.zst']))
+    (out/'release.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n', encoding='utf-8')
+    (out/'SHA256SUMS.txt').write_text(''.join(f"{v['sha256']}  {n}\n" for n,v in files.items()), encoding='utf-8')
+    (site/'downloads/SHA256SUMS.txt').write_text(''.join(f'{digest(p)}  {p.relative_to(site)}\n' for p in sorted(site.rglob('*')) if p.is_file() and p.suffix in ['.zip','.deb','.exe','.gz','.rpm','.zst']), encoding='utf-8')
     print(json.dumps({'output':str(out),'website':str(site),'build':LABEL,'artifacts':files},ensure_ascii=False,indent=2))
 
 if __name__=='__main__':

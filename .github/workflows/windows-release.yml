@@ -1,0 +1,37 @@
+name: Windows release build
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build desktop binary
+        run: go build -tags desktop,production -o build/out/DengShell.exe .
+      - name: Prepare Windows image
+        run: go run ./cmd/prepare-windows-image -in build/out/DengShell.exe -out build/out/DengShell-prepared.exe
+      - name: Stage distribution
+        run: python scripts/stage-windows.py --binary build/out/DengShell-prepared.exe --stage build/out/stage
+      - name: Build installer
+        run: python scripts/package-windows.py --stage build/out/stage --output build/out/DengShell-Setup-x64.exe
+      - name: Build portable zip
+        run: python -c "import importlib.util; from pathlib import Path; s=importlib.util.spec_from_file_location('pr','scripts/package-release.py'); pr=importlib.util.module_from_spec(s); s.loader.exec_module(pr); pr.zip_tree(Path('build/out/stage'), Path('build/out/DengShell-windows-x64.zip'))"
+      - name: Build update artifacts
+        run: python scripts/make-windows-update.py --binary build/out/DengShell-prepared.exe --output-dir build/out/update
+      - name: Publish GitHub Release
+        shell: pwsh
+        run: |
+          $version = python -c "import re;print(re.search(r'const ApplicationVersion = \"([^\"]+)\"', open('internal/app/updates.go',encoding='utf-8').read()).group(1))"
+          gh release create $env:GITHUB_REF_NAME build/out/DengShell-Setup-x64.exe build/out/DengShell-windows-x64.zip build/out/update/up.exe build/out/update/up.exe.json --title "DengShell $env:GITHUB_REF_NAME" --notes-file "build/RELEASE-$version.md"
+        env:
+          GH_TOKEN: ${{ github.token }}
