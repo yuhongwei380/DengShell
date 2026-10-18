@@ -39,7 +39,7 @@ type Appearance struct {
 }
 
 func defaultAppearance() Appearance {
-	return Appearance{UIFontID: defaultUIFontID, UITextColors: map[string]string{}, FontID: "builtin:jetbrains-mono", FontColors: map[string]string{}, FontBold: map[string]bool{}, ChartStyles: map[string]ChartLineStyle{}, BackgroundID: "builtin:none", BackgroundOpacity: .42, BackgroundVersion: 2, UIScale: 1, TerminalFontSize: 14, Theme: "system", MonitorSide: "left", FilesPosition: "bottom", MinimizeAction: "ask", Layout: map[string]json.RawMessage{}}
+	return Appearance{UIFontID: defaultUIFontID, UITextColors: map[string]string{}, FontID: "builtin:jetbrains-mono", FontColors: map[string]string{}, FontBold: map[string]bool{}, ChartStyles: map[string]ChartLineStyle{}, BackgroundID: "builtin:none", BackgroundOpacity: .42, BackgroundVersion: 2, UIScale: 1, TerminalFontSize: 14, Theme: "system", MonitorSide: "left", FilesPosition: "right", MinimizeAction: "ask", Layout: map[string]json.RawMessage{}}
 }
 
 // Old releases combined 18% image opacity with a dark multiply tint. Keep
@@ -153,7 +153,7 @@ func (s *Store) saveAppearanceLocked(value Appearance) (Appearance, error) {
 		value.MonitorSide = "left"
 	}
 	if value.FilesPosition == "" {
-		value.FilesPosition = "bottom"
+		value.FilesPosition = "right"
 	}
 	if value.MinimizeAction == "" {
 		value.MinimizeAction = "ask"

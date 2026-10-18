@@ -1107,7 +1107,7 @@ $('#reset-layout').onclick = () => {
   document.documentElement.style.removeProperty('--terminal-font');
   terminalFont = 14; changeFont(0);
   clampLayouts();
-  chooseAppearance({ monitorSide: 'left', filesPosition: 'bottom' }).catch(error => toast(error.message));
+  chooseAppearance({ monitorSide: 'left', filesPosition: 'right' }).catch(error => toast(error.message));
   toast('已恢复默认布局与终端字号');
 };
 window.addEventListener('resize', () => {

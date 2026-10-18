@@ -34,7 +34,7 @@ try {
  }
  await page.evaluate(()=>chooseAppearance({monitorSide:'right',filesPosition:'top',terminalFontSize:19}));
  await page.click('#settings-button');await page.click('#reset-layout');
- await page.waitForFunction(()=>appearance.monitorSide==='left'&&appearance.filesPosition==='bottom'&&terminalFont===14);
+ await page.waitForFunction(()=>appearance.monitorSide==='left'&&appearance.filesPosition==='right'&&terminalFont===14);
  await page.evaluate(()=>{DengShellHelp.replayGuide()});
  for(let i=0;i<12;i++){
    await page.waitForFunction(n=>document.querySelector('#help-guide-step').textContent.startsWith(n+' / '),{},i+1);await new Promise(r=>setTimeout(r,80));

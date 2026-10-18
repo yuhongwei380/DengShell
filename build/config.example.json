@@ -56,7 +56,7 @@
     "onboardingCompleted": false,
     "layout": {},
     "monitorSide": "left",
-    "filesPosition": "bottom",
+    "filesPosition": "right",
     "promptUsernameColor": "",
     "promptHostnameColor": "",
     "minimizeAction": "ask",

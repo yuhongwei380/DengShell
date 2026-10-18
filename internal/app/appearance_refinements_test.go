@@ -11,7 +11,7 @@ func TestAppearanceWorkspacePromptDefaultsAndPersistence(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"fontId":"builtin:fira-code","fontColors":{"builtin:fira-code":"#aabbcc"}}`), &legacy); err != nil {
 		t.Fatal(err)
 	}
-	if legacy.MonitorSide != "left" || legacy.FilesPosition != "bottom" || legacy.MinimizeAction != "ask" || legacy.PromptUsernameColor != "" || legacy.ExternalEditor != "" {
+	if legacy.MonitorSide != "left" || legacy.FilesPosition != "right" || legacy.MinimizeAction != "ask" || legacy.PromptUsernameColor != "" || legacy.ExternalEditor != "" {
 		t.Fatalf("legacy defaults changed: %+v", legacy)
 	}
 	store, err := OpenStore(t.TempDir())
