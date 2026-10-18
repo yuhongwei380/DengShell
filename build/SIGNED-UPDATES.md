@@ -1,6 +1,6 @@
 # r21 起的更新签名与发布
 
-> 本分支从 GitHub Releases（yuhongwei380/DengShell）获取更新，信任锚为仓库本身与 HTTPS；描述文件默认不带签名，客户端只做固定来源、大小、SHA-256、版本与构建防回退校验。
+> 本分支从 GitHub Releases（yuhongwei380/DevShell）获取更新，信任锚为仓库本身与 HTTPS；描述文件默认不带签名，客户端只做固定来源、大小、SHA-256、版本与构建防回退校验。
 > 描述文件一旦携带任何签名字段（`signature`/`signingKeyID`/`issuedAt`/`expiresAt`），仍要求完整 Ed25519 验证；错误签名、未信任密钥、过期描述均跳过更新，不影响主界面启动。以下步骤仅在启用签名时适用。
 
 ## 兼容与首次迁移

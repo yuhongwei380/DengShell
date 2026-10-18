@@ -102,5 +102,5 @@ func (d *Desktop) DownloadSelectionArchive(sessionID string, paths []string) (st
 	return destination, nil
 }
 func (d *Desktop) OpenAbout() {
-	runtime.BrowserOpenURL(d.ctx, "https://github.com/yuhongwei380/DengShell")
+	runtime.BrowserOpenURL(d.ctx, "https://github.com/yuhongwei380/DevShell")
 }

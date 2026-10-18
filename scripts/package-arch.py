@@ -47,7 +47,7 @@ pkgver={args.version}
 pkgrel={args.release}
 pkgdesc='DengShell SSH terminal and SFTP desktop workspace'
 arch=('x86_64')
-url='https://github.com/yuhongwei380/DengShell'
+url='https://github.com/yuhongwei380/DevShell'
 license=('MIT' 'OFL-1.1')
 depends=('glibc>=2.35' 'gtk3' 'webkit2gtk-4.1' 'bash' 'iputils' 'pacman' 'libarchive' 'polkit')
 optdepends=('libayatana-appindicator: system tray integration')

@@ -1,6 +1,6 @@
 # DengShell v26.10.0 · 构建 20261018115
 
-Phoenix 分支（[yuhongwei380/DengShell](https://github.com/yuhongwei380/DengShell)）首个按新版本号规则发布的版本。
+Phoenix 分支（[yuhongwei380/DevShell](https://github.com/yuhongwei380/DevShell)）首个按新版本号规则发布的版本。
 
 ## 版本号规则
 

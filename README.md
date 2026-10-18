@@ -51,7 +51,7 @@ DengShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 V
 
 ## 下载与安装
 
-在本仓库的 **[Releases](https://github.com/yuhongwei380/DengShell/releases)** 页面选择适合自己系统的文件。安装好的程序无需另外安装 Go 或 Node.js。
+在本仓库的 **[Releases](https://github.com/yuhongwei380/DevShell/releases)** 页面选择适合自己系统的文件。安装好的程序无需另外安装 Go 或 Node.js。
 
 | 平台与用途 | 下载文件 | 使用方式 |
 | --- | --- | --- |
@@ -72,7 +72,7 @@ Linux 版本使用 GTK3 和 WebKitGTK 4.1，发行构建以 Ubuntu 22.04 / glibc
 **测试情况：**
 
 - **Linux：已测试通过。** 已在 Ubuntu 22.04、Ubuntu 24.04、Debian 12、Fedora 43 、openSUSE Tumbleweed 和 Arch Linux 容器中通过安装、原生界面启动及卸载保留配置测试。具体范围见 [功能审查与验证](build/FUNCTIONAL-AUDIT-v0.03.md)。
-- **Windows：** 发布验证覆盖原生 WebView2 启动、安装／卸载保留配置、压缩程序及从最小化状态升级后显示窗口。自动验证使用 GitHub Windows 运行器，结果见 [Windows 验证记录](https://github.com/yuhongwei380/DengShell/actions/workflows/windows-release-validation.yml)；不等同于全部 Windows 10／11 实体设备、显卡和托盘组合已验证。
+- **Windows：** 发布验证覆盖原生 WebView2 启动、安装／卸载保留配置、压缩程序及从最小化状态升级后显示窗口。自动验证使用 GitHub Windows 运行器，结果见 [Windows 验证记录](https://github.com/yuhongwei380/DevShell/actions/workflows/windows-release-validation.yml)；不等同于全部 Windows 10／11 实体设备、显卡和托盘组合已验证。
 
 ### Linux 安装示例
 

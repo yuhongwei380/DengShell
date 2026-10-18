@@ -115,7 +115,7 @@ func TestUpdateDescriptorIdentityAndValidation(t *testing.T) {
 			if got.Status != tc.want {
 				t.Fatalf("got %+v", got)
 			}
-			if got.Status == "available" && (!got.InstallerReady || got.Package.URL != "https://github.com/yuhongwei380/DengShell/releases/latest/download/up.deb") {
+			if got.Status == "available" && (!got.InstallerReady || got.Package.URL != "https://github.com/yuhongwei380/DevShell/releases/latest/download/up.deb") {
 				t.Fatalf("wrong installer %+v", got)
 			}
 			if got.Status == "available" && (got.CurrentBuild != ApplicationBuild || got.LatestBuild != d.Build) {
@@ -193,7 +193,7 @@ func TestUpdateRejectsForeignRedirect(t *testing.T) {
 	if client.CheckRedirect(req, nil) == nil {
 		t.Fatal("foreign host accepted")
 	}
-	req, _ = http.NewRequest("GET", "http://github.com/yuhongwei380/DengShell/releases/latest/download/up.exe", nil)
+	req, _ = http.NewRequest("GET", "http://github.com/yuhongwei380/DevShell/releases/latest/download/up.exe", nil)
 	if client.CheckRedirect(req, nil) == nil {
 		t.Fatal("TLS downgrade accepted")
 	}

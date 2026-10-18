@@ -52,7 +52,7 @@ def distribution(folder, binary, windows, source_ref=VERSION):
             continue  # Per-version functional audits are optional; the 2026-10-03 baseline always ships.
         copy(ROOT/'build'/name,folder/'data/docs'/name)
     readme = (ROOT/'README.md').read_text(encoding='utf-8')
-    readme = re.sub(r'(?<=[(])((?:build|docs)/[^)]+)(?=[)])', lambda m: f'https://github.com/yuhongwei380/DengShell/blob/{source_ref}/' + m.group(1), readme)
+    readme = re.sub(r'(?<=[(])((?:build|docs)/[^)]+)(?=[)])', lambda m: f'https://github.com/yuhongwei380/DevShell/blob/{source_ref}/' + m.group(1), readme)
     (folder/'data/docs/README.md').write_text(readme, encoding='utf-8')
     copy(ROOT/'CHANGELOG.md',folder/'data/docs/CHANGELOG.md')
     copy(ROOT/('build/windows/README.txt' if windows else 'build/linux/README.txt'),folder/'data/docs/使用说明.txt')

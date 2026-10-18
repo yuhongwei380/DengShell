@@ -130,7 +130,7 @@ Maintainer: DengShell contributors
 Installed-Size: {installed_size}
 Depends: libc6 (>= 2.35), libgtk-3-0 (>= 3.24) | libgtk-3-0t64 (>= 3.24), libwebkit2gtk-4.1-0 (>= 2.36), iputils-ping, bash
 Recommends: libayatana-appindicator3-1
-Homepage: https://github.com/yuhongwei380/DengShell
+Homepage: https://github.com/yuhongwei380/DevShell
 Description: DengShell native SSH desktop workspace
  Native GTK3/WebKitGTK 4.1 SSH, SFTP and Linux monitoring workspace.
 ''')
@@ -148,7 +148,7 @@ Version: {args.version}
 Release: {args.release}
 Summary: Native SSH desktop workspace
 License: MIT
-URL: https://github.com/yuhongwei380/DengShell
+URL: https://github.com/yuhongwei380/DevShell
 BuildArch: x86_64
 AutoReqProv: no
 Requires: glibc >= 2.35

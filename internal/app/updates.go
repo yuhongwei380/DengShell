@@ -45,7 +45,7 @@ const ApplicationBuild uint64 = 20261018115
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,
 // up.deb / up.deb.json, up.pkg.tar.zst / up.pkg.tar.zst.json.
-const updateReleaseDownload = "https://github.com/yuhongwei380/DengShell/releases/latest/download/"
+const updateReleaseDownload = "https://github.com/yuhongwei380/DevShell/releases/latest/download/"
 const UpdateManifestURL = updateReleaseDownload + "up.deb.json"
 const updateTimeout = 3 * time.Second
 const maximumUpdateSize int64 = 1 << 30
