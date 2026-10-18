@@ -77,3 +77,6 @@ internal/app/C*Users*AppData*
 
 # The verified embedded RDP engine is a committed release input.
 !internal/rdpengine/payload/windows-amd64.zip
+
+# Local release staging output
+/build/out/
