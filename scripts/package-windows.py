@@ -49,7 +49,7 @@ def build(stage, output):
             if subprocess.run(prefix+['/bin/true'],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode:
                 prefix = []
         subprocess.run(prefix + [tool, '-V2', '-INPUTCHARSET', 'UTF8',
-                        '-DSTAGE='+str(stage), '-DOUTPUT='+str(output),
+                        '-DSTAGE='+str(stage), '-DFILESPEC='+str(stage / '*'), '-DOUTPUT='+str(output),
                         '-DICON='+str(ROOT/'build/dengshell.ico'),
                         '-DLICENSE_FILE='+str(ROOT/'LICENSE'),
                         '-DUNINSTALL_FILES='+str(temp/'uninstall-files.nsh'),

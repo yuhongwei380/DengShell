@@ -57,7 +57,7 @@ Section "DengShell" SEC_MAIN
   SetOutPath "$INSTDIR"
   SetOverwrite on
   ClearErrors
-  File /r "${STAGE}/*"
+  File /r "${FILESPEC}"
   IfErrors 0 +3
     MessageBox MB_OK|MB_ICONSTOP "程序文件未能完整写入。请退出 DengShell 后重新运行安装器。"
     Abort
