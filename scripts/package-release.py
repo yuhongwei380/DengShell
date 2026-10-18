@@ -47,7 +47,7 @@ def distribution(folder, binary, windows, source_ref=VERSION):
     if windows:
         for p in (ROOT/'native-rdp').glob('*'):
             if p.is_file() and ('LICENSE' in p.name or p.name in ('sources.json','NOTICE.txt')): copy(p,folder/'data/licenses/rdp'/p.name)
-    for name in ['CONNECTION-CONFIG.md','config.example.json','COMMON-APPS.md','ONLINE-UPDATE-DESIGN.md','UPDATER-CONTRACT.md','SIGNED-UPDATES.md','FINALSHELL-IMPORT.md','COMMANDS-AND-EDITORS.md','FUNCTIONAL-AUDIT-2026-10-03.md',f'FUNCTIONAL-AUDIT-{VERSION}.md',f'RELEASE-{VERSION}.md']:
+    for name in ['CONNECTION-CONFIG.md','config.example.json','COMMON-APPS.md','ONLINE-UPDATE-DESIGN.md','UPDATER-CONTRACT.md','SIGNED-UPDATES.md','COMMANDS-AND-EDITORS.md','FUNCTIONAL-AUDIT-2026-10-03.md',f'FUNCTIONAL-AUDIT-{VERSION}.md',f'RELEASE-{VERSION}.md']:
         copy(ROOT/'build'/name,folder/'data/docs'/name)
     readme = (ROOT/'README.md').read_text()
     readme = re.sub(r'(?<=[(])((?:build|docs)/[^)]+)(?=[)])', lambda m: f'https://github.com/yuhongwei380/DengShell/blob/{source_ref}/' + m.group(1), readme)
@@ -101,9 +101,9 @@ def package(args):
     sourcefiles += [p for p in (ROOT/'docs').rglob('*') if p.is_file()]
     for name in ['dengshell.png','dengshell.svg','dengshell.ico','CONNECTION-CONFIG.md','config.example.json','COMMON-APPS.md',f'RELEASE-{VERSION}.md','ONLINE-UPDATE-DESIGN.md','UPDATER-CONTRACT.md','SIGNED-UPDATES.md','FONT-VALIDATION.md','BACKGROUND-PROMPTS-v0.01.json','windows/app.manifest','windows/README.txt','linux/README.txt','linux/Dockerfile','linux/.dockerignore','linux/COMPATIBILITY.json']:
         sourcefiles.append(ROOT/'build'/name)
-    for folder in ['go-licenses','font-licenses','font-library-site','installer-licenses','sync']:
+    for folder in ['go-licenses','font-licenses','font-library-site','installer-licenses']:
         sourcefiles += [p for p in (ROOT/'build'/folder).glob('*') if p.is_file()]
-    for name in ['FINALSHELL-IMPORT.md','COMMANDS-AND-EDITORS.md','FONT-REFORM-REPORT.md','FUNCTIONAL-AUDIT-2026-10-03.md',f'FUNCTIONAL-AUDIT-{VERSION}.md','linux/Arch.Dockerfile']:
+    for name in ['COMMANDS-AND-EDITORS.md','FONT-REFORM-REPORT.md','FUNCTIONAL-AUDIT-2026-10-03.md',f'FUNCTIONAL-AUDIT-{VERSION}.md','linux/Arch.Dockerfile']:
         sourcefiles.append(ROOT/'build'/name)
     for p in sorted(set(sourcefiles)):
         if not runtime_credential_file(p): copy(p,source/p.relative_to(ROOT))

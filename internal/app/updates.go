@@ -38,8 +38,9 @@ const ApplicationPackageVersion = "26.10.0"
 
 // ApplicationBuild is the monotonic anti-rollback build: YYYYMMDD plus a
 // three-digit daily sequence. Increase it for every published build, including
-// packaging-only releases; update manifests must exceed it.
-const ApplicationBuild uint64 = 20261018001
+// packaging-only releases; update manifests must exceed it. The sequence tracks
+// the upstream DengShell build numbering (107–114 ported on 2026-10-18).
+const ApplicationBuild uint64 = 20261018114
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,
