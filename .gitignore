@@ -68,5 +68,8 @@ Thumbs.db
 *.swp
 /finalshell_oot_pot/
 
+# 上游参考副本（本地拷贝，不入库）
+/DengShell-test/
+
 # The verified embedded RDP engine is a committed release input.
 !internal/rdpengine/payload/windows-amd64.zip
