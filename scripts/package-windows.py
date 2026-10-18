@@ -36,7 +36,7 @@ def build(stage, output):
         for p in sorted((p for p in stage.rglob('*') if p.is_dir()), key=lambda p:len(p.parts), reverse=True):
             relative = nsis_string(str(p.relative_to(stage)).replace('/', '\\'))
             uninstall.append(f'RMDir "$INSTDIR\\{relative}"')
-        (temp / 'uninstall-files.nsh').write_text('\n'.join(uninstall)+'\n')
+        (temp / 'uninstall-files.nsh').write_text('\n'.join(uninstall)+'\n', encoding='utf-8')
         # makensis uses libc tmpfile(), which ignores TMPDIR on Linux. A private
         # mount keeps its mmap scratch on disk without touching the system /tmp.
         prefix = []
