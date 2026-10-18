@@ -3,6 +3,11 @@ name: Windows release build
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: existing tag to (re)publish
+        required: true
 
 permissions:
   contents: write
@@ -12,10 +17,21 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: true
+      - name: Ensure NSIS
+        shell: pwsh
+        run: |
+          if (-not (Get-Command makensis -ErrorAction SilentlyContinue)) {
+            $dir = "${env:ProgramFiles(x86)}\NSIS"
+            if (-not (Test-Path "$dir\makensis.exe")) { choco install nsis -y --no-progress }
+            Add-Content -Path $env:GITHUB_PATH -Value $dir
+          }
+          makensis /V1 | Select-Object -First 1
       - name: Build desktop binary
         run: go build -tags desktop,production -o build/out/DengShell.exe .
       - name: Prepare Windows image
@@ -31,7 +47,14 @@ jobs:
       - name: Publish GitHub Release
         shell: pwsh
         run: |
-          $version = python -c "import re;print(re.search(r'const ApplicationVersion = \"([^\"]+)\"', open('internal/app/updates.go',encoding='utf-8').read()).group(1))"
-          gh release create $env:GITHUB_REF_NAME build/out/DengShell-Setup-x64.exe build/out/DengShell-windows-x64.zip build/out/update/up.exe build/out/update/up.exe.json --title "DengShell $env:GITHUB_REF_NAME" --notes-file "build/RELEASE-$version.md"
+          $tag = "${{ github.event.inputs.tag || github.ref_name }}"
+          $version = (Select-String -Path internal/app/updates.go -Pattern 'const ApplicationVersion = "([^"]+)"').Matches[0].Groups[1].Value
+          $notes = "build/RELEASE-$version.md"
+          if (gh release view $tag 2>$null) {
+            gh release edit $tag --title "DengShell $tag" --notes-file $notes
+          } else {
+            gh release create $tag --title "DengShell $tag" --notes-file $notes
+          }
+          gh release upload $tag build/out/DengShell-Setup-x64.exe build/out/DengShell-windows-x64.zip build/out/update/up.exe build/out/update/up.exe.json --clobber
         env:
           GH_TOKEN: ${{ github.token }}
