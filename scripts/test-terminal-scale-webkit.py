@@ -31,7 +31,7 @@ script = r'''(async () => {
   });
   try {
     for (let i=0; i<100 && !window.DengCommandComposer; i++) await wait(100);
-    await loadProfiles(); await chooseAppearance({startupAnimation:false,onboardingCompleted:true,uiScale:1});
+    await loadProfiles(); await chooseAppearance({onboardingCompleted:true,uiScale:1});
     await document.fonts.ready; await wait(500);
     document.querySelectorAll('dialog[open]').forEach(d => d.close()); setDrawer(false);
     pollStats = () => {}; pollNetwork = () => {};

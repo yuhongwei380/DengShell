@@ -9,7 +9,7 @@ const call = async (path, method='GET', body) => {
   const r = await fetch(new URL(path,fixture.url),{method,headers,body:body===undefined?undefined:JSON.stringify(body)});
   assert(r.ok, `${method} ${path}: ${r.status} ${await (!r.ok ? r.text() : '')}`); return r.json();
 };
-await call('/api/appearance/patch','POST',{onboardingCompleted:true,startupAnimation:false,uiScale:1});
+await call('/api/appearance/patch','POST',{onboardingCompleted:true,uiScale:1});
 const [a,b] = fixture.sessions;
 for (const s of [a,b]) {
   await call(`/api/sessions/${s.id}/files?path=${encodeURIComponent(s.directory)}`);

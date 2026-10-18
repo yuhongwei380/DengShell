@@ -5,7 +5,7 @@ const {default:puppeteer}=await import(modulePath);
 const log=fs.readFileSync(stage+'/browser-backend.log','utf8');
 const url=log.match(/http:\/\/127\.0\.0\.1:\d+\/#token=[a-zA-Z0-9]+/)?.[0];assert(url);
 const origin=new URL(url).origin,token=new URLSearchParams(new URL(url).hash.slice(1)).get('token');
-await fetch(origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':token},body:JSON.stringify({onboardingCompleted:true,startupAnimation:false,uiScale:1})});
+await fetch(origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':token},body:JSON.stringify({onboardingCompleted:true,uiScale:1})});
 const browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
 const errors=[];
 try {

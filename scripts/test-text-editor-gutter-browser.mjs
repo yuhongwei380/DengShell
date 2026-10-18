@@ -25,12 +25,12 @@ try {
     } else if (/^https?:$/.test(url.protocol) && url.origin !== origin) request.abort();
     else request.continue();
   });
-  await fetch(origin + '/api/appearance/patch', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CloudShell-Token': fixture.token}, body: JSON.stringify({startupAnimation: false, onboardingCompleted: true, uiScale: 1})});
+  await fetch(origin + '/api/appearance/patch', {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CloudShell-Token': fixture.token}, body: JSON.stringify({onboardingCompleted: true, uiScale: 1})});
   await page.setViewport({width: 1440, height: 1000});
   await page.goto(fixture.url, {waitUntil: 'networkidle0'});
   await page.evaluate(async () => {
     document.querySelectorAll('dialog[open]').forEach(e => e.close());
-    await chooseAppearance({startupAnimation: false, onboardingCompleted: true, uiScale: 1}); setDrawer(false);
+    await chooseAppearance({onboardingCompleted: true, uiScale: 1}); setDrawer(false);
     // Capture the real native clipboard bridge without depending on OS clipboard access.
     window.go = {main: {Desktop: {
       WriteClipboard(text) {window.gutterClipboard = text; return Promise.resolve();},

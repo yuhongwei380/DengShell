@@ -71,15 +71,6 @@ func TestConnectionManagementHTTPContract(t *testing.T) {
 	request("DELETE", "/api/profiles/"+profile.ID, nil)
 	request("DELETE", "/api/trash/"+profile.ID, nil)
 	request("DELETE", "/api/group-nodes/"+group.ID, nil)
-	appearance := a.store.List().Appearance
-	appearance.StartupAnimation = false
-	if _, err := a.store.SaveAppearance(appearance); err != nil {
-		t.Fatal(err)
-	}
-	response = request("GET", "/boot.js", nil)
-	if !bytes.Contains(response.Body.Bytes(), []byte(`"startupAnimation":false`)) || bytes.Contains(response.Body.Bytes(), []byte("kept-private")) {
-		t.Fatal("startup bootstrap does not reflect persisted opt-out")
-	}
 }
 func TestConfigMigrationRefusesToProceedWithoutBackup(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {

@@ -8,7 +8,6 @@ const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:[
 try {
  const page=await browser.newPage();await page.setViewport({width:1440,height:1000});await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(fixture.url,{waitUntil:'networkidle0'});
- await page.waitForFunction(()=>!document.querySelector('#startup-splash.is-running'));
  const result=await page.evaluate(()=>{
   const original=activeID, state={connected:true,stats:{processSample:{available:true,sampledAt:new Date().toISOString(),intervalMilliseconds:5000},processes:Array.from({length:20},(_,i)=>({pid:i+1,name:'process-'+(i+1),cpu:i+1,cpuReady:true,memory:1024*(21-i),memoryReady:true,memoryEstimated:true})),processMemoryTop:Array.from({length:5},(_,i)=>({pid:100+i,name:'memory-'+i,cpu:0,cpuReady:true,memory:1024*(100-i),memoryReady:true,memoryEstimated:true}))},processSort:{key:'cpu',ascending:true}};
   sessions.set('monitor-fixture',state); activeID='monitor-fixture';

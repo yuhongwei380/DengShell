@@ -8,7 +8,7 @@ const browser=await puppeteer.launch({executablePath:chrome,headless:true,userDa
 const errors=[],results=[];
 try {
  const page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));await page.setViewport({width:1440,height:1000});await page.goto(fixture.url,{waitUntil:'networkidle0'});
- await page.evaluate(async()=>{await chooseAppearance({startupAnimation:false,onboardingCompleted:true,fontId:'builtin:jetbrains-mono',uiFontId:'builtin:ui-alibaba-puhuiti-3-55'});});
+ await page.evaluate(async()=>{await chooseAppearance({onboardingCompleted:true,fontId:'builtin:jetbrains-mono',uiFontId:'builtin:ui-alibaba-puhuiti-3-55'});});
  for(const scale of [1,1.5,2]) {
   await page.evaluate(async scale=>{await chooseAppearance({uiScale:scale});await openAppearance('font')},scale);
   await page.waitForFunction(()=>document.querySelector('#appearance-dialog').open);

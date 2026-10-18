@@ -78,8 +78,3 @@
 [data-theme="dark"] .titlebar .window-controls button:not(.window-close):is(:hover, :focus-visible) { background: #2e3b47; }
 [data-theme="dark"] .titlebar .window-controls button:not(.window-close):active { background: #374752; }
 
-[data-theme="dark"] .startup-splash { background: #000a; }
-[data-theme="dark"] .startup-splash-panel {
-  background: var(--surface);
-  box-shadow: 0 0 0 1px var(--border), 0 24px 85px #0009;
-}

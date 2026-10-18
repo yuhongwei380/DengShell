@@ -4,7 +4,7 @@ const [stage, chrome, modulePath] = process.argv.slice(2);
 const { default: puppeteer } = await import(modulePath);
 const fixture = JSON.parse(fs.readFileSync(stage + '/browser-fixture.json'));
 assert.equal(new URL(fixture.url).hostname, '127.0.0.1');
-const response = await fetch(new URL('/api/appearance/patch', fixture.url), { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CloudShell-Token': fixture.token }, body: JSON.stringify({ onboardingCompleted: true, startupAnimation: false, uiScale: 1 }) });
+const response = await fetch(new URL('/api/appearance/patch', fixture.url), { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CloudShell-Token': fixture.token }, body: JSON.stringify({ onboardingCompleted: true, uiScale: 1 }) });
 assert(response.ok);
 const browser = await puppeteer.launch({ executablePath: chrome, headless: true, args: ['--no-sandbox', '--disable-dev-shm-usage'] });
 const checks = [], failures = [], errors = [];

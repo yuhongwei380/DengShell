@@ -7,10 +7,10 @@ const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:[
 const errors=[];const results={};
 try {
  const page=await browser.newPage();page.on('pageerror',e=>{errors.push(e.message);console.error('PAGE ERROR',e.message)});
- await fetch(new URL(fixture.url).origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({startupAnimation:false,onboardingCompleted:true,uiScale:1})});
+ await fetch(new URL(fixture.url).origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({onboardingCompleted:true,uiScale:1})});
  await page.setViewport({width:1440,height:1000});await page.goto(fixture.url,{waitUntil:'networkidle0'});
  await page.evaluate(async()=>{
-  document.querySelectorAll('dialog[open]').forEach(d=>d.close());await chooseAppearance({startupAnimation:false,onboardingCompleted:true,uiScale:1});
+  document.querySelectorAll('dialog[open]').forEach(d=>d.close());await chooseAppearance({onboardingCompleted:true,uiScale:1});
   pollStats=()=>{};pollNetwork=()=>{};
   window.qaRequests=[];window.qaDelay=0;window.qaFailure=false;window.qaInFlight=0;window.qaPeak=0;
   const original=api;
@@ -31,7 +31,6 @@ try {
   }
   activate('process-a');setDrawer(false);
  });
- await page.waitForFunction(()=>!document.querySelector('#startup-splash.is-running'));
  await page.click('.process-heading');await page.waitForSelector('#process-view-rows tr');
  assert.equal(await page.$$eval('#process-view-rows tr',r=>r.length),100);
  assert.equal(await page.$eval('#process-view-count',e=>e.textContent),'共 50000 个进程');

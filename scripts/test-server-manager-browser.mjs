@@ -6,7 +6,7 @@ const base=process.env.DENG_MANAGER_BASE_SOURCE;
 const fixture=JSON.parse(fs.readFileSync(stage+'/browser-fixture.json'));
 assert.equal(new URL(fixture.url).hostname,'127.0.0.1');
 const api=async(path,body)=>{const r=await fetch(new URL(path,fixture.url),{method:body?'POST':'GET',headers:{'X-CloudShell-Token':fixture.token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const d=await r.json();assert(r.ok,JSON.stringify(d));return d};
-await api('/api/appearance/patch',{onboardingCompleted:true,startupAnimation:false,theme:'light',uiScale:1});
+await api('/api/appearance/patch',{onboardingCompleted:true,theme:'light',uiScale:1});
 for(const g of (await api('/api/config')).groupNodes.filter(g=>!g.parentId)){const plan=await api(`/api/group-nodes/${g.id}/deletion`);await api(`/api/group-nodes/${g.id}/deletion`,{revision:plan.revision,name:plan.name,confirmations:3})}
 const groups=[];for(const [name,parent]of [['VPS 厂商',-1],['AWS',0],['AWS01 深层分组',1],['第四级归档',2],['其他厂商',-1],['其他子分组',4]])groups.push(await api('/api/group-nodes',{name,parentId:parent<0?'':groups[parent].id}));
 const profiles=[];for(let i=0;i<24;i++)profiles.push(await api('/api/profiles',{name:`测试服务器 ${i+1}`,groupId:groups[i%4].id,user:'fixture',host:'192.0.2.'+(i+1),port:22,auth:'password',secret:''}));

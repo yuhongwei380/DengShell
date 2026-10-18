@@ -71,7 +71,6 @@
 :root[data-theme="light"] .latency-heading > b { color: #315f7d; }
 :root[data-theme="light"] .drop-overlay { color: #315f7d; }
 :root[data-theme="light"] .drop-overlay :is(span, b) { color: var(--text-secondary); }
-:root[data-theme="light"] :is(.splash-powered-label, .splash-settings-hint) { color: var(--muted); }
 
 /* White button labels need a deeper fill, including hover and keyboard focus. */
 :root[data-theme="light"] .primary-button { color: #fff; background: #3e6884; }

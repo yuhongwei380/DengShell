@@ -4,7 +4,7 @@ const [stage,modulePath]=process.argv.slice(2);
 const {default:puppeteer}=await import(modulePath);
 const url=fs.readFileSync(stage+'/browser-backend.log','utf8').match(/http:\/\/127\.0\.0\.1:\d+\/#token=[a-zA-Z0-9]+/)[0];
 const origin=new URL(url).origin,token=new URL(url).hash.split('=')[1];
-await fetch(origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':token},body:JSON.stringify({onboardingCompleted:true,startupAnimation:false,uiScale:1})});
+await fetch(origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':token},body:JSON.stringify({onboardingCompleted:true,uiScale:1})});
 const browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
 const errors=[],results=[];
 try {

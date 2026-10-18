@@ -178,7 +178,7 @@ func (r *remoteDesktopBackend) Handler(_ fs.FS) http.Handler {
 			w.Header().Set("Cache-Control", "no-store")
 			_, _ = io.Copy(w, io.LimitReader(response.Body, 4<<20))
 			nonce, _ := json.Marshal(r.launch.Nonce)
-			fmt.Fprintf(w, "\nwindow.CLOUDSHELL.detachedNonce=%s;window.CLOUDSHELL.startupAnimation=false;", nonce)
+			fmt.Fprintf(w, "\nwindow.CLOUDSHELL.detachedNonce=%s;", nonce)
 			return
 		}
 		proxy.ServeHTTP(w, q)

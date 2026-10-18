@@ -8,7 +8,7 @@ const call = async (path, body) => {
   const r = await fetch(new URL(path, fixture.url), {method:'POST', headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token}, body:JSON.stringify(body)});
   assert(r.ok, await r.text());
 };
-await call('/api/appearance/patch', {onboardingCompleted:true,startupAnimation:false,uiScale:1});
+await call('/api/appearance/patch', {onboardingCompleted:true,uiScale:1});
 const browser = await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
 const page = await browser.newPage(), errors = [], checks = [];
 page.on('pageerror', e => errors.push(e.message));

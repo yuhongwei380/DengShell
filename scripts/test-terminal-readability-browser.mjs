@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const [stage,chrome,modulePath,streamsPath]=process.argv.slice(2);
 const {default:puppeteer}=await import(modulePath);
 const fixture=JSON.parse(fs.readFileSync(stage+'/browser-fixture.json'));
-const setup=await fetch(new URL('/api/appearance/patch',fixture.url),{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({onboardingCompleted:true,startupAnimation:false,uiScale:1})});assert(setup.ok);
+const setup=await fetch(new URL('/api/appearance/patch',fixture.url),{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({onboardingCompleted:true,uiScale:1})});assert(setup.ok);
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
 const page=await browser.newPage(),errors=[],checks=[],resources=[];
 page.on('pageerror',e=>errors.push(e.message));
@@ -15,7 +15,7 @@ try {
  await page.setViewport({width:1720,height:1250});await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
  await page.goto(fixture.url,{waitUntil:'networkidle0'});
  await page.evaluate(async()=>{
-  await chooseAppearance({onboardingCompleted:true,startupAnimation:false,uiScale:1});
+  await chooseAppearance({onboardingCompleted:true,uiScale:1});
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());setDrawer(false);pollStats=()=>{};pollNetwork=()=>{};
   const id='ansi-colors-qa';profiles.push({id,name:'ANSI 配色验证',host:'fixture.invalid',user:'qa',port:22});const s={...makeSessionState({id,profileId:id,home:'/'}),localOnly:true};sessions.set(id,s);createTerminal(s);activate(id);s.fit.fit=()=>{};
   window.qaWrite=text=>new Promise(r=>s.term.write(text,r));

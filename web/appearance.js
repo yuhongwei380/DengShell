@@ -1,6 +1,6 @@
 'use strict';
 
-let appearance = { uiFontId: 'builtin:ui-alibaba-puhuiti-3-55', uiTextColors: {}, fontId: 'builtin:jetbrains-mono', fontColors: {}, fontBold: {}, chartStyles: {}, backgroundId: 'builtin:none', backgroundOpacity: .42, backgroundVersion: 2, uiScale: Number(window.CLOUDSHELL?.uiScale) || 1, terminalFontSize: 14, startupAnimation: window.DengShellSplash?.enabled !== false };
+let appearance = { uiFontId: 'builtin:ui-alibaba-puhuiti-3-55', uiTextColors: {}, fontId: 'builtin:jetbrains-mono', fontColors: {}, fontBold: {}, chartStyles: {}, backgroundId: 'builtin:none', backgroundOpacity: .42, backgroundVersion: 2, uiScale: Number(window.CLOUDSHELL?.uiScale) || 1, terminalFontSize: 14 };
 const appearanceMapFields = new Set(['fontColors', 'fontBold', 'chartStyles', 'uiTextColors']);
 const appearanceOwnedElsewhere = new Set(['layout', 'windowWidth', 'windowHeight', 'windowMaximised', 'terminalBold']);
 let appearanceSaved = appearanceSnapshot(appearance);
@@ -237,7 +237,6 @@ async function acceptAppearanceConfig(config) {
     delete appearance.terminalBold;
     appearanceSaved = appearanceSnapshot(appearance);
     appearance = mergeAppearanceChanges(appearance, pending);
-    window.DengShellSplash?.accept(appearance.startupAnimation);
   }
   if ((appearance.backgroundVersion || 0) < 2) { if (Math.abs(appearance.backgroundOpacity - .18) < .000001) appearance.backgroundOpacity = .42; appearance.backgroundVersion = 2; }
   await window.DengUIAppearance?.acceptConfig(config);
@@ -338,7 +337,7 @@ function renderAppearanceControls() {
 }
 function setSettingsMenu(open) {
   $('#settings-menu').hidden = !open; $('#settings-button').setAttribute('aria-expanded', String(open));
-  if (open) { positionSettings(); ($('#startup-animation').disabled ? $('#manage-keys') : $('#startup-animation')).focus(); }
+  if (open) { positionSettings(); $('#manage-keys').focus(); }
 }
 function positionSettings() {
   const menu = $('#settings-menu'), rect = $('#settings-button').getBoundingClientRect();

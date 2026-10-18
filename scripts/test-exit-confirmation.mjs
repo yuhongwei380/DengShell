@@ -5,7 +5,7 @@ const {default:puppeteer}=await import(modulePath),fixture=JSON.parse(fs.readFil
 const endpoint=new URL(fixture.url).origin;
 assert.equal(new URL(endpoint).hostname,'127.0.0.1');
 async function api(path,body){const r=await fetch(endpoint+path,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();return {status:r.status,data};}
-await api('/api/appearance/patch',{startupAnimation:false,onboardingCompleted:true,uiScale:1});
+await api('/api/appearance/patch',{onboardingCompleted:true,uiScale:1});
 const {data:{grant}}=await api('/api/security-lock/authorize',{});
 assert.equal((await api('/api/security-lock/settings',{grant,enabled:true,passwordEnabled:true,password:'4826',idleSeconds:0})).status,200);
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});

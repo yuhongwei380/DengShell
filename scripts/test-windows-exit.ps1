@@ -52,7 +52,7 @@ function Start-ExitNative([string]$Config){
 function Confirm-Persistent(){Wait-ExitQA {$null -ne (Control '继续使用')} 'unlocked confirmation';Start-Sleep -Milliseconds 1000;if($null -eq (Control '继续使用')){throw 'Exit confirmation disappeared after focus/lock status refresh'}}
 try{
  $config=Join-Path $exitRoot 'locked config';New-Item -ItemType Directory $config|Out-Null
- $seed=@{schemaVersion=2;appearance=@{onboardingCompleted=$true;startupAnimation=$false;minimizeAction='tray'}}
+ $seed=@{schemaVersion=2;appearance=@{onboardingCompleted=$true;minimizeAction='tray'}}
  [IO.File]::WriteAllText((Join-Path $config 'config.json'),($seed|ConvertTo-Json -Depth 5),[Text.UTF8Encoding]::new($false))
  $errorLog=Join-Path $exitRoot 'fixture-private.log'
  $fixture=Start-Process $Exe -ArgumentList @('--browser','--config',('"'+$config+'"')) -PassThru -RedirectStandardError $errorLog -RedirectStandardOutput (Join-Path $exitRoot 'fixture-out.log');$processes+=$fixture

@@ -3,12 +3,12 @@ import assert from 'node:assert/strict';
 const [stage,chrome,modulePath]=process.argv.slice(2);
 const {default:puppeteer}=await import(modulePath),fixture=JSON.parse(fs.readFileSync(stage+'/browser-fixture.json'));
 assert.equal(new URL(fixture.url).hostname,'127.0.0.1');
-const init=await fetch(new URL('/api/appearance/patch',fixture.url),{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({onboardingCompleted:true,startupAnimation:false,uiScale:1})});assert(init.ok);
+const init=await fetch(new URL('/api/appearance/patch',fixture.url),{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({onboardingCompleted:true,uiScale:1})});assert(init.ok);
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
 const errors=[],checks=[];let page;
 try {
  page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));await page.setViewport({width:1280,height:900});await page.goto(fixture.url,{waitUntil:'networkidle0'});
- await page.evaluate(async()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());await chooseAppearance({startupAnimation:false,onboardingCompleted:true,uiScale:1});setDrawer(false)});
+ await page.evaluate(async()=>{document.querySelectorAll('dialog[open]').forEach(d=>d.close());await chooseAppearance({onboardingCompleted:true,uiScale:1});setDrawer(false)});
  await page.click('#connection-button');
  const manager=await page.$eval('#connections-drawer',e=>{const r=e.getBoundingClientRect();return {center:(r.left+r.right)/2,width:innerWidth}});
  assert(Math.abs(manager.center-manager.width/2)<2);await page.click('#close-connections');

@@ -6,7 +6,7 @@ const browser=await puppeteer.connect({browserWSEndpoint:fs.readFileSync(endpoin
 const api=async(path,body)=>{const r=await fetch(new URL(path,fixture.url),{method:body?'POST':'GET',headers:{'X-CloudShell-Token':fixture.token,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const data=await r.json();assert(r.ok,JSON.stringify(data));return data};
 const page=await browser.newPage(),errors=[],checks=[];page.on('pageerror',e=>errors.push(e.message));
 try{
- await api('/api/appearance/patch',{onboardingCompleted:true,startupAnimation:false,theme:'light',uiFontId:'builtin:ui-alibaba-puhuiti-3-55',fontId:'builtin:jetbrains-mono'});
+ await api('/api/appearance/patch',{onboardingCompleted:true,theme:'light',uiFontId:'builtin:ui-alibaba-puhuiti-3-55',fontId:'builtin:jetbrains-mono'});
  for(const g of (await api('/api/config')).groupNodes.filter(g=>!g.parentId)){const plan=await api(`/api/group-nodes/${g.id}/deletion`);await api(`/api/group-nodes/${g.id}/deletion`,{revision:plan.revision,name:plan.name,confirmations:3})}
  const colors=['#183f52','#efc47f','#204528','#f7dded'],groups=[];
  for(let i=0;i<4;i++)groups.push(await api('/api/group-nodes',{name:['测试导入','云服务器','配置备份','归档'][i],parentId:groups.at(-1)?.id||'',backgroundColor:colors[i]}));

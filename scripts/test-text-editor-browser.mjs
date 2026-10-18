@@ -15,11 +15,11 @@ try {
   if(m){let text=contents.get(m[1]);if(r.method()==='POST'){const data=JSON.parse(r.postData());saves.push({id:m[1],...data});text=data.text;contents.set(m[1],text)}r.respond({status:200,contentType:'application/json',body:JSON.stringify({text,encoding:'utf-8',sha256:'a'.repeat(64)})});}
   else if(/^https?:/.test(u.protocol)&&u.origin!==new URL(fixture.url).origin)r.abort();else r.continue();
  });
- await fetch(new URL(fixture.url).origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({startupAnimation:false,onboardingCompleted:true,uiScale:1})});
+ await fetch(new URL(fixture.url).origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({onboardingCompleted:true,uiScale:1})});
  await page.setViewport({width:1440,height:1000});await page.goto(fixture.url,{waitUntil:'networkidle0'});
  await page.evaluate(async()=>{
   document.querySelectorAll('dialog[open]').forEach(e=>e.close());
-  await chooseAppearance({startupAnimation:false,onboardingCompleted:true,uiScale:1});setDrawer(false);
+  await chooseAppearance({onboardingCompleted:true,uiScale:1});setDrawer(false);
   profiles.push({id:'profile-a',name:'服务器 A',user:'root',host:'test-a',port:22},{id:'profile-b',name:'服务器 B',user:'root',host:'test-b',port:22});
   for(const id of ['a','b']){const state={id:'editor-'+id,profileId:'profile-'+id,connected:true,closed:false};sessions.set(state.id,state);await DengTextEditors.openText(state,'/etc/config.txt');}
  });

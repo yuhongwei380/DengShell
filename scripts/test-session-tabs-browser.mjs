@@ -11,14 +11,13 @@ try {
  page=await browser.newPage();page.on('pageerror',e=>errors.push(e.message));
  await page.setViewport({width:1440,height:1000});
  const origin=new URL(fixture.url).origin;
- await fetch(origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({startupAnimation:false,onboardingCompleted:true,uiScale:1})});
+ await fetch(origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({onboardingCompleted:true,uiScale:1})});
  await page.goto(fixture.url,{waitUntil:'networkidle0'});
  await page.evaluate(async()=>{
    document.querySelectorAll('dialog[open]').forEach(d=>d.close());
-   await chooseAppearance({startupAnimation:false,onboardingCompleted:true,uiScale:1});
+   await chooseAppearance({onboardingCompleted:true,uiScale:1});
    document.documentElement.classList.add('frameless');document.querySelector('#window-controls').hidden=false;
  });
- await page.waitForFunction(()=>!document.querySelector('#startup-splash.is-running'));
  assert.deepEqual(await page.$$eval('.brand button',bs=>bs.map(b=>b.id)),['settings-button','theme-toggle','security-lock-button','connection-button']);
  assert.equal(await page.$('.session-bar #settings-button'),null);
  const initialTheme=await page.evaluate(()=>document.documentElement.dataset.theme);

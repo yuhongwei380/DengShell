@@ -23,7 +23,7 @@ func TestConfigSchemaMigrationPreservesCredentialsAndLiteralGroups(t *testing.T)
  "keys":[{"id":"managed-key","name":"保留密钥","publicKey":"public-only"}],
  "proxies":[{"id":"proxy","name":"保留代理","proxy":{"type":"http","host":"localhost","port":3128,"password":"proxy-secret"}}],
  "assets":[{"id":"asset","kind":"font","name":"字体","size":100}],
- "appearance":{"fontId":"builtin:jetbrains-mono","backgroundId":"builtin:moonlake","backgroundOpacity":0,"uiScale":1.25,"terminalFontSize":16,"startupAnimation":false},
+ "appearance":{"fontId":"builtin:jetbrains-mono","backgroundId":"builtin:moonlake","backgroundOpacity":0,"uiScale":1.25,"terminalFontSize":16},
  "userNotes":{"untouched":"metadata"}
 }`)
 	configPath := filepath.Join(dir, "config.json")
@@ -51,7 +51,7 @@ func TestConfigSchemaMigrationPreservesCredentialsAndLiteralGroups(t *testing.T)
 	if len(s.config.Commands) != 1 || len(s.config.Keys) != 1 || len(s.config.Proxies) != 1 || len(s.config.Assets) != 1 || s.config.HostKeys["host:22"] != "SHA256:kept" {
 		t.Fatal("lost ancillary settings")
 	}
-	if s.config.Appearance.BackgroundOpacity != 0 || s.config.Appearance.UIScale != 1.25 || s.config.Appearance.StartupAnimation {
+	if s.config.Appearance.BackgroundOpacity != 0 || s.config.Appearance.UIScale != 1.25 {
 		t.Fatal("explicit appearance changed")
 	}
 	files, _ := filepath.Glob(filepath.Join(dir, "config.pre-v2.*.enc"))

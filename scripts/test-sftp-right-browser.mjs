@@ -15,7 +15,7 @@ async function api(route,body,method=body===undefined?'GET':'POST') {
  const r=await fetch(new URL(route,origin),{method,headers,body:body===undefined?undefined:JSON.stringify(body)});
  const data=await r.json();assert(r.ok,`${route}: ${JSON.stringify(data)}`);return data;
 }
-await api('/api/appearance/patch',{onboardingCompleted:true,startupAnimation:false,uiScale:1,filesPosition:'bottom'});
+await api('/api/appearance/patch',{onboardingCompleted:true,uiScale:1,filesPosition:'bottom'});
 const key=await api('/api/keys',{name:'SFTP right isolated key',sourcePath:fixture.key});
 const profile=await api('/api/profiles',{name:'SFTP right isolated SSH',host:'127.0.0.1',port:fixture.port,user:'bitsflow',auth:'key',keyId:key.id});
 const trust=await api('/api/sessions',{profileId:profile.id,hostKeyApproval:{host:'127.0.0.1:'+fixture.port,fingerprint:fixture.fingerprint}});

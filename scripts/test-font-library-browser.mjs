@@ -19,13 +19,12 @@ try{
   // This endpoint belongs to the opt-in isolated fixture, never a user Store.
   assert(new URL(fixture.url).hostname==='127.0.0.1');
   for(const asset of (await api('/api/config')).assets) await api(`/api/assets/${asset.id}`,{method:'DELETE'});
-  await api('/api/appearance/patch',{method:'POST',body:JSON.stringify({uiFontId:'builtin:ui-alibaba-puhuiti-3-55',fontId:'builtin:jetbrains-mono',startupAnimation:false,onboardingCompleted:true})});
+  await api('/api/appearance/patch',{method:'POST',body:JSON.stringify({uiFontId:'builtin:ui-alibaba-puhuiti-3-55',fontId:'builtin:jetbrains-mono',onboardingCompleted:true})});
   await mkdir(join(stage,'screenshots'),{recursive:true});
   const page=await browser.newPage();await page.setViewport({width:1440,height:1000});
   page.on('pageerror',e=>errors.push(e.message));
   await page.setRequestInterception(true);page.on('request',r=>{requests.push(r.url());if(r.url().includes('/api/updates/check'))r.respond({status:200,contentType:'application/json',body:'{"status":"current"}'});else if(/^(http|https):/.test(r.url())&&!r.url().startsWith(new URL(fixture.url).origin))r.abort();else r.continue();});
   await page.goto(fixture.url,{waitUntil:'networkidle0'});
-  await page.waitForFunction(()=>!document.querySelector('#startup-splash.is-running'));
   await page.waitForFunction(()=>document.documentElement.dataset.uiFont==='builtin:ui-alibaba-puhuiti-3-55');
   assert.equal(await page.evaluate(()=>allFonts().length),5);
   assert.equal(requests.filter(u=>u.includes('/api/font-library')).length,0);

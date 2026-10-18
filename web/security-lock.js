@@ -30,7 +30,7 @@
    document.documentElement.dataset.securityLocked='true';fitScreen();
    if(changed)window.dispatchEvent(new Event('dengshell:locked'));
    if(confirmed&&settings?.open){settings.close();clearSettingsSecrets();}
-   isolate();window.DengShellSplash?.finish('locked');
+   isolate();
    if(changed&&el('exit-dialog')?.open){el('exit-dialog').close();queueMicrotask(()=>window.requestQuit?.());}
    if(screen&&!screen.open){originalModal.call(screen);el('security-unlock-open').focus();}
   }else{

@@ -96,7 +96,7 @@
     if (menu) {
       const row = document.createElement('label'); row.className = 'system-theme-setting'; row.htmlFor = 'follow-system-theme';
       row.innerHTML = '<span>明暗跟随系统<small id="follow-system-theme-hint"></small></span><input id="follow-system-theme" type="checkbox" role="switch" aria-describedby="follow-system-theme-hint">';
-      const first = menu.querySelector('.startup-animation-setting'); if (first) first.after(row); else menu.prepend(row);
+      menu.prepend(row);
       row.querySelector('input').addEventListener('change', event => set(event.target.checked ? 'system' : resolved()));
       reflectSetting();
     }

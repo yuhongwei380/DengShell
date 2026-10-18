@@ -18,7 +18,7 @@ async function lock(p){await p.bringToFront();await p.click('#security-lock-butt
 async function unlock(p,value=password,method='password'){await p.bringToFront();if(await p.$eval('#security-unlock-form',e=>e.hidden))await p.click('#security-unlock-open');if(await p.$eval('#security-method-label',e=>!e.hidden))await p.select('#security-unlock-method',method);await p.type('#security-unlock-value',value);await p.click('#security-unlock-submit');await p.waitForFunction(()=>!document.querySelector('#security-lock-screen').open);}
 try{
  const initial=(await api('/api/security-lock/status')).data;if(initial.enabled){assert(initial.passwordConfigured,'Use a fresh isolated fixture after TOTP-only tests');await api('/api/security-lock/unlock',{method:'password',value:password});const grant=(await api('/api/security-lock/authorize',{method:'password',value:password})).data.grant;assert(grant);assert.equal((await api('/api/security-lock/settings',{grant,enabled:false})).status,200);}
- await api('/api/appearance/patch',{startupAnimation:false,onboardingCompleted:true,uiScale:1});
+ await api('/api/appearance/patch',{onboardingCompleted:true,uiScale:1});
  first=await load();await first.evaluate(()=>setDrawer(false));
  assert(await first.$eval('#security-lock-button',e=>e.disabled));
  const gap=await first.evaluate(()=>document.querySelector('#security-lock-button').getBoundingClientRect().left-document.querySelector('#theme-toggle').getBoundingClientRect().right);assert(Math.abs(gap-14)<.5,JSON.stringify({gap}));

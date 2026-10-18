@@ -24,7 +24,6 @@ type Appearance struct {
 	UIScale             float64                    `json:"uiScale"`
 	TerminalFontSize    float64                    `json:"terminalFontSize"`
 	TerminalBold        bool                       `json:"terminalBold,omitempty"` // Legacy input only; migrated to the selected font.
-	StartupAnimation    bool                       `json:"startupAnimation"`
 	Theme               string                     `json:"theme"`
 	WindowWidth         int                        `json:"windowWidth"`
 	WindowHeight        int                        `json:"windowHeight"`
@@ -40,7 +39,7 @@ type Appearance struct {
 }
 
 func defaultAppearance() Appearance {
-	return Appearance{UIFontID: defaultUIFontID, UITextColors: map[string]string{}, FontID: "builtin:jetbrains-mono", FontColors: map[string]string{}, FontBold: map[string]bool{}, ChartStyles: map[string]ChartLineStyle{}, BackgroundID: "builtin:none", BackgroundOpacity: .42, BackgroundVersion: 2, UIScale: 1, TerminalFontSize: 14, StartupAnimation: true, Theme: "system", MonitorSide: "left", FilesPosition: "bottom", MinimizeAction: "ask", Layout: map[string]json.RawMessage{}}
+	return Appearance{UIFontID: defaultUIFontID, UITextColors: map[string]string{}, FontID: "builtin:jetbrains-mono", FontColors: map[string]string{}, FontBold: map[string]bool{}, ChartStyles: map[string]ChartLineStyle{}, BackgroundID: "builtin:none", BackgroundOpacity: .42, BackgroundVersion: 2, UIScale: 1, TerminalFontSize: 14, Theme: "system", MonitorSide: "left", FilesPosition: "bottom", MinimizeAction: "ask", Layout: map[string]json.RawMessage{}}
 }
 
 // Old releases combined 18% image opacity with a dark multiply tint. Keep

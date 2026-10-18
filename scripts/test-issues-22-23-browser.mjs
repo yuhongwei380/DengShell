@@ -6,7 +6,7 @@ const checks=[],errors=[],headers={'Content-Type':'application/json','X-CloudShe
 async function call(path,method='GET',body){const r=await fetch(new URL(path,fixture.url),{method,headers,body:body===undefined?undefined:JSON.stringify(body)});const data=await r.json();assert(r.ok,JSON.stringify(data));return data;}
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
 for (const s of fixture.sessions) for (const path of (await call(`/api/sessions/${s.id}/directory-favorites`)).paths) await call(`/api/sessions/${s.id}/directory-favorites`,'DELETE',{path});
-await call('/api/appearance/patch','POST',{startupAnimation:false,onboardingCompleted:true,uiScale:1});
+await call('/api/appearance/patch','POST',{onboardingCompleted:true,uiScale:1});
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
 let page;
 try{

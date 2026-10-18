@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const [stage,chrome,modulePath]=process.argv.slice(2);
 const {default:puppeteer}=await import(modulePath),fixture=JSON.parse(fs.readFileSync(stage+'/browser-fixture.json'));
-const setup=await fetch(new URL('/api/appearance/patch',fixture.url),{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({startupAnimation:false,onboardingCompleted:true,uiScale:1})});assert(setup.ok);
+const setup=await fetch(new URL('/api/appearance/patch',fixture.url),{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':fixture.token},body:JSON.stringify({onboardingCompleted:true,uiScale:1})});assert(setup.ok);
 const browser=await puppeteer.launch({executablePath:chrome,headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
 const page=await browser.newPage(),errors=[],checks=[];
 page.on('pageerror',e=>errors.push(e.message));
@@ -10,7 +10,7 @@ try {
  await page.emulateMediaFeatures([{name:'prefers-reduced-motion',value:'reduce'}]);
  await page.setViewport({width:1366,height:1000});await page.goto(fixture.url,{waitUntil:'networkidle0'});
  const ids=await page.evaluate(async()=>{
-  await chooseAppearance({startupAnimation:false,onboardingCompleted:true,uiScale:1});
+  await chooseAppearance({onboardingCompleted:true,uiScale:1});
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());
   const root=await post('/api/group-nodes',{name:'分组点击验证-'+Date.now()});
   const child=await post('/api/group-nodes',{name:'日常服务器',parentId:root.id});

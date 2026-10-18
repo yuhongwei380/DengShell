@@ -5,7 +5,7 @@ const [url, sessionID, remote, local, module] = process.argv.slice(2);
 const { default: puppeteer } = await import(module);
 const browser = await puppeteer.launch({executablePath:process.env.CHROME_BIN || '/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
 const origin = new URL(url).origin, token = new URL(url).hash.split('=')[1];
-await fetch(origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':token},body:JSON.stringify({onboardingCompleted:true,startupAnimation:false,uiScale:1})});
+await fetch(origin+'/api/appearance/patch',{method:'POST',headers:{'Content-Type':'application/json','X-CloudShell-Token':token},body:JSON.stringify({onboardingCompleted:true,uiScale:1})});
 const errors=[], deletes=[];
 const write=(name,data='fixture')=>{const target=path.join(remote,name);fs.mkdirSync(path.dirname(target),{recursive:true});fs.writeFileSync(target,data)};
 for(const name of ['a.txt','b.txt','c.txt','d.txt','keep.txt','folder/child.txt','other/a.txt','other/b.txt'])write(name);
