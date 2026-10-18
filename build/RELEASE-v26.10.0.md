@@ -1,4 +1,4 @@
-# DengShell v26.10.0 · 构建 20261018114
+# DengShell v26.10.0 · 构建 20261018115
 
 Phoenix 分支（[yuhongwei380/DengShell](https://github.com/yuhongwei380/DengShell)）首个按新版本号规则发布的版本。
 
@@ -13,6 +13,7 @@ Phoenix 分支（[yuhongwei380/DengShell](https://github.com/yuhongwei380/DengSh
 - 界面字体为阿里巴巴普惠体 3.0 55 Regular（免费商用），替换 IBM Plex Sans SC；旧界面字体设置自动迁移。
 - 移植上游构建 107–114：固定连接栏（书签按钮固定到顶部，左键快速连接或切换、右键取消固定、重启保留）；未连接时 `ping 主机` 直接输出到终端，`-t` 持续探测、Ctrl+C 结束；本机提示区跟随 Shell 字体与缩放；「跟随终端目录」复选框在右侧停靠时保持可见。
 - 按上游构建 108–109 精简：移除 AI 助手、加密同步、FinalShell 导入与开启动画，启动直达主界面。
+- 修复 Windows 启动附带控制台日志窗口：发行构建使用 GUI 子系统（`-H windowsgui`），日志仅写入 `data/logs`。
 - 界面展示版本为 `ver.Phoenix · v26.10.0`。
 
 ## 升级说明

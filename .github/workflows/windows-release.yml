@@ -34,7 +34,7 @@ jobs:
           }
           (Get-Command makensis).Source
       - name: Build desktop binary
-        run: go build -tags desktop,production -o build/out/DengShell.exe .
+        run: go build -buildvcs=false -trimpath -tags desktop,production -ldflags "-s -w -H windowsgui" -o build/out/DengShell.exe .
       - name: Prepare Windows image
         run: go run ./cmd/prepare-windows-image -in build/out/DengShell.exe -out build/out/DengShell-prepared.exe
       - name: Stage distribution
