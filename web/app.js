@@ -133,6 +133,7 @@ async function loadProfiles() {
   profiles = config.servers; groups = config.groups; commands = config.commands || []; commandGroups = config.commandGroups || []; managedKeys = config.keys || [];
   acceptServerManagerConfig(config); renderConnections(); renderTabs(); renderCommands(); renderKeyChoices(); renderKeys();
   await acceptAppearanceConfig(config);
+  window.DengPinnedNav?.render();
   clampLayouts();
   // Restore once at startup. Sync/config refreshes must not pull an active
   // workspace back to a saved tab, including while a dropped file uploads.
@@ -490,7 +491,7 @@ function renderTabs() {
     button.setAttribute('aria-busy', String(!!state.pendingConnection));
     if (state.localOnly) button.title += ` · ${state.connectionMessage}`;
     const close = node('button', 'tab-close'); close.append(icon('close')); close.title = state.pendingConnection ? '取消连接' : '关闭连接'; close.setAttribute('aria-label', `${state.pendingConnection ? '取消' : '关闭'} ${profile?.name || '会话'}`); close.onclick = safe(() => closeSession(state.id)); close.disabled = !!(state.detaching || state.handoffProvisional); tab.dataset.detaching = String(!!state.detaching); tab.append(button, close); window.DengSessionWindows.bindTab(tab, state); return [tab, ...(window.DengProcessView?.tabs(state) || [])];
-  })); window.DengRDP?.appendTabs($('#session-tabs')); window.DengTabOrder.apply($('#session-tabs')); updateStatus(); window.DengTextEditors?.reflect(); window.DengCommandComposer?.reflect();
+  })); window.DengRDP?.appendTabs($('#session-tabs')); window.DengTabOrder.apply($('#session-tabs')); updateStatus(); window.DengTextEditors?.reflect(); window.DengCommandComposer?.reflect(); window.DengPinnedNav?.render();
 }
 function activate(id, view = 'terminal') {
   if (!sessions.has(id)) return;
@@ -514,7 +515,7 @@ function renderSessionInfo() {
   $('#terminal-state').title = state?.disconnectDiagnostic?.message || '';
   $('#command-history').disabled = false; $('#command-input').disabled = !!state && !state.connected; $('#command-input').placeholder = state ? '输入命令并回车发送 · ↑↓ 历史' : '本机：输入 ssh 用户@主机 或 ping 主机'; window.DengQuickConnect?.reflect(); $('#command-input').value = ''; resizeCommandInput(); $('#reconnect').disabled = !state || !!(state.pendingConnection || state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain); $('#disconnect').disabled = !state?.connected || !!(state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain);
   $('#follow-terminal').checked = state ? !!state.follow : pendingFollow; $('#follow-terminal').disabled = !!state && (!state.ready || !filesUsable(state));
-  renderMonitor(state?.connected ? state.stats : null); renderLatency(); renderCommands(); window.DengCommonApps?.render(); window.DengProcessView?.reflect(); updateStatus();
+  renderMonitor(state?.connected ? state.stats : null); renderLatency(); renderCommands(); window.DengCommonApps?.render(); window.DengProcessView?.reflect(); window.DengPinnedNav?.reflect(); updateStatus();
 }
 $('#command-form').onsubmit = event => { event.preventDefault(); const state = current(); const input = $('#command-input'); if (!state && input.value.trim()) { const command = input.value; input.value = ''; if (/^ping(?:\s|$)/i.test(command.trim())) safe(() => window.DengLocalPrompt.run(command))(); else safe(() => window.DengQuickConnect.run(command))(); return; } if (!state?.ready || !input.value) return; if (!pasteTerminalText(state, input.value, { execute: true })) return; input.value = ''; resizeCommandInput(); };
 $('#command-input').onkeydown = event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('#command-form').requestSubmit(); return; } const state = current(); if (!state || !['ArrowUp', 'ArrowDown'].includes(event.key)) return; event.preventDefault(); state.historyIndex = Math.max(0, Math.min(state.history.length, state.historyIndex + (event.key === 'ArrowUp' ? -1 : 1))); event.target.value = state.history[state.historyIndex] || ''; resizeCommandInput(); };

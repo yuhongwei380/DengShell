@@ -25,6 +25,7 @@
   <link rel="stylesheet" href="connection-extras.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="help-guide.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="appearance-tools.css?v=20261018-follow1">
+  <link rel="stylesheet" href="pinned-nav.css?v=20261018-pin1">
   <link rel="stylesheet" href="font-library.css?v=20260920-v002-b70">
   <link rel="icon" href="assets/dengshell.svg" type="image/svg+xml">
   <link rel="stylesheet" href="file-tools.css?v=20261010-editor-wrap">
@@ -98,6 +99,8 @@
       <div class="window-controls" id="window-controls" hidden><button data-window-action="minimise" title="最小化" aria-label="最小化"><svg><use href="#i-minimise"/></svg></button><button data-window-action="toggle-maximise" id="window-maximise" title="最大化" aria-label="最大化"><svg><use href="#i-maximise"/></svg></button><button data-window-action="close" class="window-close" title="关闭窗口" aria-label="关闭窗口"><svg><use href="#i-close"/></svg></button></div>
     </nav>
   </header>
+
+  <nav class="pinned-bar" id="pinned-bar" aria-label="固定连接" hidden></nav>
 
   <div class="app-shell" id="app-shell">
     <aside class="sidebar">
@@ -359,6 +362,7 @@
   <script src="app.js?v=20261018-follow3"></script>
   <script src="quick-connect.js?v=20260920-v002-b70"></script>
   <script src="local-prompt.js?v=20261018-ping3"></script>
+  <script src="pinned-nav.js?v=20261018-pin1"></script>
   <script src="process-view.js?v=20260920-v002-b70"></script>
   <script src="common-apps.js?v=20260920-v002-b70"></script>
   <script src="text-model.js?v=20260920-v002-b70"></script>
