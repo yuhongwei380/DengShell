@@ -1,0 +1,72 @@
+# ---------------------------------------------------------------------------
+# DengShell — local data, build outputs and development caches.
+# Release packaging targets Windows, macOS and Linux only.
+# ---------------------------------------------------------------------------
+
+# Local application data, credentials and runtime state
+/data/
+/build/windows/data/
+/keys/
+/assets/
+**/dengshell.config.enc
+**/dengshell.config.enc.bak
+**/dengshell.ai.enc
+**/dengshell.config.key
+**/dengshell.config.json
+**/cloudshell.config.enc
+**/cloudshell.config.enc.bak
+**/cloudshell.config.key
+**/cloudshell.config.json
+**/.dengshell.config.lock
+**/.dengshell-update-cleanup.lock
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.seed
+id_rsa
+id_ed25519
+
+# Built programs and release packages (Windows / macOS / Linux)
+/dengshell
+/dengshell-server
+/dengshell-sync
+/cloudshell
+/cloudshell-server
+/cloudshell-preview
+/build/windows/*.exe
+/build/linux/native/
+/build/linux/packages/
+/build/macos/
+/dist/
+/sync-data/
+*.exe
+*.deb
+*.rpm
+*.zip
+*.tar.gz
+*.pkg.tar.zst
+*.AppImage
+*.dmg
+*.test
+
+# Development caches, editors and local output
+/node_modules/
+/.cache/
+/coverage/
+__pycache__/
+*.py[cod]
+*.log
+*.tmp
+*.bak
+*~
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+/finalshell_oot_pot/
+
+# The verified embedded RDP engine is a committed release input.
+!internal/rdpengine/payload/windows-amd64.zip

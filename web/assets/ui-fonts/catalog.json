@@ -1,0 +1,19 @@
+{
+  "fonts": [
+    {
+      "id": "builtin:ui-alibaba-puhuiti-3-55",
+      "name": "Alibaba PuHuiTi 3.0 55 Regular",
+      "family": "Deng UI PuHuiTi",
+      "upstream": "Alibaba PuHuiTi 3.0 55 Regular",
+      "description": "默认界面字体 · 阿里巴巴普惠体，清晰的中英文混排",
+      "version": "v26.10.0",
+      "file": "assets/ui-fonts/alibaba-puhuiti-3-55-regular.ttf",
+      "license": "assets/ui-fonts/alibaba-puhuiti-3-55-regular-LICENSE.txt",
+      "licenseName": "阿里巴巴普惠体许可证（免费商用）",
+      "source": "https://github.com/yuhongwei380/DengShell/releases/download/v26.10.0/AlibabaPuHuiTi-3-55-Regular.zip",
+      "bytes": 8532824,
+      "sha256": "be33bc8d45ced30fa5c542f6f056565baf85003d4e079522110d76016f8a04e2"
+    }
+  ],
+  "previewText": "简体中文 · 繁體中文 · English 012345"
+}
