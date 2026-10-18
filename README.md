@@ -4,7 +4,7 @@
 
 DengShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VPS、维护 Linux 服务器、编辑远程配置和排查网络问题。支持 Windows、Linux、macOS 桌面，可同时连接多台服务器，并按自己的习惯调整字体、背景、布局和监控曲线。
 
-本说明对应 **v26.10.0 · 构建 20261018115**。本分支更新源为 GitHub Releases，界面字体为阿里巴巴普惠体 3.0。R20 以来的累计变化汇总在 [更新日志](CHANGELOG.md)。
+本说明对应 **v26.10.0 · 构建 20261018116**。本分支更新源为 GitHub Releases，界面字体为阿里巴巴普惠体 3.0。R20 以来的累计变化汇总在 [更新日志](CHANGELOG.md)。
 
 > **项目来源**：本项目源自上游 [BitsFlowCloud/DengShell](https://github.com/BitsFlowCloud/DengShell) 的 **DengShell v0.03 分支**，在此基础上独立维护。上游改动不再自动同步，已移植的上游改进（构建 107–114）见更新日志。
 

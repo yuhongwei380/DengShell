@@ -285,7 +285,20 @@ function mergeAppearanceChanges(base, patch) {
 function persistAppearance(patch = {}, alreadyApplied = false) {
   // Compare against this frontend's last successful save, never against another
   // window's newer response. Maps are reduced to keys the user actually changed.
-  if (!alreadyApplied) appearance = { ...appearance, ...patch };
+  if (!alreadyApplied) {
+    const previousLayout = appearance.layout;
+    appearance = { ...appearance, ...patch };
+    if (patch.layout) {
+      // Layout patches are per-key (null deletes). Never drop sibling keys the
+      // backend still keeps, or readers like the pinned bar lose them until a
+      // full config reload.
+      const merged = { ...(previousLayout || {}) };
+      for (const [key, value] of Object.entries(patch.layout)) {
+        if (value === null) delete merged[key]; else merged[key] = structuredClone(value);
+      }
+      appearance.layout = merged;
+    }
+  }
   const snapshot = appearanceSnapshot(appearance), layoutPatch = patch.layout && structuredClone(patch.layout);
   const saving = appearanceSave.then(async () => {
     const changes = appearanceDifference(snapshot, appearanceSaved);

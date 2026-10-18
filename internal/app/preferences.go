@@ -243,7 +243,7 @@ func (s *Store) saveAppearanceLocked(value Appearance) (Appearance, error) {
 
 func validSavedLayoutKey(key string) bool {
 	switch key {
-	case "cloudshell.layout", "dengshell.workspace", "dengshell.appearance-palette", "dengshell.server-groups.collapsed", "dengshell.server-manager":
+	case "cloudshell.layout", "dengshell.workspace", "dengshell.appearance-palette", "dengshell.server-groups.collapsed", "dengshell.server-manager", "dengshell.pinned.v1":
 		return true
 	}
 	for _, prefix := range []string{"dengshell.history.", "dengshell.nic."} {

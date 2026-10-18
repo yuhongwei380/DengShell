@@ -1,7 +1,8 @@
 'use strict';
 // Pinned connections bar: pin the current session (saving a quick-connect
 // session first) and it appears in the top bar for one-click reconnect.
-// The id list lives in appearance.layout under one key, so no backend change.
+// The id list lives in appearance.layout under one key, whitelisted by the
+// backend layout validator (validSavedLayoutKey in preferences.go).
 window.DengPinnedNav = (() => {
   const LAYOUT_KEY = 'dengshell.pinned.v1';
   let bar, pinButton, pinned = [];
@@ -44,6 +45,9 @@ window.DengPinnedNav = (() => {
       profiles = profiles.filter(p => p.id !== saved.id);
       profiles.push(saved);
       renderConnections(); renderTabs();
+      // The session is no longer temporary even if pinning below fails, so
+      // refresh the "保存连接" button instead of leaving it visibly dead.
+      window.DengQuickConnect?.reflect();
     }
     await pin(profile.id);
     toast('已固定到顶部导航栏');

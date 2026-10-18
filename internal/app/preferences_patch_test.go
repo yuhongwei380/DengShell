@@ -59,6 +59,35 @@ func TestAppearancePatchPreservesOtherWindowsAndDeletesOneMapKey(t *testing.T) {
 	}
 }
 
+func TestAppearancePatchPersistsPinnedConnectionsLayoutKey(t *testing.T) {
+	s, err := OpenStore(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	// pinned-nav.js stores the pinned connection ids under this exact layout
+	// key; rejecting it made the pin button fail with "界面偏好包含无效项目".
+	if _, err = s.PatchAppearance(preferencePatch(t, `{"layout":{"dengshell.pinned.v1":["a1b2c3","d4e5f6"]}}`)); err != nil {
+		t.Fatalf("pinned layout key rejected: %v", err)
+	}
+	s, err = OpenStore(s.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(s.List().Appearance.Layout["dengshell.pinned.v1"]) != `["a1b2c3","d4e5f6"]` {
+		t.Fatal("pinned layout key did not persist")
+	}
+	if _, err = s.PatchAppearance(preferencePatch(t, `{"layout":{"dengshell.pinned.v1":null}}`)); err != nil {
+		t.Fatalf("pinned layout key removal rejected: %v", err)
+	}
+	s, err = OpenStore(s.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := s.List().Appearance.Layout["dengshell.pinned.v1"]; ok {
+		t.Fatal("pinned layout key removal ignored")
+	}
+}
+
 func TestAppearancePatchConcurrentMergesAreAtomic(t *testing.T) {
 	s, err := OpenStore(t.TempDir())
 	if err != nil {
