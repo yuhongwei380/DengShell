@@ -54,7 +54,7 @@ svg use { pointer-events: none; }
 ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
 
 /* Chrome and soft panel surfaces */
-.titlebar { height: auto; min-height: 42px; display: grid; grid-template-columns: var(--sidebar-width) var(--pane-gap) minmax(0, 1fr); align-items: center; padding: 0 var(--workspace-inset); }
+.titlebar { height: 42px; min-height: 42px; display: grid; grid-template-columns: var(--sidebar-width) var(--pane-gap) minmax(0, 1fr); align-items: center; padding: 0 var(--workspace-inset); }
 .brand { display: flex; align-items: center; gap: 7px; min-width: 0; color: #3b5368; }
 .brand strong, .brand-icon, .version { flex-shrink: 0; }
 .app-status { flex: 1; min-width: 0; padding: 5px 2px; font-size: 9px; color: #95a4b1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; text-align: right; border-radius: 5px; }
@@ -152,7 +152,9 @@ svg use { pointer-events: none; }
 .splitter.horizontal span { width: 30px; height: 3px; }
 .splitter:is(:hover, :focus-visible) span { background: #96b6cd; }
 .main-panel { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
-.session-bar { grid-column: 3; height: auto; min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 0; }
+/* Session bar lives in the terminal column, above the workspace: the sidebar
+   keeps stretching to the top while pinned chips and tabs stack on the right. */
+.session-bar { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 0 0 6px; flex: none; }
 .session-row { height: 42px; min-width: 0; display: flex; align-items: center; gap: 5px; }
 .connection-button { flex-shrink: 0; padding: 6px 10px; color: #8da8bc; margin-right: 3px; display: flex; align-items: center; border-radius: 9px; }
 .connection-button svg { width: 22px; height: 22px; }
@@ -164,7 +166,7 @@ svg use { pointer-events: none; }
 .tab-close { width: 23px; height: 23px; display: flex; align-items: center; justify-content: center; border-radius: 7px; color: #b0bec8; }
 .tab-close:hover { background: #edf3f7; }
 .tab-close svg { width: 12px; height: 12px; }
-.add-session { color: #9eb1c0; margin-left: 4px; }
+.add-session { color: #9eb1c0; }
 .session-bar-end { margin-left: auto; font-size: 10px; letter-spacing: .8px; color: #a4b4c0; padding-left: 15px; white-space: nowrap; }
 .workspace { display: grid; grid-template-rows: minmax(220px, 1fr) 10px var(--files-height); flex: 1; min-height: 0; }
 .terminal-panel { background: linear-gradient(115deg, #273f50, #223746 70%, #203342); color: #d4e1e8; display: flex; flex-direction: column; overflow: hidden; min-height: 0; position: relative; border-radius: 16px; box-shadow: 0 6px 20px #263d5017; }

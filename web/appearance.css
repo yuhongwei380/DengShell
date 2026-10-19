@@ -79,7 +79,7 @@ dialog { max-width:calc(var(--view-width) - 24px); max-height:calc(var(--view-he
 [data-narrow="true"] .brand { flex:none; }
 [data-narrow="true"] .brand strong { font-size:13px; }
 [data-narrow="true"] .app-status { display:none; }
-[data-narrow="true"] .session-bar { flex:1; }
+[data-narrow="true"] .session-bar { flex:none; }
 [data-narrow="true"] .app-shell { grid-template-columns:minmax(0,1fr); }
 [data-narrow="true"] .sidebar, [data-narrow="true"] #sidebar-splitter { display:none; }
 [data-narrow="true"] .directory-tree { display:none; }

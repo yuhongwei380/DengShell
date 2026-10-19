@@ -20,7 +20,7 @@ window.DengPinnedNav = (() => {
     const items = pinned.map(id => connectionProfile(id)).filter(Boolean);
     bar.hidden = !items.length;
     const label = node('span', 'pinned-label');
-    label.append(icon('bookmark'), node('span', '', '固定'));
+    label.append(icon('bookmark'), node('span', '', '链接栏'));
     bar.replaceChildren(label, ...items.map(profile => {
       const chip = node('button', 'pinned-chip');
       chip.type = 'button';
@@ -35,7 +35,7 @@ window.DengPinnedNav = (() => {
     }));
   }
   async function pin(id) { pinned = [...pinned, id]; await writePinned(); render(); reflect(); }
-  async function unpin(id) { pinned = pinned.filter(x => x !== id); await writePinned(); render(); reflect(); toast('已从导航栏取消固定'); }
+  async function unpin(id) { pinned = pinned.filter(x => x !== id); await writePinned(); render(); reflect(); toast('已从链接栏取消固定'); }
   async function toggleCurrent() {
     const state = current(), profile = profileFor(state);
     if (!state || !profile) return;
@@ -52,7 +52,7 @@ window.DengPinnedNav = (() => {
       window.DengQuickConnect?.reflect();
     }
     await pin(profile.id);
-    toast('已固定到顶部导航栏');
+    toast('已固定到链接栏');
   }
   function reflect() {
     if (!pinButton) return;
@@ -62,7 +62,7 @@ window.DengPinnedNav = (() => {
     const on = isPinned(profile.id);
     pinButton.setAttribute('aria-pressed', String(on));
     pinButton.classList.toggle('active', on);
-    pinButton.title = on ? '从顶部导航栏取消固定' : temporaryProfiles.has(profile.id) ? '保存并固定到顶部导航栏' : '固定到顶部导航栏';
+    pinButton.title = on ? '从链接栏取消固定' : temporaryProfiles.has(profile.id) ? '保存并固定到链接栏' : '固定到链接栏';
   }
   document.addEventListener('DOMContentLoaded', () => {
     bar = $('#pinned-bar');
