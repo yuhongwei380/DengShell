@@ -557,8 +557,9 @@ $('#clear-terminal').onclick = () => { if (window.DengLocalPrompt?.handleClear()
 let terminalFont = normalizeTerminalFontSize(appearance.terminalFontSize);
 function changeFont(amount) { terminalFont = normalizeTerminalFontSize(terminalFont + amount); document.documentElement.style.setProperty('--terminal-font-size', `${terminalFont}px`); for (const state of sessions.values()) state.term.options.fontSize = terminalFont; persistAppearance({ terminalFontSize: terminalFont }).catch(error => toast(error.message)); renderAppearanceControls(); fitActive(); }
 $('#font-up').onclick = () => changeFont(.5); $('#font-down').onclick = () => changeFont(-.5);
-// 未连接时勾选只是记录意图，连接并就绪后自动生效；不持久化，重启后默认关闭。
-let pendingFollow = false;
+// 默认开启：连接后一旦 Bash / Zsh / Fish 提示符集成就绪就自动跟随；未连接时
+// 取消勾选只是记录意图，连接后就绪时不再生效；不持久化，重启后恢复默认开启。
+let pendingFollow = true;
 function applyPendingFollow(state) {
   if (!pendingFollow || !state?.connected || state.follow || !state.shellIntegration?.ready) return;
   state.follow = true; renderSessionInfo();
