@@ -197,6 +197,18 @@ func TestUpdateRejectsForeignRedirect(t *testing.T) {
 	if client.CheckRedirect(req, nil) == nil {
 		t.Fatal("TLS downgrade accepted")
 	}
+	// GitHub's 2025 asset migration moved release downloads to a new official host.
+	via, _ := http.NewRequest("GET", "https://github.com/yuhongwei380/DevShell/releases/latest/download/up.exe.json", nil)
+	for _, host := range []string{"objects.githubusercontent.com", "release-assets.githubusercontent.com"} {
+		req, _ = http.NewRequest("GET", "https://"+host+"/asset", nil)
+		if client.CheckRedirect(req, []*http.Request{via}) != nil {
+			t.Fatalf("official asset host %s rejected", host)
+		}
+	}
+	req, _ = http.NewRequest("GET", "https://release-assets.githubusercontent.com.evil.example/asset", nil)
+	if client.CheckRedirect(req, []*http.Request{via}) == nil {
+		t.Fatal("suffix-spoofed asset host accepted")
+	}
 }
 func TestUpdateAcceptsUnsignedGitHubReleaseManifest(t *testing.T) {
 	now := time.Now()

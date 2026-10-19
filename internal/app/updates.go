@@ -40,7 +40,7 @@ const ApplicationPackageVersion = "26.10.0"
 // three-digit daily sequence. Increase it for every published build, including
 // packaging-only releases; update manifests must exceed it. The sequence tracks
 // the upstream DengShell build numbering (107–114 ported on 2026-10-18).
-const ApplicationBuild uint64 = 20261018118
+const ApplicationBuild uint64 = 20261018119
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,
@@ -128,7 +128,10 @@ var updateTransport = func() *http.Transport {
 
 func updateClient(timeout time.Duration) *http.Client {
 	return &http.Client{Transport: updateTransport, Timeout: timeout, CheckRedirect: func(req *http.Request, via []*http.Request) error {
-		if len(via) > 2 || req.URL.Scheme != "https" || (req.URL.Host != "github.com" && req.URL.Host != "objects.githubusercontent.com") || req.URL.User != nil {
+		// GitHub serves release assets from objects.githubusercontent.com and,
+		// since the 2025 asset migration, release-assets.githubusercontent.com.
+		// Both are official GitHub asset hosts; anything else is rejected.
+		if len(via) > 2 || req.URL.Scheme != "https" || (req.URL.Host != "github.com" && req.URL.Host != "objects.githubusercontent.com" && req.URL.Host != "release-assets.githubusercontent.com") || req.URL.User != nil {
 			return errors.New("更新地址跳转无效")
 		}
 		return nil

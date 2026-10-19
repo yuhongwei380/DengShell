@@ -19,7 +19,9 @@ window.DengPinnedNav = (() => {
     readPinned();
     const items = pinned.map(id => connectionProfile(id)).filter(Boolean);
     bar.hidden = !items.length;
-    bar.replaceChildren(...items.map(profile => {
+    const label = node('span', 'pinned-label');
+    label.append(icon('bookmark'), node('span', '', '固定'));
+    bar.replaceChildren(label, ...items.map(profile => {
       const chip = node('button', 'pinned-chip');
       chip.type = 'button';
       chip.append(icon('server'), node('span', '', profile.name));
