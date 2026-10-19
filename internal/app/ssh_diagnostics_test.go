@@ -58,7 +58,7 @@ func TestSSHDiagnosticsBoundedRotatingLogAndNoRawErrors(t *testing.T) {
 		if err := os.WriteFile(l.path, make([]byte, 1<<20), 0600); err != nil {
 			t.Fatal(err)
 		}
-		l.record("one", sshDiagnosticEvent{Kind: "sample"})
+		l.record("one", sshDiagnosticEvent{SSHDisconnectDiagnostic: SSHDisconnectDiagnostic{Code: "DS-202"}, Kind: "disconnect"})
 	}
 	if _, err := os.Stat(l.path + ".2"); err != nil {
 		t.Fatal(err)
@@ -78,10 +78,31 @@ func TestSSHDiagnosticsBoundedRotatingLogAndNoRawErrors(t *testing.T) {
 	if strings.Contains(kind, "password") || kind != "transport-or-channel-error" || sshDiagnosticErrorKind(io.EOF) != "eof" {
 		t.Fatal("error classification retained untrusted text")
 	}
-	l.record("two", sshDiagnosticEvent{SSHDisconnectDiagnostic: SSHDisconnectDiagnostic{Detail: kind}, Kind: "transport-end"})
+	l.record("two", sshDiagnosticEvent{SSHDisconnectDiagnostic: SSHDisconnectDiagnostic{Code: "DS-202", Detail: kind}, Kind: "disconnect"})
 	data, _ := os.ReadFile(l.path)
 	if strings.Contains(string(data), secret) {
 		t.Fatal("raw error leaked to diagnostics")
+	}
+}
+
+func TestSSHDiagnosticsNormalExitLeavesNoLogFile(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "logs")
+	l := &sshDiagnosticLog{path: filepath.Join(dir, "ssh-disconnect.jsonl")}
+	s := &Session{ID: "normal", diagnosticLog: l, diagnosticStarted: time.Now()}
+	l.record(s.ID, sshDiagnosticEvent{Kind: "connected"})
+	for i := 0; i < 5; i++ {
+		l.record(s.ID, sshDiagnosticEvent{Kind: "sample"})
+	}
+	s.noteDisconnect("DS-100", "remote-shell-exit")
+	l.record(s.ID, sshDiagnosticEvent{Kind: "transport-end"})
+	l.mu.Lock()
+	record := l.records[s.ID]
+	l.mu.Unlock()
+	if record.Code != "DS-100" || record.LogPath != "" || record.LogWriteFailed {
+		t.Fatalf("normal exit must stay in memory without a log path: %+v", record)
+	}
+	if _, err := os.Stat(dir); !os.IsNotExist(err) {
+		t.Fatalf("normal exit wrote a diagnostic log: %v", err)
 	}
 }
 
@@ -128,7 +149,7 @@ func TestSSHDiagnosticConcurrentReasonsAndWriteFailure(t *testing.T) {
 func TestSSHDiagnosticClosePreventsLateLogWrites(t *testing.T) {
 	dir := filepath.Join(t.TempDir(), "logs")
 	log := &sshDiagnosticLog{path: filepath.Join(dir, "ssh-disconnect.jsonl")}
-	log.record("one", sshDiagnosticEvent{Kind: "connected"})
+	log.record("one", sshDiagnosticEvent{SSHDisconnectDiagnostic: SSHDisconnectDiagnostic{Code: "DS-202"}, Kind: "disconnect"})
 	log.close()
 	if err := os.RemoveAll(dir); err != nil {
 		t.Fatal(err)

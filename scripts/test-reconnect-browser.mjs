@@ -83,9 +83,9 @@ try {
       await page.waitForFunction(()=>current()&&!current().connected);
       await page.waitForFunction(()=>!!current()?.disconnectDiagnostic?.code,{timeout:5000});
       const diagnostic=await api('/api/sessions/'+before.id+'/disconnect-diagnostic');
-      assert(diagnostic.code&&diagnostic.traceId&&diagnostic.logPath,'missing persistent disconnect diagnosis');
-      if(mode==='manual')assert.equal(diagnostic.code,'DS-100');
-      else assert(['DS-202','DS-210','DS-211'].includes(diagnostic.code),'unexpected remote disconnect code: '+diagnostic.code);
+      assert(diagnostic.code&&diagnostic.traceId,'missing disconnect diagnosis');
+      if(mode==='manual') { assert.equal(diagnostic.code,'DS-100'); assert(!diagnostic.logPath,'normal exit must not write a diagnostic log'); }
+      else { assert(['DS-202','DS-210','DS-211'].includes(diagnostic.code),'unexpected remote disconnect code: '+diagnostic.code); assert(diagnostic.logPath,'abnormal disconnect must persist a diagnosis'); }
       assert(await page.evaluate(()=>current().term.buffer.active.length>0&&document.querySelector('#terminal-state').textContent.includes(current().disconnectDiagnostic.code)),'diagnostic code missing from terminal status');
       const disconnected=await snapshot(marker);
       assert(disconnected.screenContainsMarker,'disconnect must retain terminal output');

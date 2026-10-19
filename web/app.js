@@ -412,6 +412,10 @@ function markSessionDisconnected(state) {
   state.term.options.disableStdin = true;
   state.term.writeln('\r\n\x1b[38;5;245m🔌  连接已断开，终端内容已保留。点击重新连接可建立新会话。\x1b[0m');
   state.term.writeln('\x1b[38;5;245m💡  本机提示符已就绪：在下方输入框输入 ssh 用户@主机 连接新地址，reconnect 重连本会话，exit 关闭标签。\x1b[0m');
+  // The remote shell is gone and terminal stdin is disabled: a blinking cursor
+  // would suggest the terminal still takes input, so hide it. Reconnect builds
+  // a fresh terminal where the cursor is visible again.
+  state.term.write('\x1b[?25l');
   showDisconnectDiagnostic(state);
   renderTabs();
   if (activeID === state.id) { renderSessionInfo(); renderFiles(); $('#command-input').focus(); }

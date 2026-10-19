@@ -1,17 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%" fill="none">
   <defs>
-    <linearGradient id="shell" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#3e7189"/>
-      <stop offset="1" stop-color="#243d54"/>
+    <!-- 内部深空蓝黑渐变底色 -->
+    <linearGradient id="bg-grad" x1="48" y1="48" x2="464" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0B111E" />
+      <stop offset="55%" stop-color="#11192C" />
+      <stop offset="100%" stop-color="#0D1424" />
     </linearGradient>
-    <linearGradient id="light" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#c9f0e5"/>
-      <stop offset="1" stop-color="#7dcaba"/>
+    <!-- 外框极客绿到青蓝渐变 -->
+    <linearGradient id="border-grad" x1="48" y1="256" x2="464" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#12B875" />
+      <stop offset="50%" stop-color="#14B89A" />
+      <stop offset="100%" stop-color="#159EC6" />
     </linearGradient>
   </defs>
-  <rect x="16" y="16" width="480" height="480" rx="128" fill="url(#shell)"/>
-  <path d="M112 112h122c102 0 166 54 166 144s-64 144-166 144H112V112Zm60 56v176h61c67 0 105-32 105-88s-38-88-105-88h-61Z" fill="#f2f8fb"/>
-  <path d="m207 224 34 32-34 32" fill="none" stroke="url(#light)" stroke-width="21" stroke-linecap="round" stroke-linejoin="round"/>
-  <path d="M265 289h34" fill="none" stroke="#9cdbca" stroke-width="18" stroke-linecap="round"/>
-  <circle cx="399" cy="109" r="21" fill="url(#light)"/>
+
+  <!-- 连续曲率超椭圆外框 (Squircle)：描边中心 58~454，stroke-width=20，实际外缘精准落在 48~464 (留白 9.375%) -->
+  <path d="M 190 58 
+           H 322 
+           C 398 58 454 114 454 190 
+           V 322 
+           C 454 398 398 454 322 454 
+           H 190 
+           C 114 454 58 398 58 322 
+           V 190 
+           C 58 114 114 58 190 58 Z" fill="url(#bg-grad)" stroke="url(#border-grad)" stroke-width="20" stroke-linejoin="round" />
+
+  <!-- 字母 "D" (纯路径转曲，描边 20px ≥ 16px) -->
+  <path d="M 114 218 
+           H 142 
+           C 166 218 182 232 182 254 
+           C 182 276 166 290 142 290 
+           H 114 Z" stroke="#FFFFFF" stroke-width="20" stroke-linejoin="round" />
+
+  <!-- 字母 "e" (纯路径转曲，横杠 18px + 外弧 19px，均 ≥ 16px) -->
+  <path d="M 206 263 H 251" stroke="#FFFFFF" stroke-width="18" stroke-linecap="round" />
+  <path d="M 251 263 
+           C 251 244 241 235 228 235 
+           C 214 235 204 246 204 263 
+           C 204 280 215 291 230 291 
+           C 239 291 246 288 250 284" stroke="#FFFFFF" stroke-width="19" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- 字母 "v" (纯路径转曲，描边 20px ≥ 16px) -->
+  <path d="M 269 236 L 290 290 L 311 236" stroke="#FFFFFF" stroke-width="20" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- 终端提示符 ">" (纯路径转曲，描边 22px ≥ 16px) -->
+  <path d="M 334 228 L 364 259 L 334 290" stroke="#12B875" stroke-width="22" stroke-linecap="round" stroke-linejoin="round" />
+
+  <!-- 终端光标 "_" (纯路径转曲，描边 20px ≥ 16px) -->
+  <path d="M 374 290 H 408" stroke="#15A9CE" stroke-width="20" stroke-linecap="round" />
 </svg>

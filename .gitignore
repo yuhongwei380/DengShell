@@ -80,3 +80,6 @@ internal/app/C*Users*AppData*
 
 # Local release staging output
 /build/out/
+
+# Local QA scratch profiles, caches and screenshots
+/.qa*/

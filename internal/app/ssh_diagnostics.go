@@ -58,12 +58,23 @@ type sshDiagnosticEvent struct {
 }
 
 type sshDiagnosticLog struct {
-	mu      sync.Mutex
-	path    string
-	closed  bool
-	records map[string]SSHDisconnectDiagnostic
-	order   []string
+	mu        sync.Mutex
+	path      string
+	closed    bool
+	records   map[string]SSHDisconnectDiagnostic
+	order     []string
+	pending   map[string][]sshDiagnosticEvent
+	persisted map[string]bool
 }
+
+// normalSSHDiagnosticCodes mark closes that need no on-disk trace: user exit,
+// tab close, reconnect, or application quit. Their events stay in memory only;
+// the log file is created solely once an abnormal code appears.
+var normalSSHDiagnosticCodes = map[string]bool{"DS-100": true, "DS-101": true}
+
+// sshDiagnosticPendingLimit bounds the in-memory buffer kept per session while
+// it is still undecided whether anything will be written at all.
+const sshDiagnosticPendingLimit = 512
 
 // close waits for the current append and prevents late transport callbacks
 // from recreating log files after App.Close has returned.
@@ -77,12 +88,17 @@ func (l *sshDiagnosticLog) record(id string, event sshDiagnosticEvent) {
 	}
 	if l.records == nil {
 		l.records = make(map[string]SSHDisconnectDiagnostic)
+		l.pending = make(map[string][]sshDiagnosticEvent)
+		l.persisted = make(map[string]bool)
 	}
 	if _, found := l.records[id]; !found {
 		l.order = append(l.order, id)
 		if len(l.order) > 256 {
-			delete(l.records, l.order[0])
+			evicted := l.order[0]
 			l.order = l.order[1:]
+			delete(l.records, evicted)
+			delete(l.pending, evicted)
+			delete(l.persisted, evicted)
 		}
 	}
 	previous := l.records[id]
@@ -90,11 +106,36 @@ func (l *sshDiagnosticLog) record(id string, event sshDiagnosticEvent) {
 	if previous.Code == "" || event.Kind == "disconnect" && previous.Code == "DS-299" {
 		previous = event.SSHDisconnectDiagnostic
 	}
-	previous.LogPath = l.path
+	if !l.persisted[id] {
+		if event.Kind == "disconnect" && event.Code != "" && !normalSSHDiagnosticCodes[event.Code] {
+			// The first abnormal code promotes the session: everything buffered
+			// for it, plus this event, goes to disk now.
+			l.persisted[id] = true
+			for _, buffered := range l.pending[id] {
+				if l.path != "" {
+					if err := l.append(buffered); err != nil {
+						previous.LogWriteFailed = true
+					}
+				}
+			}
+			delete(l.pending, id)
+		} else {
+			// Normal closes and pre-disconnect events never touch the disk: a
+			// session that only ever ends normally leaves no log file behind.
+			buffer := append(l.pending[id], event)
+			if len(buffer) > sshDiagnosticPendingLimit {
+				buffer = append([]sshDiagnosticEvent(nil), buffer[len(buffer)-sshDiagnosticPendingLimit:]...)
+			}
+			l.pending[id] = buffer
+			l.records[id] = previous
+			return
+		}
+	}
 	if l.path != "" {
 		if err := l.append(event); err != nil {
 			previous.LogWriteFailed = true
 		}
+		previous.LogPath = l.path
 	}
 	l.records[id] = previous
 }
