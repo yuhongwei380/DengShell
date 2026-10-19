@@ -19,13 +19,30 @@ window.DengPinnedNav = (() => {
     const existing = [...sessions.values()].find(s => s.profileId === profile.id);
     if (existing) activate(existing.id); else connect(profile.id);
   }
+  function removeButtonFor(profile) {
+    const remove = node('button', 'pinned-chip-remove');
+    remove.type = 'button';
+    remove.append(icon('close'));
+    remove.title = '取消固定';
+    remove.setAttribute('aria-label', `取消固定 ${profile.name}`);
+    remove.onclick = event => { event.stopPropagation(); safe(() => confirmUnpin(profile))(); };
+    return remove;
+  }
+  // Unpinning is destructive enough to ask first: the delete button and the
+  // right-click gesture both route through the shared confirmation dialog.
+  async function confirmUnpin(profile) {
+    if (!await ask({ title: `取消固定 ${profile.name}？`, description: `将从链接栏移除 ${profile.name}（${profile.user}@${profile.host}:${profile.port}）。连接配置与已保存数据不受影响，之后可重新固定。`, confirm: '取消固定' })) return;
+    await unpin(profile.id);
+  }
   function chipFor(profile) {
-    const chip = node('button', 'pinned-chip');
-    chip.type = 'button';
-    chip.append(icon('server'), node('span', '', profile.name));
-    chip.title = `${profile.name} · ${profile.user}@${profile.host}:${profile.port}\n左键快速连接 · 右键取消固定`;
-    chip.onclick = () => openConnection(profile);
-    chip.oncontextmenu = event => { event.preventDefault(); safe(() => unpin(profile.id))(); };
+    const chip = node('span', 'pinned-chip');
+    const open = node('button', 'pinned-chip-open');
+    open.type = 'button';
+    open.append(icon('server'), node('span', '', profile.name));
+    open.onclick = () => openConnection(profile);
+    chip.append(open, removeButtonFor(profile));
+    chip.title = `${profile.name} · ${profile.user}@${profile.host}:${profile.port}\n左键快速连接 · × 取消固定（需确认）`;
+    chip.oncontextmenu = event => { event.preventDefault(); safe(() => confirmUnpin(profile))(); };
     return chip;
   }
   function moreFor(overflow) {
@@ -38,12 +55,14 @@ window.DengPinnedNav = (() => {
     const menu = node('div', 'pinned-more-menu');
     menu.hidden = true;
     overflow.forEach(profile => {
-      const item = node('button', 'pinned-more-item');
-      item.type = 'button';
-      item.append(icon('server'), node('span', '', profile.name));
-      item.title = `${profile.name} · ${profile.user}@${profile.host}:${profile.port}\n左键快速连接 · 右键取消固定`;
-      item.onclick = () => { menu.hidden = true; openConnection(profile); };
-      item.oncontextmenu = event => { event.preventDefault(); menu.hidden = true; safe(() => unpin(profile.id))(); };
+      const item = node('span', 'pinned-more-item');
+      const open = node('button', 'pinned-more-item-open');
+      open.type = 'button';
+      open.append(icon('server'), node('span', '', profile.name));
+      open.onclick = () => { menu.hidden = true; openConnection(profile); };
+      item.append(open, removeButtonFor(profile));
+      item.title = `${profile.name} · ${profile.user}@${profile.host}:${profile.port}\n左键快速连接 · × 取消固定（需确认）`;
+      item.oncontextmenu = event => { event.preventDefault(); menu.hidden = true; safe(() => confirmUnpin(profile))(); };
       menu.append(item);
     });
     btn.onclick = event => {

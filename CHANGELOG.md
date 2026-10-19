@@ -1,5 +1,9 @@
 # DevShell 更新日志
 
+## 2026-10-19 链接栏取消固定需二次确认 · v26.10.0 构建 20261018124
+
+- 链接栏每个固定项新增 × 删除按钮：点击后弹窗二次确认再移除，防止误删；右键取消固定同样走该确认弹窗。取消固定只影响链接栏展示，连接配置与已保存数据不受影响，可随时重新固定。
+
 ## 2026-10-19 启用新 logo · 正常退出不写断开日志 · 断开后隐藏光标 · v26.10.0 构建 20261018123
 
 - 应用 logo 全面更换为新「Dev❯_」标志（深空蓝黑底、绿→青蓝渐变描边超椭圆外框）：`build/dengshell.svg` / `dengshell.png` / `dengshell.ico`（16–256 共 7 档）、`web/assets/dengshell.svg` 与 Windows 资源 `resources_windows_amd64.syso` 同步替换，旧 logo 不再保留；界面品牌按钮与 favicon、任务栏与窗口图标、系统托盘、Windows 安装器、Linux 桌面图标、macOS icns 均由新资源派生。
