@@ -40,7 +40,7 @@ const ApplicationPackageVersion = "26.10.0"
 // three-digit daily sequence. Increase it for every published build, including
 // packaging-only releases; update manifests must exceed it. The sequence tracks
 // the upstream DengShell build numbering (107–114 ported on 2026-10-18).
-const ApplicationBuild uint64 = 20261018116
+const ApplicationBuild uint64 = 20261018117
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,
@@ -48,6 +48,10 @@ const ApplicationBuild uint64 = 20261018116
 const updateReleaseDownload = "https://github.com/yuhongwei380/DevShell/releases/latest/download/"
 const UpdateManifestURL = updateReleaseDownload + "up.deb.json"
 const updateTimeout = 3 * time.Second
+
+// Manual checks wait on the network in front of the user, unlike the
+// non-blocking startup probe, so they get a longer budget.
+const manualUpdateTimeout = 10 * time.Second
 const maximumUpdateSize int64 = 1 << 30
 
 var updateHashPattern = regexp.MustCompile(`^[a-fA-F0-9]{64}$`)
@@ -95,11 +99,12 @@ type UpdateDownload struct {
 	releaseLease func()
 }
 type startupUpdate struct {
-	once   sync.Once
-	done   chan struct{}
-	result UpdateStatus
-	mu     sync.Mutex
-	job    *UpdateDownload
+	once     sync.Once
+	done     chan struct{}
+	result   UpdateStatus
+	mu       sync.Mutex
+	job      *UpdateDownload
+	manualMu sync.Mutex
 }
 
 func updateAddress(platform string) (string, string) {
@@ -154,30 +159,34 @@ func (a *App) beginUpdateCheck() {
 			defer close(a.updateCheck.done)
 			ctx, cancel := context.WithTimeout(a.ctx, updateTimeout)
 			defer cancel()
-			a.updateCheck.result = boundedUpdateProbe(ctx, func() UpdateStatus {
-				exe, err := os.Executable()
-				if err != nil {
-					return noUpdate("unavailable")
-				}
-				hash, err := FileSHA256(exe)
-				if err != nil {
-					return noUpdate("unavailable")
-				}
-				receipt, err := ReadUpdateReceipt(a.store.dir)
-				if err != nil {
-					return noUpdate("invalid-receipt")
-				}
-				platform := currentUpdatePlatform()
-				address, _ := updateAddress(platform)
-				result := checkUpdate(ctx, updateClient(updateTimeout), address, platform, hash, receipt)
-				if result.Status == "available" && !NativePackageUpdateSupported() {
-					result.InstallerReady = false
-					result.Reason = "当前发行版不支持内置安装或缺少安装工具，请从 GitHub Releases 下载对应安装包升级，保留原数据目录。"
-				}
-				return result
-			})
+			a.updateCheck.result = boundedUpdateProbe(ctx, func() UpdateStatus { return a.updateProbe(ctx, updateTimeout) })
 		}()
 	})
+}
+
+// updateProbe runs one end-to-end update check; the manual settings action
+// reuses it with a longer budget than the non-blocking startup probe.
+func (a *App) updateProbe(ctx context.Context, timeout time.Duration) UpdateStatus {
+	exe, err := os.Executable()
+	if err != nil {
+		return noUpdate("unavailable")
+	}
+	hash, err := FileSHA256(exe)
+	if err != nil {
+		return noUpdate("unavailable")
+	}
+	receipt, err := ReadUpdateReceipt(a.store.dir)
+	if err != nil {
+		return noUpdate("invalid-receipt")
+	}
+	platform := currentUpdatePlatform()
+	address, _ := updateAddress(platform)
+	result := checkUpdate(ctx, updateClient(timeout), address, platform, hash, receipt)
+	if result.Status == "available" && !NativePackageUpdateSupported() {
+		result.InstallerReady = false
+		result.Reason = "当前发行版不支持内置安装或缺少安装工具，请从 GitHub Releases 下载对应安装包升级，保留原数据目录。"
+	}
+	return result
 }
 
 // A slow filesystem must not hold startup or the check API past the deadline.
@@ -214,7 +223,7 @@ func checkUpdateTrusted(ctx context.Context, client *http.Client, address, platf
 		return result
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("User-Agent", "DengShell/"+strings.TrimPrefix(ApplicationVersion, "v"))
+	req.Header.Set("User-Agent", "DevShell/"+strings.TrimPrefix(ApplicationVersion, "v"))
 	req.Header.Set("Cache-Control", "no-cache")
 	response, e := client.Do(req)
 	if e != nil {
@@ -233,7 +242,7 @@ func checkUpdateTrusted(ctx context.Context, client *http.Client, address, platf
 		return result
 	}
 	var descriptor UpdateDescriptor
-	if json.Unmarshal(data, &descriptor) != nil || descriptor.SchemaVersion != 2 || descriptor.Build == 0 || descriptor.Product != "DengShell" || descriptor.Platform != platform || len(descriptor.Notes) > 16000 || len(descriptor.Version) > 64 || strings.TrimSpace(descriptor.Version) == "" || !updateHashPattern.MatchString(descriptor.SHA256) || !updateHashPattern.MatchString(descriptor.ExecutableSHA256) || descriptor.Size <= 0 || descriptor.Size > maximumUpdateSize {
+	if json.Unmarshal(data, &descriptor) != nil || descriptor.SchemaVersion != 2 || descriptor.Build == 0 || descriptor.Product != "DevShell" || descriptor.Platform != platform || len(descriptor.Notes) > 16000 || len(descriptor.Version) > 64 || strings.TrimSpace(descriptor.Version) == "" || !updateHashPattern.MatchString(descriptor.SHA256) || !updateHashPattern.MatchString(descriptor.ExecutableSHA256) || descriptor.Size <= 0 || descriptor.Size > maximumUpdateSize {
 		result.Reason = "invalid"
 		return result
 	}
@@ -396,6 +405,13 @@ func (a *App) registerUpdateHTTP(mux *http.ServeMux) {
 			writeJSON(w, a.updateCheck.result)
 		case <-r.Context().Done():
 		}
+	})
+	mux.HandleFunc("POST /api/updates/check", func(w http.ResponseWriter, r *http.Request) {
+		a.updateCheck.manualMu.Lock()
+		defer a.updateCheck.manualMu.Unlock()
+		ctx, cancel := context.WithTimeout(r.Context(), manualUpdateTimeout)
+		defer cancel()
+		writeJSON(w, a.updateProbe(ctx, manualUpdateTimeout))
 	})
 	mux.HandleFunc("POST /api/updates/download", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {

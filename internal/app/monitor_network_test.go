@@ -57,7 +57,9 @@ __CS_END__`
 			t.Fatal("tunnel name or UNKNOWN operational state mishandled")
 		}
 	}
-	if len(before.ServerIPv4) != 0 || len(before.ServerIPv6) != 0 || before.SSHConnection.ServerPort != 2222 || before.SSHConnection.ClientAddress != "192.0.2.20" {
+	// ens18's LAN address and its global-scope IPv6 now surface; the wg0 VPN
+	// address stays out of the sidebar list.
+	if strings.Join(before.ServerIPv4, ",") != "10.0.0.2" || strings.Join(before.ServerIPv6, ",") != "2001:db8::2" || before.SSHConnection.ServerPort != 2222 || before.SSHConnection.ClientAddress != "192.0.2.20" {
 		t.Fatalf("bad address metadata: %+v", before.Stats)
 	}
 	changed := strings.ReplaceAll(fixture, "ens18: 100 0 0 0 0 0 0 0 200", "ens18: 400 0 0 0 0 0 0 0 800")
@@ -221,8 +223,8 @@ func TestLocalNetworkSnapshotIntegration(t *testing.T) {
 		}
 	}
 	for _, address := range append(append([]string{}, stats.ServerIPv4...), stats.ServerIPv6...) {
-		if _, ok := publicServerAddress(address); !ok {
-			t.Fatalf("live public address field contains local/non-public IP: %s", address)
+		if _, ok := usableServerAddress(address); !ok {
+			t.Fatalf("live NIC address field contains loopback/link-local/benchmark IP: %s", address)
 		}
 	}
 	if len(stats.ServerAddressInfo) != len(stats.ServerIPv4)+len(stats.ServerIPv6) {

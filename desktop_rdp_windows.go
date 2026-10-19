@@ -10,7 +10,7 @@ import (
 func (d *Desktop) RDPConnect(profileID, secret string) (app.RDPInfo, error) {
 	a, ok := d.app.(*app.App)
 	if !ok {
-		return app.RDPInfo{}, errors.New("请在 DengShell 主窗口中打开 RDP 连接")
+		return app.RDPInfo{}, errors.New("请在 DevShell 主窗口中打开 RDP 连接")
 	}
 	return a.StartRDPEmbedded(profileID, secret, platformWindowHandle())
 }

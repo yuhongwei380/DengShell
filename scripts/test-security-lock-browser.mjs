@@ -54,7 +54,7 @@ try{
 
  fs.writeFileSync(stage+'/binding-qr.png',Buffer.from(qr.split(',')[1],'base64'));
  const decoded=execFileSync(qrPython,['-c','import sys,zxingcpp;from PIL import Image;print(zxingcpp.read_barcode(Image.open(sys.argv[1])).text)',stage+'/binding-qr.png'],{encoding:'utf8'}).trim();
- const uri=new URL(decoded);assert.equal(uri.protocol,'otpauth:');assert.equal(uri.hostname,'totp');assert.equal(uri.searchParams.get('secret'),key);assert.equal(uri.searchParams.get('issuer'),'DengShell');
+ const uri=new URL(decoded);assert.equal(uri.protocol,'otpauth:');assert.equal(uri.hostname,'totp');assert.equal(uri.searchParams.get('secret'),key);assert.equal(uri.searchParams.get('issuer'),'DevShell');
  await first.type('#security-enroll-code',otp(key,-1));await first.click('#security-save');await first.waitForFunction(()=>!document.querySelector('#security-lock-settings').open);
  await lock(first);await unlock(first,otp(key),'totp');
  await settings(first);await authSettings(first);await first.click('#security-use-password');await first.click('#security-save');await first.waitForFunction(()=>!document.querySelector('#security-lock-settings').open);

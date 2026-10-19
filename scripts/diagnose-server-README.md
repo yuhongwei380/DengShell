@@ -25,7 +25,7 @@ sh /tmp/DengShell-diagnose.sh /tmp
 不知道 r 版本时，可在 Windows 的 EXE 所在目录打开 PowerShell，执行以下命令，把 SHA-256 一并发回，方便核对实际程序版本：
 
 ```powershell
-Get-FileHash .\DengShell.exe -Algorithm SHA256
+Get-FileHash .\DevShell.exe -Algorithm SHA256
 ```
 
 如果无法上传到 `/tmp`，放在该账号有权限的目录，把命令中的路径替换成实际位置即可。脚本不需要 `chmod +x`，也不会要求输入 sudo 密码。尽量直接传输原文件，避免编辑器改成 Windows CRLF 换行。

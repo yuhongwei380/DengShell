@@ -2,7 +2,7 @@
 """Stage the Windows distribution folder from a frozen binary.
 
 Reuses the exact staging logic of package-release.py so CI, local builds and
-the full website pipeline always produce the same layout: DengShell.exe plus
+the full website pipeline always produce the same layout: DevShell.exe plus
 data/docs and data/licenses only, never user data.
 """
 from pathlib import Path

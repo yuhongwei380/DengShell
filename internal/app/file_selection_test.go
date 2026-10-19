@@ -127,7 +127,7 @@ func TestSelectionArchiveHTTP(t *testing.T) {
 	if got := archiveEntryNames(t, response.Body.Bytes()); !reflect.DeepEqual(got, []string{"one", "two"}) {
 		t.Fatal(got)
 	}
-	if response.Header().Get("Content-Disposition") != "attachment; filename=DengShell-files.tar.gz" {
+	if response.Header().Get("Content-Disposition") != "attachment; filename=DevShell-files.tar.gz" {
 		t.Fatal(response.Header())
 	}
 }

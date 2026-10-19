@@ -62,7 +62,7 @@ func validatePlatformUpdate(p updatePlan) error {
 		}
 		text := string(out)
 		if !strings.Contains(text, "Package: dengshell\n") || !strings.Contains(text, "Architecture: amd64") {
-			return errors.New("安装包名称或架构不是 DengShell/amd64")
+			return errors.New("安装包名称或架构不是 DevShell/amd64")
 		}
 	case "pacman":
 		out, err := packageMetadata(ctx, "bsdtar", "-xOf", p.Staged, ".PKGINFO")
@@ -123,7 +123,7 @@ func validatePacmanMetadata(text string) (string, error) {
 		values[key] = strings.TrimSpace(value)
 	}
 	if values["pkgname"] != "dengshell" || values["arch"] != "x86_64" || !pacmanVersionPattern.MatchString(values["pkgver"]) {
-		return "", errors.New("安装包名称、版本或架构不是有效 DengShell/x86_64")
+		return "", errors.New("安装包名称、版本或架构不是有效 DevShell/x86_64")
 	}
 	return values["pkgver"], nil
 }

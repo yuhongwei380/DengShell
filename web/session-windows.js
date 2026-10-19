@@ -166,7 +166,7 @@
   const caption=node('div','merge-window-caption','合并到窗口'),loading=node('div','merge-window-empty','正在查找其他窗口…');menu.append(caption,loading);document.documentElement.append(menu);
   window.DengWindowTransfers.targets().then(targets=>{
    if(!menu.isConnected)return;loading.remove();
-   if(!targets.length)menu.append(node('div','merge-window-empty','暂无其他可见的 DengShell 窗口'));
+   if(!targets.length)menu.append(node('div','merge-window-empty','暂无其他可见的 DevShell 窗口'));
    for(const target of targets){const item=node('button','merge-window-option');item.type='button';item.setAttribute('role','menuitem');item.append(node('span','',target.title),icon('layout'));item.title=target.title;item.onclick=safe(()=>{close();return detach(state,target)});menu.append(item);}
    menu.style.top=Math.max(8,Math.min(innerHeight-menu.offsetHeight-8,tab.getBoundingClientRect().bottom+5))+'px';
   }).catch(()=>{if(menu.isConnected)loading.textContent='无法读取窗口列表，请稍后重试'});

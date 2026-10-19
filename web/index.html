@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DengShell · SSH 工作台</title>
+  <title>DevShell · SSH 工作台</title>
   <meta name="referrer" content="no-referrer">
   <script src="bootstrap.js"></script>
   <script>if(location.protocol!=='wails:'&&location.hostname!=='wails.localhost'){const nonce=new URLSearchParams(location.search).get('window');if(/^[A-Za-z0-9_-]{24,96}$/.test(nonce||'')){window.CLOUDSHELL.detachedNonce=nonce;}}</script>
   <script src="security-lock.js?v=20260921-v002-b72"></script>
   <script src="theme.js?v=20260920-v002-b70"></script>
   <link rel="stylesheet" href="vendor/xterm.css">
-  <link rel="stylesheet" href="style.css?v=20261018-font1">
+  <link rel="stylesheet" href="style.css?v=20261018-gpu1">
   <link rel="stylesheet" href="theme.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="workspace-tools.css?v=20261001-composer">
-  <link rel="stylesheet" href="appearance.css?v=20261018-follow2">
+  <link rel="stylesheet" href="appearance.css?v=20261018-tools2">
   <link rel="stylesheet" href="process-view.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="workspace-refinements.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="workspace-refinements.css?v=20261018-addr1">
   <link rel="stylesheet" href="file-browser.css?v=20260921-v002-b72">
   <link rel="stylesheet" href="themed-select.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="config-document.css?v=20260920-v002-b70">
@@ -25,14 +25,14 @@
   <link rel="stylesheet" href="connection-extras.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="help-guide.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="appearance-tools.css?v=20261018-follow1">
-  <link rel="stylesheet" href="pinned-nav.css?v=20261018-pin1">
+  <link rel="stylesheet" href="pinned-nav.css?v=20261019-brand1">
   <link rel="stylesheet" href="font-library.css?v=20260920-v002-b70">
   <link rel="icon" href="assets/dengshell.svg" type="image/svg+xml">
   <link rel="stylesheet" href="file-tools.css?v=20261010-editor-wrap">
   <link rel="stylesheet" href="desktop-tray.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="latency-chart.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="common-apps.css?v=20261018-follow2">
-  <link rel="stylesheet" href="session-windows.css?v=20261018-tools1">
+  <link rel="stylesheet" href="session-windows.css?v=20261018-tools2">
   <link rel="stylesheet" href="system-identity.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="chart-styles.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="light-theme.css?v=20260920-v002-b70">
@@ -93,14 +93,13 @@
       <button id="connection-button" class="connection-button" title="服务器管理" aria-label="服务器管理"><svg><use href="#i-server"/></svg></button>
     </div>
     <nav class="session-bar" aria-label="SSH 会话">
+      <div class="pinned-bar" id="pinned-bar" aria-label="固定连接" hidden></div>
       <div id="session-tabs" class="session-tabs"></div>
       <button class="icon-button add-session" id="add-session" aria-label="快速连接" title="快速连接"><svg><use href="#i-plus"/></svg></button>
       <button class="icon-button" id="toggle-monitor" aria-label="系统与磁盘信息" title="系统与磁盘信息" aria-expanded="false"><svg><use href="#i-cpu"/></svg></button>
       <div class="window-controls" id="window-controls" hidden><button data-window-action="minimise" title="最小化" aria-label="最小化"><svg><use href="#i-minimise"/></svg></button><button data-window-action="toggle-maximise" id="window-maximise" title="最大化" aria-label="最大化"><svg><use href="#i-maximise"/></svg></button><button data-window-action="close" class="window-close" title="关闭窗口" aria-label="关闭窗口"><svg><use href="#i-close"/></svg></button></div>
     </nav>
   </header>
-
-  <nav class="pinned-bar" id="pinned-bar" aria-label="固定连接" hidden></nav>
 
   <div class="app-shell" id="app-shell">
     <aside class="sidebar">
@@ -112,6 +111,7 @@
         <div class="metric"><span>CPU</span><div class="meter" id="cpu-meter"><i style="width:0" class="cpu-fill"></i><b>—</b><em>—</em></div></div>
         <div class="metric"><span>内存</span><div class="meter" id="memory-meter"><i style="width:0" class="memory-fill"></i><b>—</b><em>—</em></div></div>
         <div class="metric"><span>交换</span><div class="meter" id="swap-meter"><i style="width:0"></i><b>—</b><em>—</em></div></div>
+        <div id="gpu-metrics" hidden></div>
         <div class="network-grid">
           <div class="network-card traffic-card"><div class="chart-caption network-caption">网络流量 <select id="network-interface" aria-label="选择真实网卡" title="选择网卡"><option value="">未连接</option></select></div><div class="chart-heading"><b class="upload-color">上行 —</b><b class="download-color">下行 —</b></div><svg id="network-chart" class="chart" role="button" tabindex="0" title="上传与下载共用零起点刻度，单位为每秒字节；点击运行 MTR 路径诊断" viewBox="0 0 270 54" preserveAspectRatio="none" aria-label="网络流量图，上传与下载共用刻度，点击运行 MTR 路径诊断"></svg></div>
           <div class="network-card icmp-card" id="ping-status"><div class="icmp-heading"><span>当前延迟</span><b id="ping-latency">— <small>ms</small></b></div><div class="ping-chart"><div id="ping-samples" class="ping-samples" role="group" aria-label="1 分钟内延迟柱状图，左旧右新"></div></div><div class="ping-detail" id="ping-detail">1分钟内丢包率 <b id="ping-loss">—</b></div></div>
@@ -135,7 +135,7 @@
 
       <div class="workspace" id="workspace">
         <section class="terminal-panel" aria-label="SSH 终端">
-          <div class="terminal-meta"><span><span class="status-dot green"></span><span id="terminal-meta-host">SSH 终端</span><span class="terminal-protocol" id="terminal-state">待连接</span></span><span class="terminal-encoding">UTF-8 <span class="meta-divider">│</span> xterm-256color</span><button class="terminal-popout" id="disconnect" type="button" title="断开连接，保留终端内容" aria-label="断开连接" disabled><svg><use href="#i-disconnect"/></svg></button><button class="terminal-popout" id="reconnect" type="button" title="重新连接" aria-label="重新连接"><svg><use href="#i-reconnect"/></svg></button><button class="terminal-popout" id="clear-terminal" type="button" title="清除终端滚屏" aria-label="清空终端"><svg><use href="#i-erase"/></svg></button><button id="toggle-sftp" class="terminal-popout" type="button" aria-expanded="true" aria-controls="files-panel" title="显示或隐藏 SFTP 面板"><svg><use href="#i-folder"/></svg><span>SFTP</span></button><button id="detach-terminal" class="terminal-popout" title="将当前 SSH 拆分为独立窗口" aria-label="拆分为独立窗口" hidden disabled><svg><use href="#i-popout"/></svg><span>独立窗口</span></button></div>
+          <div class="terminal-meta"><span><span class="status-dot green"></span><span id="terminal-meta-host">SSH 终端</span><span class="terminal-protocol" id="terminal-state">待连接</span><span class="session-current-badge" id="terminal-current-badge" hidden>当前连接</span></span><span class="terminal-encoding">UTF-8 <span class="meta-divider">│</span> xterm-256color</span><button class="terminal-popout" id="disconnect" type="button" title="断开连接，保留终端内容" aria-label="断开连接" disabled><svg><use href="#i-disconnect"/></svg></button><button class="terminal-popout" id="reconnect" type="button" title="重新连接" aria-label="重新连接"><svg><use href="#i-reconnect"/></svg></button><button class="terminal-popout" id="clear-terminal" type="button" title="清除终端滚屏" aria-label="清空终端"><svg><use href="#i-erase"/></svg></button><button id="toggle-sftp" class="terminal-popout" type="button" aria-expanded="true" aria-controls="files-panel" title="显示或隐藏 SFTP 面板"><svg><use href="#i-folder"/></svg><span>SFTP</span></button><button id="detach-terminal" class="terminal-popout" title="将当前 SSH 拆分为独立窗口" aria-label="拆分为独立窗口" hidden disabled><svg><use href="#i-popout"/></svg><span>独立窗口</span></button></div>
           <div class="terminal-output" id="terminal-output"><div class="welcome-state" id="welcome-state"><span class="welcome-icon"><svg><use href="#i-terminal"/></svg></span><h1>你的服务器工作台</h1><p>连接服务器，终端、文件与运行状态尽在眼前。</p><button id="welcome-connect">添加或选择服务器 <svg><use href="#i-chevron"/></svg></button><small>支持密码、私钥和 SSH Agent 登录</small></div></div>
           <div class="terminal-command-bar"><svg><use href="#i-terminal"/></svg><form id="command-form"><textarea id="command-input" rows="1" aria-label="发送命令到服务器" placeholder="输入命令并回车发送 · ↑↓ 历史" autocomplete="off" spellcheck="false"></textarea></form><button class="terminal-tool" id="command-history" title="历史命令" aria-label="历史命令"><svg><use href="#i-history"/></svg></button><button class="terminal-tool" id="font-down" title="缩小终端字体 0.5 px" aria-label="缩小终端字体 0.5 px"><svg><use href="#i-font-decrease"/></svg></button><button class="terminal-tool" id="font-up" title="放大终端字体 0.5 px" aria-label="放大终端字体 0.5 px"><svg><use href="#i-font-increase"/></svg></button></div>
         </section>
@@ -248,7 +248,7 @@
   <div id="upload-menu" class="popup-menu" hidden><button id="upload-files-option">选择文件</button><button id="upload-folder-option">选择文件夹</button></div>
 
   <div class="settings-menu" id="settings-menu" role="menu" aria-label="设置" hidden>
-    <div class="settings-caption">DengShell 设置</div>
+    <div class="settings-caption">DevShell 设置</div>
     <button role="menuitem" id="manage-security-lock"><svg><use href="#i-lock"/></svg>安全锁定<span>密码与 2FA</span></button>
     <button role="menuitem" id="manage-keys"><svg><use href="#i-key"/></svg>密钥管理器<span>私钥与公钥</span></button>
     <button role="menuitem" id="manage-ui-appearance"><svg><use href="#i-type"/></svg>界面字体与文字颜色<span>字体</span></button>
@@ -268,7 +268,7 @@
     <div class="appearance-body">
       <div class="manager-toolbar"><span id="asset-count"></span><button class="upload-button" id="import-asset"><svg><use href="#i-plus"/></svg><span>导入背景</span></button></div>
       <div class="background-strength" id="background-strength"><label for="background-opacity">背景强度 <output id="background-opacity-value">42%</output></label><input id="background-opacity" type="range" min="0" max="100" step="1"><span>向右拖动，让图片更清晰</span></div>
-      <div class="font-preview" id="font-preview" hidden><span id="font-preview-name"></span><pre id="font-preview-text">DengShell ~ $ echo "你好，世界！"
+      <div class="font-preview" id="font-preview" hidden><span id="font-preview-name"></span><pre id="font-preview-text">DevShell ~ $ echo "你好，世界！"
 中文目录 /home/用户  ┌─────┐
 繁體中文 ABC 012345  │ SSH │</pre><div class="font-preview-options"><label>字号<select id="terminal-size"></select></label></div></div>
 
@@ -283,7 +283,7 @@
   <dialog id="history-dialog"><div class="dialog-heading"><div><h2>历史命令</h2><p id="history-target"></p></div><button class="icon-button" id="close-history" aria-label="关闭历史命令"><svg><use href="#i-close"/></svg></button></div><input id="history-filter" placeholder="搜索历史命令" aria-label="搜索历史命令"><div id="history-list"></div><p id="history-empty" class="empty-state">在任意 VPS 的终端、输入条或快捷命令中执行的 Shell 命令都会记录到这里。</p><div class="history-footer"><span>最近 2000 条 · 点击填入输入条，回车后执行</span><button class="text-button" id="clear-history">清空历史列表</button></div></dialog>
   <dialog id="diagnostics-dialog"><div class="dialog-heading"><div><h2>MTR 网络诊断</h2><p id="diagnostics-route">本机 → 当前服务器</p></div><button class="icon-button" id="close-diagnostics" aria-label="关闭网络诊断"><svg><use href="#i-close"/></svg></button></div><div class="diagnostics-toolbar"><span id="diagnostics-status" role="status">准备检测</span><button class="upload-button" id="retry-diagnostics">重新检测</button><button class="upload-button" id="cancel-diagnostics">停止</button><button class="upload-button" id="copy-diagnostics"><svg><use href="#i-copy"/></svg>复制结果</button></div><div id="mtr-install-notice" class="mtr-install-notice" hidden><span id="mtr-install-summary"></span><button id="mtr-install-open" class="upload-button">安装 mtr…</button></div><pre id="diagnostics-output" tabindex="0" aria-label="MTR 检测结果">正在开始检测…</pre><p class="diagnostics-note">本机检测遵循系统路由，不通过应用内 SSH 代理。中间节点不回应或限速不代表终点丢包。</p><div class="diagnostics-footer"><button id="diagnostics-local" class="text-button">本机 → 当前服务器</button><button id="diagnostics-remote" class="upload-button">从服务器 MTR 到…</button></div></dialog>
   <dialog id="mtr-install-dialog" aria-labelledby="mtr-install-title"><div class="dialog-heading"><h2 id="mtr-install-title">需要安装 mtr</h2><button id="mtr-install-close" class="icon-button" aria-label="关闭安装窗口"><svg><use href="#i-close"/></svg></button></div><p id="mtr-install-location"></p><p id="mtr-install-description" role="status">正在检查系统与包管理器…</p><pre id="mtr-install-command" tabindex="0" aria-label="将执行的安装命令"></pre><pre id="mtr-install-output" tabindex="0" aria-label="mtr 安装进度" hidden></pre><p class="mtr-install-note" id="mtr-install-note"></p><div class="dialog-buttons"><button id="mtr-install-dismiss">暂不安装</button><button id="mtr-install-confirm" class="primary-button" disabled>确定安装</button></div></dialog>
-  <dialog id="exit-dialog"><form id="exit-form"><h2>退出 DengShell？</h2><p id="exit-description">确认关闭应用。</p><div class="dialog-buttons"><button type="button" id="cancel-exit">继续使用</button><button class="primary-button" type="submit" id="confirm-exit">退出</button></div></form></dialog>
+  <dialog id="exit-dialog"><form id="exit-form"><h2>退出 DevShell？</h2><p id="exit-description">确认关闭应用。</p><div class="dialog-buttons"><button type="button" id="cancel-exit">继续使用</button><button class="primary-button" type="submit" id="confirm-exit">退出</button></div></form></dialog>
 
   <div id="toast" class="toast" role="status" hidden></div>
 
@@ -295,7 +295,7 @@
       <button class="primary-button" id="security-unlock-open" type="button">解锁</button><p class="security-error" id="security-lock-error" role="status"></p>
     </section>
     <form id="security-unlock-form" class="security-lock-card" hidden>
-      <span class="security-emblem"><svg aria-hidden="true"><use href="#i-lock"/></svg></span><h2>解锁 DengShell</h2><p class="security-card-note">验证身份，返回你的工作台</p>
+      <span class="security-emblem"><svg aria-hidden="true"><use href="#i-lock"/></svg></span><h2>解锁 DevShell</h2><p class="security-card-note">验证身份，返回你的工作台</p>
       <label id="security-method-label">解锁方式<select id="security-unlock-method" aria-label="解锁方式" data-native-select></select></label>
       <label><span id="security-unlock-value-label">解锁密码</span><input id="security-unlock-value" type="password" autocomplete="current-password" required aria-label="密码或验证码"></label>
       <p id="security-unlock-hint" class="security-note"></p><p class="security-error" id="security-unlock-error" role="alert"></p><p id="security-unlock-retry" class="security-note" role="status"></p>
@@ -330,8 +330,8 @@
   <script src="command-composer.js?v=20261001-composer"></script>
   <script src="workspace-tools.js?v=20260925-v002-b86"></script>
   <script src="appearance.js?v=20261018-pin2"></script>
-  <script src="ui-appearance.js?v=20260920-v002-b70"></script>
-  <script src="font-library.js?v=20260920-v002-b70"></script>
+  <script src="ui-appearance.js?v=20261019-brand1"></script>
+  <script src="font-library.js?v=20261019-brand1"></script>
   <script src="path-history.js?v=20260925-v002-b86"></script>
   <script src="directory-favorites.js?v=20260925-v002-b86"></script>
   <script src="connection-extras.js?v=20260928-layout2"></script>
@@ -340,37 +340,37 @@
   <script src="workspace-refinements.js?v=20260920-v002-b70"></script>
   <script src="themed-select.js?v=20260920-v002-b70"></script>
   <script src="terminal-integration.js?v=20261018-follow3"></script>
-  <script src="mtr-installation.js?v=20260920-v002-b70"></script>
+  <script src="mtr-installation.js?v=20261019-brand1"></script>
   <script src="config-document.js?v=20260920-v002-b70"></script>
-  <script src="startup-update.js?v=20260920-v002-b70"></script>
+  <script src="startup-update.js?v=20261019-brand1"></script>
   <script src="portable-preferences.js?v=20261018-pin2"></script>
   <script src="server-manager.js?v=20260928-card1"></script>
   <script src="server-explorer.js?v=20260925-v002-b86"></script>
-  <script src="help-guide.js?v=20260925-v002-b86"></script>
+  <script src="help-guide.js?v=20261019-brand1"></script>
   <script src="chart-styles.js?v=20260920-v002-b70"></script>
-  <script src="appearance-tools.js?v=20261011-sftp-right"></script>
+  <script src="appearance-tools.js?v=20261019-brand1"></script>
   <script src="terminal-snapshot.js?v=20260920-v002-b70"></script>
-  <script src="server-addresses.js?v=20260920-v002-b70"></script>
+  <script src="server-addresses.js?v=20261018-addr1"></script>
   <script src="window-preview.js?v=20260920-v002-b70"></script>
-  <script src="window-transfers.js?v=20260920-v002-b70"></script>
+  <script src="window-transfers.js?v=20261019-brand1"></script>
   <script src="session-tab-order.js?v=20260928-drag1"></script>
-  <script src="session-windows.js?v=20260928-drag1"></script>
+  <script src="session-windows.js?v=20261019-brand1"></script>
   <script src="session-tabs-layout.js?v=20260920-v002-b70"></script>
   <script src="system-identity.js?v=20260920-v002-b70"></script>
   <script src="rdp.js?v=20260927-preview1"></script>
   <script src="upload-confirmation.js?v=20260928-overwrite1"></script>
-  <script src="app.js?v=20261018-font1"></script>
+  <script src="app.js?v=20261018-gpu1"></script>
   <script src="quick-connect.js?v=20260920-v002-b70"></script>
   <script src="local-prompt.js?v=20261018-ping3"></script>
   <script src="pinned-nav.js?v=20261018-pin2"></script>
   <script src="process-view.js?v=20260920-v002-b70"></script>
-  <script src="common-apps.js?v=20260920-v002-b70"></script>
+  <script src="common-apps.js?v=20261019-brand1"></script>
   <script src="text-model.js?v=20260920-v002-b70"></script>
   <script src="remote-text-document.js?v=20260920-v002-b70"></script>
   <script src="text-search.js?v=20260920-v002-b70"></script>
   <script src="text-editor-tools.js?v=20261010-editor-wrap"></script>
   <script src="text-editor.js?v=20261010-editor-wrap"></script>
-  <script src="file-tools.js?v=20260928-multiselect1"></script>
+  <script src="file-tools.js?v=20261019-brand1"></script>
   <script src="desktop-tray.js?v=20260920-v002-b70"></script>
 </body>
 </html>

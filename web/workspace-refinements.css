@@ -13,6 +13,7 @@
 .address-copy { position:relative; display:flex; align-items:center; justify-content:center; min-width:0; height:30px; padding:6px 8px 2px; border:1px solid var(--border,#e7edf2); border-radius:7px; background:var(--surface-inset,#f4f7f9); text-align:center; cursor:copy; }
 .address-copy b { position:absolute; top:-6px; left:6px; padding:0 4px; border-radius:3px; background:var(--surface,#fff); font-size:9px; line-height:12px; font-weight:500; color:var(--muted); }
 .address-copy > span { width:100%; min-width:0; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; color:var(--text-secondary,#71899c); font-size:11px; line-height:16px; font-variant-numeric:tabular-nums; }
+.address-copy > .address-more { flex:none; width:auto; margin-left:4px; font-size:9px; color:var(--muted,#8da0ae); }
 .address-copy:disabled { cursor:default; opacity:1; }
 .address-copy:enabled:hover,.address-copy:focus-visible { background:var(--surface-hover,#e8f0f5); }
 .network-grid { gap:8px; grid-template-columns:minmax(0,1fr); margin-top:10px; }

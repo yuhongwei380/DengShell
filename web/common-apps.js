@@ -117,7 +117,7 @@
     if(!page(owner,'设置 SWAP'))return;
     if(status.hasSwap||status.rebootRequired){
       paragraph(status.hasSwap?'需要先删除当前 SWAP 并重启之后才能正确设置。':'SWAP 已关闭或删除。请按本工具的设置流程，重启服务器后再设置新的 SWAP。','common-app-emphasis');
-      paragraph('DengShell 不会自动重启服务器。');
+      paragraph('DevShell 不会自动重启服务器。');
       const back=button('重新检查 SWAP',()=>swap(owner),'upload-button');body.append(back);return;
     }
     paragraph('当前没有启用或配置的 SWAP，请选择需要设置的大小。');details(status.details);

@@ -440,6 +440,7 @@ async function showDisconnectDiagnostic(state) {
   if (current() === state) {
     $('#terminal-state').textContent = `已断开 · ${result.code}`;
     $('#terminal-state').title = label + ' · ' + clean(result.message);
+    $('#terminal-state').hidden = false; $('#terminal-current-badge').hidden = true;
   }
 }
 async function disconnectSession(state = current()) {
@@ -487,7 +488,7 @@ function renderTabs() {
     const label = node('span', 'session-tab-text');
     label.append(node('span', 'session-tab-label', profile ? sessionDisplayName(state) : '已删除配置'));
     const button = node('button'); button.type = 'button'; button.append(node('span', `status-dot ${state.connected ? 'green' : 'blue'}`), label); button.onclick = () => activate(state.id); button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(selected)); button.setAttribute('aria-current', selected ? 'page' : 'false'); button.title = profile ? `${profile.name} · ${profile.user}@${profile.host}:${profile.port}` : '已删除配置';
-    if (selected && state.connected) { label.append(node('span', 'session-current-badge', '当前连接')); tab.classList.add('current-session'); }
+    if (selected && state.connected) tab.classList.add('current-session');
     button.setAttribute('aria-busy', String(!!state.pendingConnection));
     if (state.localOnly) button.title += ` · ${state.connectionMessage}`;
     const close = node('button', 'tab-close'); close.append(icon('close')); close.title = state.pendingConnection ? '取消连接' : '关闭连接'; close.setAttribute('aria-label', `${state.pendingConnection ? '取消' : '关闭'} ${profile?.name || '会话'}`); close.onclick = safe(() => closeSession(state.id)); close.disabled = !!(state.detaching || state.handoffProvisional); tab.dataset.detaching = String(!!state.detaching); tab.append(button, close); window.DengSessionWindows.bindTab(tab, state); return [tab, ...(window.DengProcessView?.tabs(state) || [])];
@@ -513,6 +514,10 @@ function renderSessionInfo() {
   $('#welcome-state').hidden = !!state; window.DengLocalPrompt?.reflect();
   $('#terminal-meta-host').textContent = profile ? `${profile.user}@${sessionDisplayName(state)}` : 'SSH 终端'; $('#terminal-state').textContent = state?.handoffProvisional ? '正在接收标签…' : state?.pendingConnection ? '正在连接…' : state?.connectionFailed ? '连接未完成' : state?.connected ? '已连接' : state?.disconnectDiagnostic ? `已断开 · ${state.disconnectDiagnostic.code}` : '待连接';
   $('#terminal-state').title = state?.disconnectDiagnostic?.message || '';
+  // The "当前连接" badge lives in the session header, merged with the connected
+  // status: the green dot plus badge replaces the plain "已连接" text.
+  const currentConnected = !!state?.connected && !state?.handoffProvisional;
+  $('#terminal-state').hidden = currentConnected; $('#terminal-current-badge').hidden = !currentConnected;
   $('#command-history').disabled = false; $('#command-input').disabled = !!state && !state.connected; $('#command-input').placeholder = state ? '输入命令并回车发送 · ↑↓ 历史' : '本机：输入 ssh 用户@主机 或 ping 主机'; window.DengQuickConnect?.reflect(); $('#command-input').value = ''; resizeCommandInput(); $('#reconnect').disabled = !state || !!(state.pendingConnection || state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain); $('#disconnect').disabled = !state?.connected || !!(state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain);
   $('#follow-terminal').checked = state ? !!state.follow : pendingFollow; $('#follow-terminal').disabled = !!state && (!state.ready || !filesUsable(state));
   renderMonitor(state?.connected ? state.stats : null); renderLatency(); renderCommands(); window.DengCommonApps?.render(); window.DengProcessView?.reflect(); window.DengPinnedNav?.reflect(); updateStatus();
@@ -769,6 +774,23 @@ async function pollStats() {
   finally { statsRequests.delete(state); if (current() === state && state.connected && monitorVisible()) { clearTimeout(statsTimer); statsTimer = setTimeout(() => { statsTimer = 0; pollStats(); }, delay); } }
 }
 function meter(selector, percent, detail, valid = true) { const el = $(selector); el.querySelector('i').style.width = `${valid ? Math.max(0, Math.min(100, percent)) : 0}%`; el.querySelector('b').textContent = valid ? `${percent.toFixed(1)}%` : '—'; el.querySelector('em').textContent = detail; }
+// Discrete GPUs only: the backend never reports integrated graphics, so an
+// empty list hides the whole block. Multi-GPU hosts get GPU0, GPU1, ... rows.
+function renderGPUs(stats) {
+  const gpus = stats?.gpus || [], box = $('#gpu-metrics');
+  box.hidden = !gpus.length;
+  if (!gpus.length) { box.replaceChildren(); return; }
+  box.replaceChildren(...gpus.map((gpu, index) => {
+    const util = Math.max(0, Math.min(100, Number(gpu.util) || 0));
+    const row = node('div', 'metric gpu-row');
+    row.title = `${gpu.name || 'GPU'} · 实际占用 ${util.toFixed(1)}% · 显存 ${prettySize(gpu.memUsed || 0)} / ${prettySize(gpu.memTotal || 0)}`;
+    const meter = node('div', 'meter');
+    const fill = node('i', 'gpu-fill'); fill.style.width = `${util}%`;
+    meter.append(fill, node('b', '', `${util.toFixed(1)}%`), node('em', '', gpu.memTotal ? `显存 ${prettySize(gpu.memUsed)} / ${prettySize(gpu.memTotal)}` : '显存未知'));
+    row.append(node('span', '', `GPU${index}`), meter);
+    return row;
+  }));
+}
 function renderMonitor(stats) {
   if (window.DengSystemIdentity) window.DengSystemIdentity.render(stats?.os);
   else { $('#system-os').textContent = stats?.os || '—'; $('#system-os').title = stats?.os || ''; }
@@ -777,6 +799,7 @@ function renderMonitor(stats) {
   meter('#cpu-meter', stats?.cpu || 0, stats ? `${stats.cores} 核心` : '—', !!stats?.sampleReady);
   meter('#memory-meter', stats?.memoryTotal ? stats.memoryUsed / stats.memoryTotal * 100 : 0, stats ? `${prettySize(stats.memoryUsed)} / ${prettySize(stats.memoryTotal)}` : '—', !!stats);
   meter('#swap-meter', stats?.swapTotal ? stats.swapUsed / stats.swapTotal * 100 : 0, stats ? `${prettySize(stats.swapUsed)} / ${prettySize(stats.swapTotal)}` : '—', !!stats);
+  renderGPUs(stats);
   renderProcesses(stats);
   // The backend filters virtual volumes and deduplicates filesystem aliases.
   const disks = stats?.disks || [];

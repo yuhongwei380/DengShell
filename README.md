@@ -1,10 +1,10 @@
-# DengShell
+# DevShell
 
 **把 SSH 终端、远程文件、服务器监控和常用命令放在一个窗口里。**
 
-DengShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VPS、维护 Linux 服务器、编辑远程配置和排查网络问题。支持 Windows、Linux、macOS 桌面，可同时连接多台服务器，并按自己的习惯调整字体、背景、布局和监控曲线。
+DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VPS、维护 Linux 服务器、编辑远程配置和排查网络问题。支持 Windows、Linux、macOS 桌面，可同时连接多台服务器，并按自己的习惯调整字体、背景、布局和监控曲线。
 
-本说明对应 **v26.10.0 · 构建 20261018116**。本分支更新源为 GitHub Releases，界面字体为阿里巴巴普惠体 3.0。R20 以来的累计变化汇总在 [更新日志](CHANGELOG.md)。
+本说明对应 **v26.10.0 · 构建 20261018117**。本分支更新源为 GitHub Releases，界面字体为阿里巴巴普惠体 3.0。R20 以来的累计变化汇总在 [更新日志](CHANGELOG.md)。
 
 > **项目来源**：本项目源自上游 [BitsFlowCloud/DengShell](https://github.com/BitsFlowCloud/DengShell) 的 **DengShell v0.03 分支**，在此基础上独立维护。上游改动不再自动同步，已移植的上游改进（构建 107–114）见更新日志。
 
@@ -55,8 +55,8 @@ DengShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 V
 
 | 平台与用途 | 下载文件 | 使用方式 |
 | --- | --- | --- |
-| Windows 10 / 11 x64 安装版 | `DengShell-Setup-x64.exe` | 运行安装器，从开始菜单或桌面启动，可通过控制面板卸载 |
-| Windows x64 绿色版 | `DengShell-windows-x64.zip` | 解压后运行 `DengShell.exe`，配置保存在旁边的 `data/` |
+| Windows 10 / 11 x64 安装版 | `DevShell-Setup-x64.exe` | 运行安装器，从开始菜单或桌面启动，可通过控制面板卸载；此前 DengShell 安装版升级时自动沿用原安装目录与数据 |
+| Windows x64 绿色版 | `DevShell-windows-x64.zip` | 解压后运行 `DevShell.exe`，配置保存在旁边的 `data/` |
 | Debian / Ubuntu x86-64 | `DengShell-linux-x64.deb` | 使用系统包管理器安装 |
 | Fedora / openSUSE x86-64 | `DengShell-linux-x64.rpm` | 使用对应发行版的包管理器安装 |
 | Arch Linux / 兼容 pacman 的 x86-64 桌面 | `DengShell-linux-x64.pkg.tar.zst` | 使用 `sudo pacman -U` 安装 |

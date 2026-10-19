@@ -227,7 +227,7 @@ func resolveDiagnosticTarget(ctx context.Context, host string) (string, error) {
 	return ips[0].String(), nil
 }
 func diagnosticHeader(direction, target, engine string) string {
-	return fmt.Sprintf("DengShell 网络诊断 · %s\n方向：%s → %s\n%s\n中间跳可能限制 ICMP；应结合后续跳与终点判断丢包。ICMP 不经过应用 SOCKS/HTTP 代理，系统 TUN 可能影响路径。\n\n", engine, direction, target, time.Now().Format("2006-01-02 15:04:05"))
+	return fmt.Sprintf("DevShell 网络诊断 · %s\n方向：%s → %s\n%s\n中间跳可能限制 ICMP；应结合后续跳与终点判断丢包。ICMP 不经过应用 SOCKS/HTTP 代理，系统 TUN 可能影响路径。\n\n", engine, direction, target, time.Now().Format("2006-01-02 15:04:05"))
 }
 func remoteDiagnosticCommand(target string) string {
 	// target is a canonical IP plus an optional strictly validated interface ID.

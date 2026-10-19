@@ -1,8 +1,8 @@
-﻿param([Parameter(Mandatory=$true)][string]$Artifacts,[Parameter(Mandatory=$true)][string]$LegacyZip,[string]$Output='qa-results',[string]$LegacyRelease='legacy')
+param([Parameter(Mandatory=$true)][string]$Artifacts,[Parameter(Mandatory=$true)][string]$LegacyZip,[string]$Output='qa-results',[string]$LegacyRelease='legacy')
 $ErrorActionPreference='Stop'
 $Artifacts=(Resolve-Path $Artifacts).Path; $LegacyZip=(Resolve-Path $LegacyZip).Path
 New-Item -ItemType Directory -Force $Output | Out-Null; $Output=(Resolve-Path $Output).Path
-$qaRoot=Join-Path $env:RUNNER_TEMP ('DengShell QA '+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory $qaRoot | Out-Null
+$qaRoot=Join-Path $env:RUNNER_TEMP ('DevShell QA '+[guid]::NewGuid().ToString('N')); New-Item -ItemType Directory $qaRoot | Out-Null
 $report=[ordered]@{os=(Get-CimInstance Win32_OperatingSystem).Caption;architecture=$env:PROCESSOR_ARCHITECTURE;checks=@();legacyRelease=$LegacyRelease;passed=$false}
 Add-Type @'
 using System;
@@ -31,21 +31,21 @@ function Seed-QA([string]$Config){
 function Start-Native([string]$Exe,[string]$Config,[bool]$Hidden=$false){$marker=Join-Path $Config 'runtime-success-v1-windows-amd64';Remove-Item $marker -Force -ErrorAction SilentlyContinue;$opts=@{FilePath=$Exe;ArgumentList=@('--config',('"'+$Config+'"'));PassThru=$true;WorkingDirectory=(Split-Path $Exe)};if($Hidden){$opts.WindowStyle='Hidden'};$p=Start-Process @opts;Wait-QA {Test-Path $marker} 'native frontend ready';Wait-QA {[DengQA]::Find($p.Id) -ne [IntPtr]::Zero} 'main window';return $p}
 function Visible-QA($Process,[string]$Name){Wait-QA {$h=[DengQA]::Find($Process.Id);$h -ne [IntPtr]::Zero -and [DengQA]::IsWindowVisible($h) -and ![DengQA]::IsIconic($h)} $Name;Check-QA $true $Name}
 try{
- $portable=Join-Path $qaRoot 'portable';Expand-Archive (Join-Path $Artifacts 'DengShell-windows-x64.zip') $portable
- $exe=(Get-ChildItem $portable -Filter DengShell.exe -Recurse | Select-Object -First 1).FullName
+ $portable=Join-Path $qaRoot 'portable';Expand-Archive (Join-Path $Artifacts 'DevShell-windows-x64.zip') $portable
+ $exe=(Get-ChildItem $portable -Filter DevShell.exe -Recurse | Select-Object -First 1).FullName
  $expected=(Get-FileHash $exe -Algorithm SHA256).Hash.ToLowerInvariant();$report.executableSHA256=$expected
- $report.installerSHA256=(Get-FileHash (Join-Path $Artifacts 'DengShell-Setup-x64.exe')).Hash.ToLowerInvariant()
+ $report.installerSHA256=(Get-FileHash (Join-Path $Artifacts 'DevShell-Setup-x64.exe')).Hash.ToLowerInvariant()
  $config=Join-Path $qaRoot 'portable config';Seed-QA $config;$running=Start-Native $exe $config $true;Visible-QA $running 'packed portable EXE launches visibly even with SW_HIDE';powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-ui.ps1 -DengProcessID $running.Id -Output $Output;if($LASTEXITCODE -ne 0){throw 'Native Windows UI Automation check failed'};Stop-QA $running
  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/test-windows-exit.ps1 -Exe $exe -Output $Output;if($LASTEXITCODE -ne 0){throw 'Native Windows exit regression failed'}
- $install=Join-Path $qaRoot 'installed';$installer=Start-Process (Join-Path $Artifacts 'DengShell-Setup-x64.exe') -ArgumentList ('/S /D='+$install) -PassThru -Wait;Check-QA ($installer.ExitCode -eq 0) 'silent installer returns success'
- Check-QA ((Get-FileHash (Join-Path $install 'DengShell.exe')).Hash.ToLowerInvariant() -eq $expected) 'installer contains exact portable executable'
- $uninstallKey='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\DengShell';Check-QA ((Get-ItemProperty $uninstallKey).DisplayName -eq 'DengShell') 'registered in Windows uninstall control panel'
- $installedConfig=Join-Path $install 'data';Seed-QA $installedConfig;$running=Start-Native (Join-Path $install 'DengShell.exe') $installedConfig;Visible-QA $running 'installed native WebView2 frontend starts';Stop-QA $running
- $uninstaller=Start-Process (Join-Path $install 'data/support/Uninstall.exe') -ArgumentList '/S' -PassThru -Wait;Wait-QA {!(Test-Path (Join-Path $install 'DengShell.exe'))} 'uninstall removes executable';Check-QA (!(Test-Path $uninstallKey)) 'uninstall registration removed';Check-QA ((Get-Content (Join-Path $installedConfig 'keep-user-data.txt')).Trim() -eq 'preserve-local-fixture') 'uninstall preserves user data'
+ $install=Join-Path $qaRoot 'installed';$installer=Start-Process (Join-Path $Artifacts 'DevShell-Setup-x64.exe') -ArgumentList ('/S /D='+$install) -PassThru -Wait;Check-QA ($installer.ExitCode -eq 0) 'silent installer returns success'
+ Check-QA ((Get-FileHash (Join-Path $install 'DevShell.exe')).Hash.ToLowerInvariant() -eq $expected) 'installer contains exact portable executable'
+ $uninstallKey='HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\DevShell';Check-QA ((Get-ItemProperty $uninstallKey).DisplayName -eq 'DevShell') 'registered in Windows uninstall control panel'
+ $installedConfig=Join-Path $install 'data';Seed-QA $installedConfig;$running=Start-Native (Join-Path $install 'DevShell.exe') $installedConfig;Visible-QA $running 'installed native WebView2 frontend starts';Stop-QA $running
+ $uninstaller=Start-Process (Join-Path $install 'data/support/Uninstall.exe') -ArgumentList '/S' -PassThru -Wait;Wait-QA {!(Test-Path (Join-Path $install 'DevShell.exe'))} 'uninstall removes executable';Check-QA (!(Test-Path $uninstallKey)) 'uninstall registration removed';Check-QA ((Get-Content (Join-Path $installedConfig 'keep-user-data.txt')).Trim() -eq 'preserve-local-fixture') 'uninstall preserves user data'
  $legacy=Join-Path $qaRoot 'legacy';Expand-Archive $LegacyZip $legacy;$oldExe=(Get-ChildItem $legacy -Filter DengShell.exe -Recurse|Select-Object -First 1).FullName
  $build=[uint64]([regex]::Match((Get-Content internal/app/updates.go -Raw),'const ApplicationBuild uint64 = (\d+)').Groups[1].Value)
  foreach($mode in @('legacy','current')){
-  $case=Join-Path $qaRoot ('upgrade-'+$mode);New-Item -ItemType Directory $case | Out-Null;$target=Join-Path $case 'DengShell.exe';Copy-Item $(if($mode -eq 'legacy'){$oldExe}else{$exe}) $target
+  $case=Join-Path $qaRoot ('upgrade-'+$mode);New-Item -ItemType Directory $case | Out-Null;$target=Join-Path $case $(if($mode -eq 'legacy'){'DengShell.exe'}else{'DevShell.exe'});Copy-Item $(if($mode -eq 'legacy'){$oldExe}else{$exe}) $target
   $caseConfig=Join-Path $case 'data';Seed-QA $caseConfig;$running=Start-Native $target $caseConfig;Visible-QA $running "$mode initial frontend visible"
   $handle=[DengQA]::Find($running.Id);[DengQA]::ShowWindow($handle,6)|Out-Null;Wait-QA {![DengQA]::IsWindowVisible($handle) -or [DengQA]::IsIconic($handle)} 'minimized or hidden before update';Start-Sleep -Seconds 2
   $wasTray=![DengQA]::IsWindowVisible($handle);$report["$mode-beforeUpdateHidden"]=$wasTray;Check-QA $wasTray "$mode minimized into system tray before update"
@@ -61,7 +61,7 @@ try{
   Wait-QA {Test-Path (Join-Path $caseConfig 'update-result.json')} "$mode helper completes replacement"
   Check-QA ((Get-Content (Join-Path $caseConfig 'update-result.json') -Raw | ConvertFrom-Json).status -eq 'installed') "$mode update reports successful installation"
   Wait-QA {Test-Path (Join-Path $caseConfig 'runtime-success-v1-windows-amd64')} "$mode updated native frontend ready"
-  $running=Get-Process DengShell -ErrorAction SilentlyContinue|Where-Object {$_.Path -eq $target}|Select-Object -First 1;Check-QA ($null -ne $running) "$mode automatically restarts program";Visible-QA $running "$mode restarted main window visible and not minimized"
+  $running=Get-Process $(if($mode -eq 'legacy'){'DengShell'}else{'DevShell'}) -ErrorAction SilentlyContinue|Where-Object {$_.Path -eq $target}|Select-Object -First 1;Check-QA ($null -ne $running) "$mode automatically restarts program";Visible-QA $running "$mode restarted main window visible and not minimized"
   Check-QA ((Get-FileHash $target).Hash.ToLowerInvariant() -eq $expected) "$mode update target hash matches release";Check-QA ((Get-Content (Join-Path $caseConfig 'keep-user-data.txt')).Trim() -eq 'preserve-local-fixture') "$mode update preserves config directory"
   Wait-QA {!(Test-Path $job)} "$mode update cache reclaimed after helper exits" 50
   $backup=Join-Path $caseConfig 'update-backup/previous-program.exe'

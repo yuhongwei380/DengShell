@@ -14,8 +14,8 @@ def build(stage, output):
     version = re.search(r'const ApplicationVersion = "([^"]+)"', source).group(1)
     package_version = re.search(r'const ApplicationPackageVersion = "([^"]+)"', source).group(1)
     stage, output = stage.resolve(), output.resolve()
-    if sorted(p.name for p in stage.iterdir()) != ['DengShell.exe', 'data']:
-        raise SystemExit('Windows staging must contain only DengShell.exe and data.')
+    if sorted(p.name for p in stage.iterdir()) != ['DevShell.exe', 'data']:
+        raise SystemExit('Windows staging must contain only DevShell.exe and data.')
     if any(p.name not in ['docs', 'licenses'] for p in (stage / 'data').iterdir()):
         raise SystemExit('User data must never enter the installer.')
     tool = shutil.which('makensis')
@@ -29,7 +29,7 @@ def build(stage, output):
         files = sorted(p for p in stage.rglob('*') if p.is_file())
         uninstall = []
         for p in files:
-            if p.relative_to(stage).as_posix() == 'DengShell.exe':
+            if p.relative_to(stage).as_posix() == 'DevShell.exe':
                 continue  # Explicit checked deletion precedes registry/shortcut removal.
             relative = nsis_string(str(p.relative_to(stage)).replace('/', '\\'))
             uninstall.append(f'Delete "$INSTDIR\\{relative}"')
@@ -64,5 +64,5 @@ def build(stage, output):
 if __name__ == '__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--stage',type=Path,required=True)
-    parser.add_argument('--output',type=Path,default=ROOT/'build/windows/DengShell-Setup-x64.exe')
+    parser.add_argument('--output',type=Path,default=ROOT/'build/windows/DevShell-Setup-x64.exe')
     args=parser.parse_args();build(args.stage,args.output)

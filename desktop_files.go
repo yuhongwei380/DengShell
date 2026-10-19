@@ -85,7 +85,7 @@ func (d *Desktop) DownloadSelectionArchive(sessionID string, paths []string) (st
 	if len(paths) == 0 {
 		return "", errors.New("请先选择文件")
 	}
-	name := "DengShell-files.tar.gz"
+	name := "DevShell-files.tar.gz"
 	if len(paths) == 1 {
 		name = path.Base(paths[0]) + ".tar.gz"
 	}

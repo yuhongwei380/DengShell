@@ -44,7 +44,7 @@ static gboolean deng_window_query_run(gpointer data) {
   GList *windows=gtk_window_list_toplevels();
   for(GList *l=windows;l;l=l->next) {
    GtkWindow *w=GTK_WINDOW(l->data);
-   if(g_strcmp0(gtk_window_get_title(w),"DengShell")!=0)continue;
+   if(g_strcmp0(gtk_window_get_title(w),"DevShell")!=0)continue;
    GdkWindow *gw=gtk_widget_get_window(GTK_WIDGET(w));
    if(!gw)continue;
    q->handles[q->count++]=gdk_x11_window_get_xid(gw);

@@ -15,19 +15,41 @@ type ServerAddressInfo struct {
 	Interface string `json:"interface,omitempty"`
 }
 
-func publicServerAddress(value string) (netip.Addr, bool) {
+// usableServerAddress accepts any address worth showing in the sidebar.
+// Unlike the previous public-only filter it keeps private LAN ranges, because
+// the sidebar's purpose is the host's NIC addresses. It still rejects
+// loopback, link-local, multicast, broadcast, unspecified and the 198.18/15
+// benchmark range that TUN fake-IP tools use.
+func usableServerAddress(value string) (netip.Addr, bool) {
 	ip, err := netip.ParseAddr(value)
 	if err != nil || ip.Zone() != "" {
 		return netip.Addr{}, false
 	}
 	ip = ip.Unmap()
-	// asnQueryName is a pure formatter with the shared public-address filter;
-	// this does NOT perform an ASN or DNS lookup. It excludes private, CGNAT,
-	// benchmark/TUN fake-IP, documentation, loopback and link-local ranges.
-	if asnQueryName(ip.String()) == "" {
+	if !ip.IsValid() || ip.IsMulticast() || ip.IsLoopback() || ip.IsLinkLocalUnicast() ||
+		ip == netip.IPv4Unspecified() || ip == netip.IPv6Unspecified() || ip == netip.MustParseAddr("255.255.255.255") {
 		return netip.Addr{}, false
 	}
+	if ip.Is4() {
+		if octets := ip.As4(); octets[0] == 198 && (octets[1] == 18 || octets[1] == 19) {
+			return netip.Addr{}, false
+		}
+	}
 	return ip, true
+}
+
+// virtualInterfaceName reports container bridges, TUN/TAP devices and tunnel
+// endpoints whose addresses are managed by Docker, Kubernetes, libvirt, VPNs
+// and similar services rather than by the host's NICs. Generic user bridges
+// (br0, vmbr0), bonds, teams and VLAN sub-interfaces usually carry the host's
+// real address and are deliberately kept.
+func virtualInterfaceName(name string) bool {
+	for _, prefix := range []string{"docker", "br-", "veth", "vnet", "vif", "virbr", "lxc", "lxdbr", "flannel", "cni", "kube", "ovn", "ovs", "tun", "tap", "wg", "zt", "tailscale", "dummy", "ifb", "sit", "gre", "gretap", "ip6gre", "ip6tnl", "ipip", "vti", "ip6vti", "erspan", "teql", "brd", "bridge"} {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }
 
 func directSSHServerPeer(peer net.Addr, proxyType string) string {
@@ -38,7 +60,7 @@ func directSSHServerPeer(peer net.Addr, proxyType string) string {
 	if err != nil {
 		return ""
 	}
-	if ip, ok := publicServerAddress(host); ok {
+	if ip, ok := usableServerAddress(host); ok {
 		return ip.String()
 	}
 	return ""
@@ -70,7 +92,7 @@ func selectServerAddresses(stats *Stats, connectionHost, connectionPeer string) 
 	stats.ServerAddressInfo = []ServerAddressInfo{}
 	seen := make(map[netip.Addr]bool)
 	appendAddress := func(value, source, device string) {
-		ip, ok := publicServerAddress(value)
+		ip, ok := usableServerAddress(value)
 		if !ok || seen[ip] {
 			return
 		}
@@ -83,7 +105,9 @@ func selectServerAddresses(stats *Stats, connectionHost, connectionPeer string) 
 		stats.ServerAddressInfo = append(stats.ServerAddressInfo, ServerAddressInfo{ip.String(), source, device})
 	}
 	// SSH_CONNECTION reports the remote socket's server address, not the client
-	// or proxy address. On NAT hosts it is often private and therefore skipped.
+	// or proxy address. On NAT hosts that is the server's LAN NIC address, which
+	// is exactly what the sidebar now surfaces; duplicates with the interface
+	// list are collapsed by the seen map.
 	appendAddress(stats.SSHConnection.ServerAddress, "ssh-server", "")
 	// A numeric configured target is the confirmed SSH entrance after successful
 	// authentication. A hostname is never re-resolved: proxy DNS may differ.

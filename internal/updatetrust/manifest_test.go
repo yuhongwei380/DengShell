@@ -15,7 +15,7 @@ func TestSignedManifestAuthentication(t *testing.T) {
 		t.Fatal(err)
 	}
 	now := time.Unix(1789300000, 0)
-	d, err := Sign(Descriptor{SchemaVersion: 2, Build: 20260913022, Product: "DengShell", Platform: "windows-amd64", Version: "v0.01", Notes: "中文 <更新>\n说明", SHA256: strings.Repeat("a", 64), ExecutableSHA256: strings.Repeat("a", 64), Size: 42}, private, now, 24*time.Hour)
+	d, err := Sign(Descriptor{SchemaVersion: 2, Build: 20260913022, Product: "DevShell", Platform: "windows-amd64", Version: "v0.01", Notes: "中文 <更新>\n说明", SHA256: strings.Repeat("a", 64), ExecutableSHA256: strings.Repeat("a", 64), Size: 42}, private, now, 24*time.Hour)
 	if err != nil {
 		t.Fatal(err)
 	}

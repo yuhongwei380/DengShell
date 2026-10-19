@@ -28,7 +28,7 @@ out.mkdir(parents=True, exist_ok=True)
 notes_file = args.notes_file or (ROOT / 'build' / f'RELEASE-{VERSION}.md')
 shutil.copy2(args.binary.resolve(), out / 'up.exe')
 notes = notes_file.read_text(encoding='utf-8').strip() if notes_file.is_file() else f'{VERSION} 更新：详情见 GitHub Releases。'
-info = {'schemaVersion': 2, 'build': BUILD, 'product': 'DengShell', 'platform': 'windows-amd64',
+info = {'schemaVersion': 2, 'build': BUILD, 'product': 'DevShell', 'platform': 'windows-amd64',
         'version': VERSION, 'notes': notes, 'sha256': digest(out / 'up.exe'),
         'size': (out / 'up.exe').stat().st_size, 'executableSHA256': digest(args.binary.resolve())}
 (out / 'up.exe.json').write_text(json.dumps(info, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')

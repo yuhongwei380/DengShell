@@ -60,7 +60,7 @@ function reflectFontColorDialog(card) {
   if (fontColorCard !== card) return;
   const preview = $('#font-color-preview'); if (!preview) return;
   $('#font-color-dialog-title').textContent = `${card._asset.name} · 文字颜色`;
-  preview.textContent = 'DengShell 012345\n中文目录 · 繁體終端'; preview.style.color = colorForFont(card.dataset.fontId);
+  preview.textContent = 'DevShell 012345\n中文目录 · 繁體終端'; preview.style.color = colorForFont(card.dataset.fontId);
   preview.style.fontFamily = `"${card._asset.family}", "Deng CJK", monospace`; preview.style.fontWeight = boldForFont(card.dataset.fontId) ? '700' : '400';
 }
 function applyWorkspacePlacement() {

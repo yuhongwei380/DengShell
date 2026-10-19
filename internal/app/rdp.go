@@ -101,7 +101,7 @@ func rdpArguments(p Profile, password, address, token string) (string, error) {
 		return "", err
 	}
 	args := []string{"/v:" + net.JoinHostPort(p.Host, strconv.Itoa(p.Port)), "/u:" + p.User, "/p:" + password,
-		"/proxy:socks5://dengshell:" + token + "@" + address, "/size:1280x800", "/dynamic-resolution", "/gdi:sw", "/gfx:progressive,RFX,small-cache:off", "/bpp:32", "+fonts", "/title:DengShell RDP · " + p.Name, "/log-level:ERROR", "/timeout:15000", "-auto-reconnect", "-multitransport"}
+		"/proxy:socks5://dengshell:" + token + "@" + address, "/size:1280x800", "/dynamic-resolution", "/gdi:sw", "/gfx:progressive,RFX,small-cache:off", "/bpp:32", "+fonts", "/title:DevShell RDP · " + p.Name, "/log-level:ERROR", "/timeout:15000", "-auto-reconnect", "-multitransport"}
 	if p.Domain != "" {
 		args = append(args, "/d:"+p.Domain)
 	}

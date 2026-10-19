@@ -1,9 +1,10 @@
-/* Pinned connections: one-click reconnect chips under the title bar. */
-.pinned-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 7px 16px 0; }
+/* Pinned connections: one-click reconnect chips inside the top session bar,
+   left of the session tabs (Xshell-style placement, DevShell's own styling). */
+.pinned-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; flex: none; max-width: 38%; min-width: 0; margin-top: 4px; }
 .pinned-bar[hidden] { display: none; }
-.pinned-chip { display: flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 9px; border: 1px solid transparent; background: var(--surface-inset, #f0f4f7); color: var(--text, #43576b); font-size: 12px; cursor: pointer; }
+.pinned-chip { display: flex; align-items: center; gap: 6px; height: 26px; padding: 3px 10px; border-radius: 8px; border: 1px solid transparent; background: var(--surface-inset, #f0f4f7); color: var(--text, #43576b); font-size: 11px; cursor: pointer; --wails-draggable: no-drag; }
 .pinned-chip:hover { border-color: var(--border, #c6d4dd); }
-.pinned-chip svg { width: 13px; height: 13px; color: #78a99b; }
-.pinned-chip span { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-#pin-session.active svg { color: #78a99b; }
-#pin-session.active { background: #78a99b33; }
+.pinned-chip svg { width: 12px; height: 12px; color: #78a99b; flex: none; }
+.pinned-chip span { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#pin-session.active svg { color: #8fc0b0; }
+#pin-session.active { background: #78a99b4d; border-color: #78a99b80; }

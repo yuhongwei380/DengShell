@@ -77,7 +77,7 @@ func TestUpdateDescriptorIdentityAndValidation(t *testing.T) {
 	now := time.Now()
 	hash := strings.Repeat("a", 64)
 	old := strings.Repeat("b", 64)
-	base := UpdateDescriptor{SchemaVersion: 2, Build: ApplicationBuild + 1, Product: "DengShell", Platform: "linux-amd64", Version: ApplicationVersion, Notes: "中文更新说明", SHA256: hash, ExecutableSHA256: old, Size: 12345}
+	base := UpdateDescriptor{SchemaVersion: 2, Build: ApplicationBuild + 1, Product: "DevShell", Platform: "linux-amd64", Version: ApplicationVersion, Notes: "中文更新说明", SHA256: hash, ExecutableSHA256: old, Size: 12345}
 	for _, tc := range []struct {
 		name, current, want string
 		receipt             UpdateReceipt
@@ -200,7 +200,7 @@ func TestUpdateRejectsForeignRedirect(t *testing.T) {
 }
 func TestUpdateAcceptsUnsignedGitHubReleaseManifest(t *testing.T) {
 	now := time.Now()
-	d := UpdateDescriptor{SchemaVersion: 2, Build: ApplicationBuild + 1, Product: "DengShell", Platform: "linux-amd64", Version: ApplicationVersion, Notes: "GitHub release asset", SHA256: strings.Repeat("a", 64), ExecutableSHA256: strings.Repeat("b", 64), Size: 100}
+	d := UpdateDescriptor{SchemaVersion: 2, Build: ApplicationBuild + 1, Product: "DevShell", Platform: "linux-amd64", Version: ApplicationVersion, Notes: "GitHub release asset", SHA256: strings.Repeat("a", 64), ExecutableSHA256: strings.Repeat("b", 64), Size: 100}
 	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { json.NewEncoder(w).Encode(d) }))
 	defer s.Close()
 	got := checkUpdateTrusted(context.Background(), s.Client(), s.URL, "linux-amd64", strings.Repeat("c", 64), UpdateReceipt{}, updatetrust.PublisherKeys(), now)

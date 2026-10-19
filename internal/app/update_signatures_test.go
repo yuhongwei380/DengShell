@@ -22,7 +22,7 @@ func TestUpdateManifestSignaturePolicy(t *testing.T) {
 	now := time.Now()
 	for _, platform := range []string{"windows-amd64", "linux-amd64"} {
 		t.Run(platform, func(t *testing.T) {
-			d := UpdateDescriptor{SchemaVersion: 2, Build: ApplicationBuild + 1, Product: "DengShell", Platform: platform, Version: ApplicationVersion, SHA256: strings.Repeat("a", 64), ExecutableSHA256: strings.Repeat("a", 64), Size: 42}
+			d := UpdateDescriptor{SchemaVersion: 2, Build: ApplicationBuild + 1, Product: "DevShell", Platform: platform, Version: ApplicationVersion, SHA256: strings.Repeat("a", 64), ExecutableSHA256: strings.Repeat("a", 64), Size: 42}
 			var wire atomic.Value
 			wire.Store(d)
 			s := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

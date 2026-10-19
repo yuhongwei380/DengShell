@@ -71,6 +71,21 @@ printf '\n__CS_ADDR__\n'; ip -o addr show 2>/dev/null
 printf '\n__CS_ROUTES__\n'; ip -4 route show default 2>/dev/null; ip -6 route show default 2>/dev/null
 printf '\n__CS_CONNECTION__\n'; printf '%s\n' "$SSH_CONNECTION"
 printf '\n__CS_DF__\n'; df -Pkl 2>/dev/null
+printf '\n__CS_GPU__\n'
+if command -v nvidia-smi >/dev/null 2>&1; then
+    nvidia-smi --query-gpu=index,name,memory.used,memory.total,utilization.gpu --format=csv,noheader,nounits 2>/dev/null
+fi
+for dengshell_card in /sys/class/drm/card*/device; do
+    [ -r "$dengshell_card/mem_info_vram_total" ] || continue
+    dengshell_total=$(cat "$dengshell_card/mem_info_vram_total" 2>/dev/null)
+    case "$dengshell_total" in ''|*[!0-9]*) continue ;; esac
+    # amdgpu reports zero total VRAM on APUs; only discrete cards carry a
+    # dedicated framebuffer, which is exactly what the sidebar should show.
+    [ "$dengshell_total" -gt 0 ] || continue
+    dengshell_used=$(cat "$dengshell_card/mem_info_vram_used" 2>/dev/null)
+    dengshell_busy=$(cat "$dengshell_card/gpu_busy_percent" 2>/dev/null)
+    printf 'amd\t%s\t%s\t%s\t%s\n' "${dengshell_card%/device}" "${dengshell_used:-0}" "$dengshell_total" "${dengshell_busy:-0}"
+done
 `
 
 const monitorMinimumInterval = 5 * time.Second
@@ -96,6 +111,15 @@ type Disk struct {
 	Used      uint64 `json:"used"`
 	Available uint64 `json:"available"`
 }
+
+// GPU is one discrete graphics card detected on the remote host. Integrated
+// GPUs (no dedicated VRAM) are never reported.
+type GPU struct {
+	Name     string  `json:"name"`
+	MemUsed  uint64  `json:"memUsed"`
+	MemTotal uint64  `json:"memTotal"`
+	Util     float64 `json:"util"`
+}
 type Stats struct {
 	OS                           string              `json:"os"`
 	CPUModel                     string              `json:"cpuModel"`
@@ -120,6 +144,7 @@ type Stats struct {
 	LatencyReady                 bool                `json:"latencyReady"`
 	SampleReady                  bool                `json:"sampleReady"`
 	Disks                        []Disk              `json:"disks"`
+	GPUs                         []GPU               `json:"gpus"`
 	Processes                    []Process           `json:"processes"`
 	ProcessMemoryTop             []Process           `json:"processMemoryTop,omitempty"`
 	ProcessSample                ProcessSampleInfo   `json:"processSample"`
@@ -162,7 +187,7 @@ func parseStats(data []byte, at time.Time) (rawStats, error) {
 			sections[section] = append(sections[section], line)
 		}
 	}
-	r := rawStats{Stats: Stats{CPUModel: "未知 CPU", OS: "Linux", SampledAt: at, Disks: []Disk{}, Processes: []Process{}, Interfaces: []NetworkInterface{}, ServerIPv4: []string{}, ServerIPv6: []string{}}}
+	r := rawStats{Stats: Stats{CPUModel: "未知 CPU", OS: "Linux", SampledAt: at, Disks: []Disk{}, GPUs: []GPU{}, Processes: []Process{}, Interfaces: []NetworkInterface{}, ServerIPv4: []string{}, ServerIPv6: []string{}}}
 	if len(sections["__CS_STAT__"]) == 0 || len(sections["__CS_MEM__"]) == 0 {
 		return r, errors.New("无法读取 Linux /proc 监控数据；请确认远程系统类型和账号权限")
 	}
@@ -249,6 +274,7 @@ func parseStats(data []byte, at time.Time) (rawStats, error) {
 		}
 	}
 	r.Disks = parseMonitorDisks(sections["__CS_DF__"], sections["__CS_MOUNTS__"])
+	r.GPUs = parseMonitorGPUs(sections["__CS_GPU__"])
 	parseProcessStats(&r, sections["__CS_PROCESS__"])
 	return r, nil
 }
@@ -440,6 +466,7 @@ func displayStats(value Stats, processes, cached bool, latency LatencySample) St
 	value.ServerIPv6 = append([]string{}, value.ServerIPv6...)
 	value.ServerAddressInfo = append([]ServerAddressInfo{}, value.ServerAddressInfo...)
 	value.Disks = append([]Disk{}, value.Disks...)
+	value.GPUs = append([]GPU{}, value.GPUs...)
 	if processes {
 		value.Processes = append([]Process{}, value.Processes...)
 		value.ProcessSample.Cached = value.ProcessSample.Cached || cached
@@ -458,6 +485,7 @@ func applyStaticMetadata(current *rawStats, previous *Stats) {
 	current.ServerIPv6 = append([]string{}, previous.ServerIPv6...)
 	current.ServerAddressInfo = append([]ServerAddressInfo{}, previous.ServerAddressInfo...)
 	current.Disks = append([]Disk{}, previous.Disks...)
+	current.GPUs = append([]GPU{}, previous.GPUs...)
 	for i := range current.Interfaces {
 		iface := &current.Interfaces[i]
 		for _, old := range previous.Interfaces {

@@ -152,7 +152,7 @@ window.DengUIAppearance = (() => {
   async function finishImport(asset) {
     if (!asset) return;
     await loadProfiles(); await selectFont({ ...asset, family: `Deng UI custom ${asset.id}` });
-    await render(); toast('界面字体已导入并保存，重启 DengShell 后生效');
+    await render(); toast('界面字体已导入并保存，重启 DevShell 后生效');
   }
   async function importFont() {
     const desktop = native();

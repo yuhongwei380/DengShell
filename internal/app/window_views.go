@@ -51,7 +51,7 @@ func (a *App) RegisterWindowView(input WindowViewUpdate) (WindowViewInfo, error)
 	input.SessionIDs = ids
 	input.Title = strings.TrimSpace(input.Title)
 	if input.Title == "" {
-		input.Title = "DengShell"
+		input.Title = "DevShell"
 	}
 	value := WindowViewInfo{WindowViewUpdate: input, UpdatedAt: time.Now()}
 	a.mu.Lock()
@@ -123,7 +123,7 @@ func containsWindowSession(v WindowViewInfo, id string) bool {
 }
 func (a *App) mergeViewsValidLocked(input WindowMergeRequest) error {
 	if input.SourceID == input.TargetID {
-		return errors.New("请选择另一个 DengShell 窗口")
+		return errors.New("请选择另一个 DevShell 窗口")
 	}
 	source, sourceOK := a.windowViews[input.SourceID]
 	target, targetOK := a.windowViews[input.TargetID]

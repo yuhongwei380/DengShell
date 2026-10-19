@@ -10,7 +10,7 @@ if [[ "${1:-}" == '--macos' ]] || { [[ $# == 0 ]] && [[ "$(uname -s)" == Darwin 
   exec python3 scripts/build-macos.py "$@"
 elif [[ "${1:-}" == '--windows' ]]; then
   mkdir -p build/windows
-  GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -buildvcs=false -trimpath -tags desktop,production -ldflags '-s -w -H windowsgui' -o build/windows/DengShell.exe .
+  GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build -buildvcs=false -trimpath -tags desktop,production -ldflags '-s -w -H windowsgui' -o build/windows/DevShell.exe .
 elif [[ "${1:-}" == '--browser' ]]; then
   go build -buildvcs=false -trimpath -ldflags '-s -w' -o dengshell-server .
 else

@@ -51,7 +51,7 @@ func initialPlatformWindow() (initialWindowBounds, error) {
 	}
 	var monitor C.DengMonitor
 	if C.dengshell_monitor(&monitor) == 0 {
-		return initialWindowBounds{}, errors.New("无法连接桌面显示服务。请在 Ubuntu 图形桌面中启动 DengShell；SSH/无桌面环境可使用 --browser")
+		return initialWindowBounds{}, errors.New("无法连接桌面显示服务。请在 Ubuntu 图形桌面中启动 DevShell；SSH/无桌面环境可使用 --browser")
 	}
 	return initialWindowForMonitor(monitorBounds{
 		X: int(monitor.x), Y: int(monitor.y), Width: int(monitor.width), Height: int(monitor.height),

@@ -73,7 +73,7 @@ func handleUpdateHelper() bool {
 	planFile := os.Args[2]
 	err := runUpdateHelper(planFile)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "DengShell update:", err)
+		fmt.Fprintln(os.Stderr, "DevShell update:", err)
 		os.Exit(1)
 	}
 	return true

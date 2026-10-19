@@ -21,7 +21,7 @@ ds_boot=` + terminalQuote(p.boot) + `
 ds_swapfile=` + terminalQuote(p.swapfile) + `
 ds_fs=` + terminalQuote(p.filesystem) + `
 ds_memory=` + terminalQuote(p.memory) + `
-[ ! -L "$ds_state" ] || ds_fail 'DengShell 状态目录是符号链接，已停止。'
+[ ! -L "$ds_state" ] || ds_fail 'DevShell 状态目录是符号链接，已停止。'
 mkdir -p "$ds_state"
 ds_lock="$ds_state/utility.lock"
 mkdir "$ds_lock" 2>/dev/null || ds_fail '另一个常用应用正在运行；若上次异常中断，请先核实再清理 utility.lock。'

@@ -182,7 +182,7 @@ func TestSecurityLockRFC6238AndTOTPBinding(t *testing.T) {
 		t.Fatal(e)
 	}
 	uri, e := url.Parse(enrollment.URI)
-	if e != nil || uri.Scheme != "otpauth" || uri.Host != "totp" || uri.Query().Get("issuer") != "DengShell" || uri.Query().Get("secret") != enrollment.Secret {
+	if e != nil || uri.Scheme != "otpauth" || uri.Host != "totp" || uri.Query().Get("issuer") != "DevShell" || uri.Query().Get("secret") != enrollment.Secret {
 		t.Fatal("invalid authenticator URI")
 	}
 	pngBytes, e := base64.StdEncoding.DecodeString(strings.TrimPrefix(enrollment.QR, "data:image/png;base64,"))

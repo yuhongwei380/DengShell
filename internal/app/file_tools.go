@@ -538,7 +538,7 @@ func archiveSelectionName(targets []string) string {
 	if len(targets) == 1 {
 		return archiveName(targets[0])
 	}
-	return "DengShell-files.tar.gz"
+	return "DevShell-files.tar.gz"
 }
 func (a *App) DownloadArchiveTo(sessionID, remote, local string) error {
 	return a.DownloadSelectionArchiveTo(sessionID, []string{remote}, local)

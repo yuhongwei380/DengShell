@@ -126,7 +126,10 @@ func parseNetworkStats(r *rawStats, sections map[string][]string) {
 					usable = false
 				}
 			}
-			if ip, public := publicServerAddress(prefix.Addr().String()); usable && public {
+			// The sidebar lists NIC addresses only: Docker, Kubernetes, libvirt,
+			// TUN/TAP and tunnel interfaces are skipped along with loopback,
+			// link-local and tentative addresses.
+			if ip, ok := usableServerAddress(prefix.Addr().String()); usable && ok && !virtualInterfaceName(iface.Name) {
 				r.ServerAddressInfo = append(r.ServerAddressInfo, ServerAddressInfo{ip.String(), "interface", iface.Name})
 			}
 		}

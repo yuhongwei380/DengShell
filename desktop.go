@@ -412,7 +412,7 @@ func runDesktopBackend(application desktopBackend, assets fs.FS, configDir, deta
 	}
 	nativeHandler := nativeAssetHandler(application, assets)
 	return wails.Run(&options.App{
-		Title: "DengShell", Width: initial.Width, Height: initial.Height, MinWidth: initial.MinWidth, MinHeight: initial.MinHeight,
+		Title: "DevShell", Width: initial.Width, Height: initial.Height, MinWidth: initial.MinWidth, MinHeight: initial.MinHeight,
 		Frameless:        goruntime.GOOS == "windows",
 		StartHidden:      goruntime.GOOS == "windows",
 		BackgroundColour: options.NewRGB(240, 243, 247),
@@ -487,24 +487,24 @@ func runDesktopBackend(application desktopBackend, assets fs.FS, configDir, deta
 		Linux:       &linux.Options{ProgramName: "dengshell", Icon: desktopIcon, WebviewGpuPolicy: linux.WebviewGpuPolicyOnDemand},
 		Mac: &mac.Options{
 			DisableZoom: true, DisableEscapeExitsFullscreen: true,
-			About: &mac.AboutInfo{Title: "DengShell", Message: app.ApplicationDisplayVersion + " · SSH 终端与服务器管理", Icon: desktopIcon},
+			About: &mac.AboutInfo{Title: "DevShell", Message: app.ApplicationDisplayVersion + " · SSH 终端与服务器管理", Icon: desktopIcon},
 		},
 		Windows: &windows.Options{
 			WindowClassName: "DengShellWindow", DisableWindowIcon: false,
 			IsZoomControlEnabled: false, DisablePinchZoom: true,
 			WebviewUserDataPath: desktopWebviewPath(configDir, detachedNonce),
 			Messages: &windows.Messages{
-				InstallationRequired: "DengShell 需要 Microsoft Edge WebView2 运行时才能显示界面。\n点击“确定”从 Microsoft 官方站点下载安装；已有终端配置不会被修改。\n下载需要联网，请等待安装窗口出现。离线电脑可先安装 WebView2 Evergreen 独立安装包。",
-				UpdateRequired:       "DengShell 需要更新 Microsoft Edge WebView2 运行时。\n点击“确定”下载安装官方更新，需要联网。",
-				MissingRequirements:  "DengShell · 运行环境检查",
-				Webview2NotInstalled: "未安装 WebView2，DengShell 尚未启动。安装 Microsoft Edge WebView2 Evergreen 运行时后重试。",
-				Error:                "DengShell · 运行环境错误",
-				FailedToInstall:      "WebView2 未能安装成功。请从 https://developer.microsoft.com/microsoft-edge/webview2 下载 Evergreen 运行时，安装后重新启动 DengShell。",
-				DownloadPage:         "DengShell 需要 Microsoft Edge WebView2 运行时。点击“确定”打开 Microsoft 官方下载页面。最低版本：",
+				InstallationRequired: "DevShell 需要 Microsoft Edge WebView2 运行时才能显示界面。\n点击“确定”从 Microsoft 官方站点下载安装；已有终端配置不会被修改。\n下载需要联网，请等待安装窗口出现。离线电脑可先安装 WebView2 Evergreen 独立安装包。",
+				UpdateRequired:       "DevShell 需要更新 Microsoft Edge WebView2 运行时。\n点击“确定”下载安装官方更新，需要联网。",
+				MissingRequirements:  "DevShell · 运行环境检查",
+				Webview2NotInstalled: "未安装 WebView2，DevShell 尚未启动。安装 Microsoft Edge WebView2 Evergreen 运行时后重试。",
+				Error:                "DevShell · 运行环境错误",
+				FailedToInstall:      "WebView2 未能安装成功。请从 https://developer.microsoft.com/microsoft-edge/webview2 下载 Evergreen 运行时，安装后重新启动 DevShell。",
+				DownloadPage:         "DevShell 需要 Microsoft Edge WebView2 运行时。点击“确定”打开 Microsoft 官方下载页面。最低版本：",
 				PressOKToInstall:     "点击“确定”安装 Microsoft Edge WebView2 运行时。",
-				ContactAdmin:         "DengShell 需要 Microsoft Edge WebView2 运行时，请安装 Evergreen 运行时后重试。",
+				ContactAdmin:         "DevShell 需要 Microsoft Edge WebView2 运行时，请安装 Evergreen 运行时后重试。",
 				InvalidFixedWebview2: "指定的 WebView2 运行时不可用，请检查运行时目录及版本。",
-				WebView2ProcessCrash: "WebView2 进程已退出，请重新启动 DengShell。若反复出现，请修复 Microsoft Edge WebView2 运行时。",
+				WebView2ProcessCrash: "WebView2 进程已退出，请重新启动 DevShell。若反复出现，请修复 Microsoft Edge WebView2 运行时。",
 			},
 		},
 	})

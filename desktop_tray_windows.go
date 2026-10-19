@@ -77,8 +77,8 @@ func trayWndProc(hwnd uintptr, msg uint32, wparam, lparam uintptr) uintptr {
 				return 0
 			}
 			defer windowUser32.NewProc("DestroyMenu").Call(menu)
-			windowUser32.NewProc("AppendMenuW").Call(menu, 0, 1, uintptr(unsafe.Pointer(trayString("打开 DengShell"))))
-			windowUser32.NewProc("AppendMenuW").Call(menu, 0, 2, uintptr(unsafe.Pointer(trayString("退出 DengShell"))))
+			windowUser32.NewProc("AppendMenuW").Call(menu, 0, 1, uintptr(unsafe.Pointer(trayString("打开 DevShell"))))
+			windowUser32.NewProc("AppendMenuW").Call(menu, 0, 2, uintptr(unsafe.Pointer(trayString("退出 DevShell"))))
 			var point struct{ X, Y int32 }
 			windowUser32.NewProc("GetCursorPos").Call(uintptr(unsafe.Pointer(&point)))
 			windowUser32.NewProc("SetForegroundWindow").Call(hwnd)
@@ -126,7 +126,7 @@ func platformInitializeTray(_ string) {
 		icon, _, _ := windowUser32.NewProc("LoadImageW").Call(instance, 2, 1, 32, 32, 0x8000)
 		trayNotify = trayNotifyData{Window: hwnd, ID: uint32(os.Getpid()), Flags: 1 | 2 | 4, Callback: 0x8001, Icon: icon}
 		trayNotify.Size = uint32(unsafe.Sizeof(trayNotify))
-		tip, _ := windows.UTF16FromString("DengShell · 双击打开")
+		tip, _ := windows.UTF16FromString("DevShell · 双击打开")
 		copy(trayNotify.Tip[:], tip)
 		trayAdd()
 		var msg trayMessage

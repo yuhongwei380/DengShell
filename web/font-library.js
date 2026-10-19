@@ -36,7 +36,7 @@ window.DengFontLibrary = (() => {
     if (jobs.has(font.id) || confirming.has(font.id)) return;
     confirming.add(font.id);
     let confirmed;
-    try { confirmed = await ask({ title: `下载并使用「${font.name}」？`, description: `${bytes(font.file.size)} · ${font.licenseName}。从 DengShell 官网下载，完成后保存到本机，可离线使用。${font.fallbackNote || ''}`, confirm: '下载并使用' }); }
+    try { confirmed = await ask({ title: `下载并使用「${font.name}」？`, description: `${bytes(font.file.size)} · ${font.licenseName}。从 DevShell 官网下载，完成后保存到本机，可离线使用。${font.fallbackNote || ''}`, confirm: '下载并使用' }); }
     finally { confirming.delete(font.id); }
     if (!confirmed) return;
     const selectionKey = font.kind === 'ui-font' ? 'uiFontId' : 'fontId';
@@ -130,7 +130,7 @@ window.DengFontLibrary = (() => {
     for (const font of fonts) {
       const card = node('article', 'library-card'); card.dataset.libraryFont = font.id; card._font = font;
       const title = node('strong', '', font.name), detail = node('p', 'library-detail', font.description);
-      const image = node('span', 'library-live-preview', font.kind === 'font' ? 'root@server:~$ echo "Hello"\n简体中文 /home/user 繁體中文\n0123456789 ABC abc' : '连接服务器 · 文件管理\n简体中文 · 繁體中文\nDengShell 0123456789'); image.hidden = true;
+      const image = node('span', 'library-live-preview', font.kind === 'font' ? 'root@server:~$ echo "Hello"\n简体中文 /home/user 繁體中文\n0123456789 ABC abc' : '连接服务器 · 文件管理\n简体中文 · 繁體中文\nDevShell 0123456789'); image.hidden = true;
       const previewBox = node('div', 'library-preview'), message = node('span', 'library-preview-message', '正在准备样张…'); previewBox.append(image, message);
       const note = node('p', 'library-note', font.fallbackNote), status = node('p', 'library-state');
       const progress = node('progress'); progress.hidden = true; progress.setAttribute('aria-label', `${font.name}下载进度`);

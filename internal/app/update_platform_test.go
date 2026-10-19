@@ -47,7 +47,7 @@ func TestArchUpdateSignatureBindsPackageFamily(t *testing.T) {
 		{"linux-amd64", "none", false}, // Authentically signed DEB cannot become an Arch update.
 		{"linux-amd64", "none", true},  // Relabelling DEB to pacman invalidates its signature.
 	} {
-		d := UpdateDescriptor{SchemaVersion: 2, Build: ApplicationBuild + 1, Product: "DengShell", Platform: tc.platform, Version: ApplicationVersion, SHA256: strings.Repeat("a", 64), ExecutableSHA256: strings.Repeat("b", 64), Size: 100}
+		d := UpdateDescriptor{SchemaVersion: 2, Build: ApplicationBuild + 1, Product: "DevShell", Platform: tc.platform, Version: ApplicationVersion, SHA256: strings.Repeat("a", 64), ExecutableSHA256: strings.Repeat("b", 64), Size: 100}
 		d, err = updatetrust.Sign(d, private, now, time.Hour)
 		if err != nil {
 			t.Fatal(err)

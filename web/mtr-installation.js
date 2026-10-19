@@ -40,7 +40,7 @@ function renderMTRInstallation(record) {
     note = '关闭此窗口不会终止已经启动的系统包安装。请勿同时在此机器上重复安装。';
   } else if (record.phase === 'interactive') {
     description = '请在服务器终端完成安装；需要密码时直接在终端输入。';
-    action = '重新检测'; note = '安装完成后点击「重新检测」。DengShell 不读取或保存 sudo 密码。';
+    action = '重新检测'; note = '安装完成后点击「重新检测」。DevShell 不读取或保存 sudo 密码。';
   } else if (plan?.alreadyInstalled) {
     description = '检测到 mtr 已安装，无需重复安装。'; action = '重新检测';
   } else if (plan?.canAutoInstall) {
@@ -51,7 +51,7 @@ function renderMTRInstallation(record) {
     action = '确定，在终端安装'; note = '请先结束终端中正在运行的程序。如果无法确认终端处于命令提示符，将仅复制安装命令。';
   } else if (plan) {
     description = plan.manualReason || '请在本机终端使用管理员权限执行以上命令，然后重新检测。';
-    action = plan.command ? '复制安装命令' : '关闭'; note = 'DengShell 不会自动更改软件源。';
+    action = plan.command ? '复制安装命令' : '关闭'; note = 'DevShell 不会自动更改软件源。';
   }
   $('#mtr-install-description').textContent = description;
   $('#mtr-install-note').textContent = note;

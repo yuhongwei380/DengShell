@@ -36,14 +36,14 @@ def zip_tree(folder, target, prefix=Path()):
 
 def distribution(folder, binary, windows, source_ref=VERSION):
     folder.mkdir(parents=True, exist_ok=False)
-    copy(binary, folder/('DengShell.exe' if windows else 'dengshell'))
+    copy(binary, folder/('DevShell.exe' if windows else 'dengshell'))
     for sub, pattern, dest in [('web/assets/fonts/licenses','*.txt','fonts'), ('web/vendor','*LICENSE',''), ('build/go-licenses','*','go'), ('build/installer-licenses','*','installer')]:
         for p in (ROOT/sub).glob(pattern):
             if p.is_file(): copy(p, folder/'data/licenses'/dest/p.name)
     for name in ['LICENSE-GRAPHICS.txt','ATTRIBUTION.txt']: copy(ROOT/'web/assets/group-emoji'/name,folder/'data/licenses'/('Twemoji-'+name))
     for p in list((ROOT/'web/assets/ui-fonts').glob('*-OFL.txt'))+list((ROOT/'web/assets/ui-fonts').glob('*-LICENSE.txt')): copy(p,folder/'data/licenses/ui-fonts'/p.name)
     for p in (ROOT/'web/assets/system-logos').glob('*.txt'): copy(p,folder/'data/licenses/system-logos'/p.name)
-    copy(ROOT/'LICENSE',folder/'data/licenses/DengShell-MIT.txt')
+    copy(ROOT/'LICENSE',folder/'data/licenses/DevShell-MIT.txt')
     if windows:
         for p in (ROOT/'native-rdp').glob('*'):
             if p.is_file() and ('LICENSE' in p.name or p.name in ('sources.json','NOTICE.txt')): copy(p,folder/'data/licenses/rdp'/p.name)
@@ -71,7 +71,7 @@ def package(args):
     # Validate the actual packed EXE with the same debug/pe reader used by old
     # Windows updaters. Normalize UPX's empty COFF pointer before any hashes or
     # signatures are made, keeping the caller's frozen input unchanged.
-    prepared_windows = work/'DengShell-validated.exe'
+    prepared_windows = work/'DevShell-validated.exe'
     subprocess.run(['go', 'run', './cmd/prepare-windows-image',
                     '-in', str(winbinary), '-out', str(prepared_windows)], cwd=ROOT, check=True)
     winbinary = prepared_windows
@@ -84,15 +84,15 @@ def package(args):
                 raise SystemExit(f'Runtime credential file must not be embedded: {p.relative_to(ROOT)}')
             assert all(p.read_bytes() in b for b in binaries), f'Embedded asset differs: {p}'
             assets[str(p.relative_to(ROOT))]=digest(p)
-    win = distribution(work/'DengShell-windows-x64',winbinary,True,args.source_ref)
+    win = distribution(work/'DevShell-windows-x64',winbinary,True,args.source_ref)
     linux = distribution(work/'DengShell-linux-x64',linuxbinary,False,args.source_ref)
-    zip_tree(win,out/'DengShell-windows-x64.zip')
-    subprocess.run(['python3',str(ROOT/'scripts/package-windows.py'),'--stage',str(win),'--output',str(out/'DengShell-Setup-x64.exe')],check=True)
+    zip_tree(win,out/'DevShell-windows-x64.zip')
+    subprocess.run(['python3',str(ROOT/'scripts/package-windows.py'),'--stage',str(win),'--output',str(out/'DevShell-Setup-x64.exe')],check=True)
     subprocess.run(['python3',str(ROOT/'scripts/package-linux.py'),'--stage',str(linux),'--build-info',str(linuxbinary.parent/'build-info.json'),'--version',PACKAGE_VERSION,'--release',str(BUILD % 1000),'--output',str(out)],check=True)
-    copy(winbinary,out/'DengShell.exe')
+    copy(winbinary,out/'DevShell.exe')
     copy(out/'up.deb',out/'DengShell-linux-x64.deb')
     copy(out/'up.deb',out/'DengShell-ubuntu-x64.deb')
-    copy(ROOT/'build/windows/README.txt',out/'DengShell-Windows-说明.txt')
+    copy(ROOT/'build/windows/README.txt',out/'DevShell-Windows-说明.txt')
     source = work/'source';source.mkdir()
     sourcefiles=[]
     for pattern in ['.gitattributes','*.go','go.mod','go.sum','package.json','package-lock.json','*.sh','*.ps1','*.syso','README.md','CHANGELOG.md','LICENSE','.gitignore']:
@@ -111,7 +111,7 @@ def package(args):
         if not p.is_file(): continue
         if not runtime_credential_file(p): copy(p,source/p.relative_to(ROOT))
     copy(linuxbinary.parent/'build-info.json',source/'build/linux/native/build-info.json')
-    zip_tree(source,out/'DengShell-source.zip',Path('DengShell'))
+    zip_tree(source,out/'DevShell-source.zip',Path('DevShell'))
     notes=(args.update_notes.read_text().strip() if args.update_notes else f'{VERSION} 更新：详情见官网更新日志。')
     for binary,artifact,platform,name in [(winbinary,winbinary,'windows-amd64','up.exe'),(linuxbinary,out/'up.deb','linux-amd64','up.deb'),(linuxbinary,out/'DengShell-linux-x64.pkg.tar.zst','linux-amd64-pacman','up.pkg.tar.zst')]:
         descriptor = site/(name+'.json')
@@ -121,11 +121,11 @@ def package(args):
                 raise SystemExit(f'Cannot preserve missing update notes: {descriptor}')
             release_notes = json.loads(descriptor.read_text())['notes']
         copy(artifact,site/name)
-        info={'schemaVersion':2,'build':BUILD,'product':'DengShell','platform':platform,'version':VERSION,'notes':release_notes,'sha256':digest(artifact),'size':artifact.stat().st_size,'executableSHA256':digest(binary)}
+        info={'schemaVersion':2,'build':BUILD,'product':'DevShell','platform':platform,'version':VERSION,'notes':release_notes,'sha256':digest(artifact),'size':artifact.stat().st_size,'executableSHA256':digest(binary)}
         (site/(name+'.json')).write_text(json.dumps(info,ensure_ascii=False,indent=2)+'\n', encoding='utf-8')
         subprocess.run([str(args.signer.resolve()), '-key', str(args.signing_key.resolve()),
                         '-in', str(site/(name+'.json')), '-out', str(site/(name+'.json'))], check=True)
-    for name in ['DengShell-windows-x64.zip','DengShell-Setup-x64.exe','DengShell-linux-x64.deb','DengShell-linux-x64.rpm','DengShell-linux-x64.tar.gz','DengShell-linux-x64.pkg.tar.zst','DengShell-source.zip']:
+    for name in ['DevShell-windows-x64.zip','DevShell-Setup-x64.exe','DengShell-linux-x64.deb','DengShell-linux-x64.rpm','DengShell-linux-x64.tar.gz','DengShell-linux-x64.pkg.tar.zst','DevShell-source.zip']:
         copy(out/name,site/'downloads'/name)
     files={p.name:{'bytes':p.stat().st_size,'sha256':digest(p)} for p in sorted(out.iterdir()) if p.suffix in ['.exe','.zip','.gz','.deb','.rpm','.zst']}
     manifest={'version':VERSION,'build':LABEL,'applicationBuild':BUILD,'artifacts':files,'embeddedAssets':assets,'executableHashes':{'windows-amd64':digest(winbinary),'linux-amd64':digest(linuxbinary)}}

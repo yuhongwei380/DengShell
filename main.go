@@ -63,13 +63,13 @@ func main() {
 		log.Fatal(err)
 	}
 	if !*browser && desktopAvailable() {
-		log.Printf("DengShell: %s", application.URL())
+		log.Printf("DevShell: %s", application.URL())
 		if err = runDesktop(application, content, *config); err != nil {
 			log.Print(err)
 		}
 		return
 	}
-	log.Printf("DengShell: %s", application.BrowserURL())
+	log.Printf("DevShell: %s", application.BrowserURL())
 	log.Print("本地浏览器模式：请打开上面的地址")
 	signals := make(chan os.Signal, 1)
 	signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)

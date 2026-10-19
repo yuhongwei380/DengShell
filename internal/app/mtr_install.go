@@ -195,7 +195,7 @@ func mtrPlanForEnvironment(env mtrEnvironment) MTRInstallPlan {
 			plan.Distro = "macOS"
 			plan.PackageManager, plan.PackageName = "brew", "mtr"
 			plan.Command = "brew install mtr"
-			plan.ManualReason = "请在 macOS 终端中通过 Homebrew 安装 mtr，并按安装提示配置 mtr-packet 权限；DengShell 不会以 root 身份运行。"
+			plan.ManualReason = "请在 macOS 终端中通过 Homebrew 安装 mtr，并按安装提示配置 mtr-packet 权限；DevShell 不会以 root 身份运行。"
 			return plan
 		}
 		plan.ManualReason = "当前系统未提供自动安装方案，请使用该系统的包管理器安装 mtr。"

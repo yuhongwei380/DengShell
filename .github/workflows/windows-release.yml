@@ -34,17 +34,17 @@ jobs:
           }
           (Get-Command makensis).Source
       - name: Build desktop binary
-        run: go build -buildvcs=false -trimpath -tags desktop,production -ldflags "-s -w -H windowsgui" -o build/out/DengShell.exe .
+        run: go build -buildvcs=false -trimpath -tags desktop,production -ldflags "-s -w -H windowsgui" -o build/out/DevShell.exe .
       - name: Prepare Windows image
-        run: go run ./cmd/prepare-windows-image -in build/out/DengShell.exe -out build/out/DengShell-prepared.exe
+        run: go run ./cmd/prepare-windows-image -in build/out/DevShell.exe -out build/out/DevShell-prepared.exe
       - name: Stage distribution
-        run: python scripts/stage-windows.py --binary build/out/DengShell-prepared.exe --stage build/out/stage
+        run: python scripts/stage-windows.py --binary build/out/DevShell-prepared.exe --stage build/out/stage
       - name: Build installer
-        run: python scripts/package-windows.py --stage build/out/stage --output build/out/DengShell-Setup-x64.exe
+        run: python scripts/package-windows.py --stage build/out/stage --output build/out/DevShell-Setup-x64.exe
       - name: Build portable zip
-        run: python -c "import importlib.util; from pathlib import Path; s=importlib.util.spec_from_file_location('pr','scripts/package-release.py'); pr=importlib.util.module_from_spec(s); s.loader.exec_module(pr); pr.zip_tree(Path('build/out/stage'), Path('build/out/DengShell-windows-x64.zip'))"
+        run: python -c "import importlib.util; from pathlib import Path; s=importlib.util.spec_from_file_location('pr','scripts/package-release.py'); pr=importlib.util.module_from_spec(s); s.loader.exec_module(pr); pr.zip_tree(Path('build/out/stage'), Path('build/out/DevShell-windows-x64.zip'))"
       - name: Build update artifacts
-        run: python scripts/make-windows-update.py --binary build/out/DengShell-prepared.exe --output-dir build/out/update
+        run: python scripts/make-windows-update.py --binary build/out/DevShell-prepared.exe --output-dir build/out/update
       - name: Publish GitHub Release
         shell: pwsh
         run: |
@@ -52,10 +52,10 @@ jobs:
           $version = (Select-String -Path internal/app/updates.go -Pattern 'const ApplicationVersion = "([^"]+)"').Matches[0].Groups[1].Value
           $notes = "build/RELEASE-$version.md"
           if (gh release view $tag 2>$null) {
-            gh release edit $tag --title "DengShell $tag" --notes-file $notes
+            gh release edit $tag --title "DevShell $tag" --notes-file $notes
           } else {
-            gh release create $tag --title "DengShell $tag" --notes-file $notes
+            gh release create $tag --title "DevShell $tag" --notes-file $notes
           }
-          gh release upload $tag build/out/DengShell-Setup-x64.exe build/out/DengShell-windows-x64.zip build/out/update/up.exe build/out/update/up.exe.json --clobber
+          gh release upload $tag build/out/DevShell-Setup-x64.exe build/out/DevShell-windows-x64.zip build/out/update/up.exe build/out/update/up.exe.json --clobber
         env:
           GH_TOKEN: ${{ github.token }}

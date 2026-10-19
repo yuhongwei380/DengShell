@@ -6,7 +6,7 @@
  const receiving=new Set(),completed=new Set();
  const available=()=>typeof sessions!=='undefined'&&window.DengPortablePreferences?.ready;
  function shortTitle(value){let title='',bytes=0;for(const c of value){bytes+=new TextEncoder().encode(c).length;if(bytes>220)return title+'…';title+=c;}return title;}
- function details(){const states=[...sessions.values()].filter(s=>!s.closed&&!s.localOnly);const names=states.map(s=>profileFor(s)?.name||'SSH');return{id,title:shortTitle((boot.detachedNonce?'独立窗口':'主窗口')+(names.length?' · '+names.slice(0,3).join('、'):' · DengShell')),sessionIds:states.map(s=>s.id),visible:!window.DengShellWindowHidden};}
+ function details(){const states=[...sessions.values()].filter(s=>!s.closed&&!s.localOnly);const names=states.map(s=>profileFor(s)?.name||'SSH');return{id,title:shortTitle((boot.detachedNonce?'独立窗口':'主窗口')+(names.length?' · '+names.slice(0,3).join('、'):' · DevShell')),sessionIds:states.map(s=>s.id),visible:!window.DengShellWindowHidden};}
  async function register(){
   if(!available()||closing)return;
   if(registerPromise){await registerPromise;return;}

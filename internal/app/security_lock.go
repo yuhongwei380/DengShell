@@ -410,8 +410,8 @@ func (a *App) EnrollLockTOTP(token string) (LockEnrollment, error) {
 	if hostname == "" {
 		hostname = "Desktop"
 	}
-	uri := url.URL{Scheme: "otpauth", Host: "totp", Path: "/DengShell:" + hostname}
-	uri.RawQuery = url.Values{"secret": {encoded}, "issuer": {"DengShell"}, "algorithm": {"SHA1"}, "digits": {"6"}, "period": {"30"}}.Encode()
+	uri := url.URL{Scheme: "otpauth", Host: "totp", Path: "/DevShell:" + hostname}
+	uri.RawQuery = url.Values{"secret": {encoded}, "issuer": {"DevShell"}, "algorithm": {"SHA1"}, "digits": {"6"}, "period": {"30"}}.Encode()
 	png, err := qrcode.Encode(uri.String(), qrcode.Medium, 280)
 	if err != nil {
 		return LockEnrollment{}, err

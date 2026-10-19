@@ -8,9 +8,9 @@ try {
     $env:GOARCH = 'amd64'
     $env:CGO_ENABLED = '0'
     New-Item -ItemType Directory -Force 'build/windows' | Out-Null
-    & go build -buildvcs=false -trimpath -tags 'desktop,production' -ldflags '-s -w -H windowsgui' -o 'build/windows/DengShell.exe' .
-    if ($LASTEXITCODE -ne 0) { throw 'DengShell Windows build failed.' }
-    Write-Host 'Built: build/windows/DengShell.exe'
+    & go build -buildvcs=false -trimpath -tags 'desktop,production' -ldflags '-s -w -H windowsgui' -o 'build/windows/DevShell.exe' .
+    if ($LASTEXITCODE -ne 0) { throw 'DevShell Windows build failed.' }
+    Write-Host 'Built: build/windows/DevShell.exe'
 } finally {
     $env:GOOS = $previousGoos
     $env:GOARCH = $previousGoarch
