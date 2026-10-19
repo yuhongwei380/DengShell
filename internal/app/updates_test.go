@@ -226,6 +226,31 @@ func TestUpdateAcceptsUnsignedGitHubReleaseManifest(t *testing.T) {
 		t.Fatalf("manifest claiming a bogus signature accepted: %+v", got)
 	}
 }
+// A release published after startup must still be downloadable in the same
+// session: the manual check refreshes the cached offer that the download
+// compares the confirmed hash against.
+func TestManualCheckRefreshesOfferForDownload(t *testing.T) {
+	a, e := New(t.TempDir())
+	if e != nil {
+		t.Fatal(e)
+	}
+	defer a.Close()
+	payload := []byte("mid-session release")
+	path := t.TempDir() + "/payload"
+	os.WriteFile(path, payload, 0600)
+	hash, _ := FileSHA256(path)
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write(payload) }))
+	defer s.Close()
+	a.updateCheck.once.Do(func() {
+		a.updateCheck.done = make(chan struct{})
+		a.updateCheck.result = noUpdate("none")
+		close(a.updateCheck.done)
+	})
+	a.setUpdateResult(UpdateStatus{Status: "available", Package: &UpdatePackage{Format: NativePackageFormat(), Build: ApplicationBuild + 1, Version: ApplicationVersion, URL: s.URL + "/up.deb", SHA256: hash, ExecutableSHA256: hash, Size: int64(len(payload)), expiresAt: time.Now().Add(time.Hour).Unix()}})
+	if _, e = a.StartUpdateDownload(hash); e != nil && strings.Contains(e.Error(), "不一致") {
+		t.Fatalf("download rejected after manual check refresh: %v", e)
+	}
+}
 func TestDownloadMustMatchOfferAndBytes(t *testing.T) {
 	for _, corrupt := range []bool{false, true} {
 		t.Run(map[bool]string{false: "correct", true: "corrupt"}[corrupt], func(t *testing.T) {

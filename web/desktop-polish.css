@@ -9,15 +9,17 @@
 .titlebar .brand-logo { width:26px; height:26px; pointer-events:none; }
 [data-narrow="true"] .titlebar .brand .header-pill { margin:0!important; }
 /* Window buttons sit in the top-right corner with a stronger, visible pill. */
-.titlebar .window-controls { grid-column:3; justify-self:end; align-self:center; flex-shrink:0; gap:3px; padding:3px; border-radius:11px; background:#a7bed240; }
+.titlebar .window-controls { grid-column:3; grid-row:1; justify-self:end; align-self:center; flex-shrink:0; gap:3px; padding:3px; border-radius:11px; background:#a7bed240; }
 .titlebar .window-controls button { color:#33566e; }
 /* Mirror the workspace when the monitor is on the right. */
 [data-monitor-side="right"]:not([data-narrow="true"]) .titlebar { grid-template-columns:minmax(0,1fr) var(--pane-gap) var(--sidebar-width); }
 [data-monitor-side="right"]:not([data-narrow="true"]) .titlebar .brand { grid-column:3; }
 [data-monitor-side="right"]:not([data-narrow="true"]) .titlebar .window-controls { grid-column:3; }
-[data-narrow="true"] .titlebar { display:grid; grid-template-columns:minmax(0,1fr); gap:0; }
+[data-monitor-side="right"]:not([data-narrow="true"]) .titlebar .pinned-bar { grid-column:1; }
+[data-narrow="true"] .titlebar { display:grid; grid-template-columns:minmax(0,1fr); gap:0; height:auto; min-height:42px; padding-top:4px; }
 [data-narrow="true"] .titlebar .brand { width:max-content; grid-template-columns:repeat(5,28px); margin-bottom:3px; }
 [data-narrow="true"] .titlebar .window-controls { grid-column:1; justify-self:end; }
+[data-narrow="true"] .titlebar .pinned-bar { grid-column:1; grid-row:2; justify-self:start; margin-bottom:4px; }
 
 /* Dark frosted surfaces keep terminal controls readable over every wallpaper. */
 .terminal-panel .terminal-meta,

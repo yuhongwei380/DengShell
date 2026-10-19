@@ -40,7 +40,7 @@ const ApplicationPackageVersion = "26.10.0"
 // three-digit daily sequence. Increase it for every published build, including
 // packaging-only releases; update manifests must exceed it. The sequence tracks
 // the upstream DengShell build numbering (107–114 ported on 2026-10-18).
-const ApplicationBuild uint64 = 20261018120
+const ApplicationBuild uint64 = 20261018121
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,
@@ -162,9 +162,23 @@ func (a *App) beginUpdateCheck() {
 			defer close(a.updateCheck.done)
 			ctx, cancel := context.WithTimeout(a.ctx, updateTimeout)
 			defer cancel()
-			a.updateCheck.result = boundedUpdateProbe(ctx, func() UpdateStatus { return a.updateProbe(ctx, updateTimeout) })
+			a.setUpdateResult(boundedUpdateProbe(ctx, func() UpdateStatus { return a.updateProbe(ctx, updateTimeout) }))
 		}()
 	})
+}
+
+// The manual check refreshes the cached offer so a release published after
+// startup can be downloaded in the same session; the download compares the
+// hash the user just confirmed against this same offer.
+func (a *App) setUpdateResult(result UpdateStatus) {
+	a.updateCheck.mu.Lock()
+	a.updateCheck.result = result
+	a.updateCheck.mu.Unlock()
+}
+func (a *App) getUpdateResult() UpdateStatus {
+	a.updateCheck.mu.Lock()
+	defer a.updateCheck.mu.Unlock()
+	return a.updateCheck.result
 }
 
 // updateProbe runs one end-to-end update check; the manual settings action
@@ -405,7 +419,7 @@ func (a *App) registerUpdateHTTP(mux *http.ServeMux) {
 		a.beginUpdateCheck()
 		select {
 		case <-a.updateCheck.done:
-			writeJSON(w, a.updateCheck.result)
+			writeJSON(w, a.getUpdateResult())
 		case <-r.Context().Done():
 		}
 	})
@@ -414,7 +428,9 @@ func (a *App) registerUpdateHTTP(mux *http.ServeMux) {
 		defer a.updateCheck.manualMu.Unlock()
 		ctx, cancel := context.WithTimeout(r.Context(), manualUpdateTimeout)
 		defer cancel()
-		writeJSON(w, a.updateProbe(ctx, manualUpdateTimeout))
+		result := a.updateProbe(ctx, manualUpdateTimeout)
+		a.setUpdateResult(result)
+		writeJSON(w, result)
 	})
 	mux.HandleFunc("POST /api/updates/download", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
@@ -451,7 +467,7 @@ func (a *App) StartUpdateDownload(hash string) (UpdateDownload, error) {
 	default:
 		return UpdateDownload{}, errors.New("更新检查尚未完成")
 	}
-	offer := a.updateCheck.result
+	offer := a.getUpdateResult()
 	if offer.Status == "available" && !NativePackageUpdateSupported() {
 		return UpdateDownload{}, errors.New("当前发行版不支持内置安装或缺少安装工具，请下载对应安装包升级")
 	}
