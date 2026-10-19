@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http/httptest"
 	"os"
@@ -12,6 +13,8 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"golang.org/x/crypto/ssh"
 )
 
 func TestSSHDiagnosticPreservesFirstTriggerAndSurvivesRemoval(t *testing.T) {
@@ -79,6 +82,25 @@ func TestSSHDiagnosticsBoundedRotatingLogAndNoRawErrors(t *testing.T) {
 	data, _ := os.ReadFile(l.path)
 	if strings.Contains(string(data), secret) {
 		t.Fatal("raw error leaked to diagnostics")
+	}
+}
+
+func TestSSHShellExitDiagnosticSeparatesNormalExit(t *testing.T) {
+	cases := []struct {
+		err  error
+		code string
+	}{
+		{nil, "DS-100"},
+		{&ssh.ExitError{}, "DS-100"},
+		{fmt.Errorf("wrapped: %w", &ssh.ExitError{}), "DS-100"},
+		{io.EOF, "DS-210"},
+		{errors.New("connection reset by peer"), "DS-210"},
+	}
+	for _, c := range cases {
+		code, detail := sshShellExitDiagnostic(c.err)
+		if code != c.code || detail == "" {
+			t.Fatalf("shell exit %v -> %s/%s, want %s", c.err, code, detail, c.code)
+		}
 	}
 }
 

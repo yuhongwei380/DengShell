@@ -486,7 +486,12 @@ func (r *terminalRelay) run() {
 		if shellEnded && outputEnded && len(r.output) == 0 && paused == nil {
 			message := "终端已退出"
 			if shellErr != nil {
-				message = shellErr.Error()
+				var exitStatus *ssh.ExitError
+				if errors.As(shellErr, &exitStatus) {
+					message = "终端已退出（远端 Shell 返回状态 " + strconv.Itoa(exitStatus.ExitStatus()) + "）"
+				} else {
+					message = shellErr.Error()
+				}
 			}
 			_ = status(active, "exit", message, "")
 			return
@@ -502,7 +507,10 @@ func (r *terminalRelay) run() {
 			outputEnded = true
 			copiesDone = nil
 		case shellErr = <-shellDone:
-			s.noteDisconnect("DS-210", sshDiagnosticErrorKind(shellErr))
+			// A shell that ends on its own (exit, logout, non-zero status) is a
+			// normal user-initiated close, not a transport anomaly.
+			code, detail := sshShellExitDiagnostic(shellErr)
+			s.noteDisconnect(code, detail)
 			shellEnded = true
 			shellDone = nil
 		case frame := <-output:

@@ -15,13 +15,25 @@ window.DengLocalPrompt = (() => {
     return view;
   }
   function trimHistory(box) { while (box.children.length > 80) box.firstChild.remove(); }
-  function line(box, text, className) {
-    const span = node('span', className || '');
-    span.textContent = text;
-    box.append(span);
-    trimHistory(box);
-    box.scrollTop = box.scrollHeight;
-    return span;
+  // A sink writes one chunk and returns an in-place updater, or null when the
+  // output is append-only. The scratchpad supports updates; a session terminal
+  // appends to scrollback.
+  function scratchSink(box) {
+    return (text, kind) => {
+      const span = node('span', kind === 'cmd' ? 'local-prompt-line' : '');
+      span.textContent = text;
+      box.append(span);
+      trimHistory(box);
+      box.scrollTop = box.scrollHeight;
+      return value => { span.textContent = value; box.scrollTop = box.scrollHeight; };
+    };
+  }
+  function termSink(term) {
+    return (text, kind) => {
+      const body = text.replace(/[\r\n]+$/, '');
+      term.writeln(kind === 'cmd' ? `\x1b[38;5;114m${body}\x1b[0m` : `\x1b[38;5;245m${body}\x1b[0m`);
+      return null;
+    };
   }
   function parse(command) {
     const tokens = command.trim().replace(/^ping(?:\s+|$)/i, '').trim().split(/\s+/).filter(Boolean);
@@ -34,27 +46,32 @@ window.DengLocalPrompt = (() => {
     if (hosts.length !== 1 || hosts[0].startsWith('-')) return null;
     return { host: hosts[0], continuous };
   }
-  async function run(command) {
-    const box = ensure();
-    box.hidden = false;
-    $('#welcome-state').hidden = true;
+  async function run(command, sink) {
+    if (!sink) {
+      const box = ensure();
+      box.hidden = false;
+      $('#welcome-state').hidden = true;
+      sink = scratchSink(box);
+    }
     const runId = ++generation; // supersedes any running continuous probe
-    line(box, `[本机] $ ${command.trim()}\n`, 'local-prompt-line');
+    sink(`[本机] $ ${command.trim()}\n`, 'cmd');
     const parsed = parse(command);
-    if (!parsed) { line(box, 'ping 后只接受主机名或 IP，可加 -t 持续探测。\n\n'); return; }
-    if (parsed.continuous) { await continuous(box, parsed.host, runId); return; }
-    const pending = line(box, '正在从本机探测…\n');
+    if (!parsed) { sink('ping 后只接受主机名或 IP，可加 -t 持续探测。\n\n'); return; }
+    if (parsed.continuous) { await continuous(sink, parsed.host, runId); return; }
+    const pending = sink('正在从本机探测…\n');
     try {
       const payload = await post('/api/quick-connect/ping', { host: parsed.host });
-      pending.textContent = `${(payload?.output || '').trimEnd()}\n\n`;
+      const text = `${(payload?.output || '').trimEnd()}\n\n`;
+      if (pending) pending(text); else sink(text);
     } catch (error) {
-      pending.textContent = `${error.message || error}\n\n`;
+      const text = `${error.message || error}\n\n`;
+      if (pending) pending(text); else sink(text);
     }
-    if (runId !== generation) pending.textContent = '（已被新命令取代）\n';
-    box.scrollTop = box.scrollHeight;
+    if (runId !== generation) { const text = '（已被新命令取代）\n'; if (pending) pending(text); else sink(text); }
   }
-  async function continuous(box, host, runId) {
-    const status = line(box, '持续探测中，按 Ctrl+C 停止…\n');
+  async function continuous(sink, host, runId) {
+    const status = sink('持续探测中，按 Ctrl+C 停止…\n');
+    const setStatus = text => { if (status) status(text); else sink(text); };
     // Console-style interrupt: Ctrl+C stops the probe unless it would copy a
     // text selection.
     let stopped = false;
@@ -75,12 +92,12 @@ window.DengLocalPrompt = (() => {
         if (runId !== generation) return; // a newer command owns the scratchpad
         if (failure) {
           sent++;
-          line(box, `${sent}  ${failure.message || failure}\n`);
+          sink(`${sent}  ${failure.message || failure}\n`);
         } else {
-          if (!header) { header = true; status.textContent = `本机 ICMP → ${host} (${payload?.resolved || host})\n`; }
+          if (!header) { header = true; setStatus(`本机 ICMP → ${host} (${payload?.resolved || host})\n`); }
           sent++;
           if (payload?.ok) received++;
-          line(box, `${sent}  ${payload?.output || ''}\n`);
+          sink(`${sent}  ${payload?.output || ''}\n`);
         }
         if (stopped) break;
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -89,9 +106,8 @@ window.DengLocalPrompt = (() => {
     } finally {
       document.removeEventListener('keydown', onKey);
     }
-    if (!header) status.textContent = `本机 ICMP → ${host}\n`;
-    line(box, `收到 ${received} / ${sent} 个响应（已停止）\n\n`);
-    box.scrollTop = box.scrollHeight;
+    if (!header) setStatus(`本机 ICMP → ${host}\n`);
+    sink(`收到 ${received} / ${sent} 个响应（已停止）\n\n`);
   }
   function reflect() {
     if (!view?.isConnected) return;
@@ -109,5 +125,5 @@ window.DengLocalPrompt = (() => {
     $('#welcome-state').hidden = false;
     return true;
   }
-  return { run, reflect, handleClear };
+  return { run, reflect, handleClear, termSink };
 })();

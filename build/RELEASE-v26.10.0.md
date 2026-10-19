@@ -1,4 +1,4 @@
-# DevShell v26.10.0 · 构建 20261018117
+# DevShell v26.10.0 · 构建 20261018118
 
 Phoenix 分支（[yuhongwei380/DevShell](https://github.com/yuhongwei380/DevShell)）首个按新版本号规则发布的版本。
 
@@ -19,6 +19,7 @@ Phoenix 分支（[yuhongwei380/DevShell](https://github.com/yuhongwei380/DevShel
 - Windows 发行全面更名为 **DevShell**：`DevShell-Setup-x64.exe`、`DevShell-windows-x64.zip`、`DevShell.exe`，开始菜单／桌面快捷方式与卸载入口同步更名；安装器自动沿用此前 DengShell 的安装目录与全部数据，并清理旧程序文件、旧快捷方式与旧卸载登记。
 - 设置菜单新增「检查更新」（位于「关于本软件」之前）：手动触发全新检查，发现新版本弹出更新对话框，可下载并自动安装重启；已是最新或网络不可用时给出明确提示。
 - 界面文案全面改用 DevShell 品牌：窗口标题、设置标题、退出 / 解锁对话框、更新对话框、帮助手册、托盘菜单与系统错误弹窗均显示 DevShell；内部数据目录、配置加密标识、终端集成协议与更新缓存标识不变，历史配置与凭据无需迁移。
+- 构建 20261018118：会话 `exit` / `logout` 后标签落回**本机提示符**（参考 Xshell）——标签与终端内容保留，命令框可直接输入 `ssh 用户@主机`（当前标签内连新地址）、`reconnect`（原地址重连）、`ping 主机 [-t]`（本机探测）、`exit`（关闭标签）、`help`（命令列表），无需关闭标签再去首页重输。同时修复正常退出被误报为异常断开：远端 Shell 自行结束记 DS-100 用户主动断开（ℹ️），不再显示 ⚠️ DS-210；仅通道 / 传输异常仍记 DS-210。
 - 界面展示版本为 `ver.Phoenix · v26.10.0`。
 
 ## 升级说明

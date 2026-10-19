@@ -162,7 +162,9 @@ async function connect(profileID, force = false, options = {}) {
   if (connectionProfile(profileID)?.protocol === "rdp") return window.DengRDP.connect(profileID, {...options, previousID: force ? options.sessionId : null});
   const matches = [...sessions.values()].filter(s => s.profileId === profileID);
   const previous = force ? (options.sessionId ? sessions.get(options.sessionId) : matches.find(s => s.id === activeID) || matches[0]) : null;
-  if (force && (!previous || previous.profileId !== profileID || previous.closed)) return null;
+  // Reconnect keeps the same profile in its own tab. A disconnected tab may
+  // also be replaced in place by a different profile (local-prompt "ssh ...").
+  if (force && (!previous || previous.closed || (previous.profileId !== profileID && (previous.connected || previous.pendingConnection)))) return null;
   // Coalesce repeat clicks for the same action, not independent reconnects.
   const requestKey = force ? `reconnect:${previous.id}` : `new:${profileID}`;
   if (connectionRequests.has(requestKey)) return connectionRequests.get(requestKey);
@@ -409,9 +411,10 @@ function markSessionDisconnected(state) {
   state.connected = false; state.ready = false; state.navGeneration++; state.navAbort?.abort();
   state.term.options.disableStdin = true;
   state.term.writeln('\r\n\x1b[38;5;245m🔌  连接已断开，终端内容已保留。点击重新连接可建立新会话。\x1b[0m');
+  state.term.writeln('\x1b[38;5;245m💡  本机提示符已就绪：在下方输入框输入 ssh 用户@主机 连接新地址，reconnect 重连本会话，exit 关闭标签。\x1b[0m');
   showDisconnectDiagnostic(state);
   renderTabs();
-  if (activeID === state.id) { renderSessionInfo(); renderFiles(); }
+  if (activeID === state.id) { renderSessionInfo(); renderFiles(); $('#command-input').focus(); }
 }
 async function showDisconnectDiagnostic(state) {
   if (state.disconnectDiagnosticRequested) return;
@@ -454,6 +457,25 @@ async function disconnectSession(state = current()) {
     state.disconnecting = false;
     if (activeID === state.id) { $('#disconnect').disabled = !state.connected; $('#reconnect').disabled = false; }
   }
+}
+// Xshell-style fallback: after the remote shell exits, the tab stays and the
+// command bar becomes a local prompt. Commands run locally; "ssh ..." connects
+// a new address in this same tab instead of forcing a close-and-reopen.
+async function sessionLocalCommand(state, raw) {
+  const command = raw.trim();
+  const echo = () => state.term.writeln(`\r\n\x1b[38;5;114m[本机] $ ${command}\x1b[0m`);
+  if (/^(exit|quit|close)$/i.test(command)) { echo(); await closeSession(state.id); return; }
+  if (/^reconnect$/i.test(command)) { echo(); await connect(state.profileId, true, { sessionId: state.id }); return; }
+  if (/^help$/i.test(command)) {
+    echo();
+    for (const hint of ['ssh 用户@主机 —— 在本标签连接新地址（支持 ssh -p 端口 用户@主机、IPv6）', 'reconnect —— 用原地址重新连接本标签', 'ping 主机 [-t] —— 本机探测，Ctrl+C 停止', 'exit —— 关闭本标签']) state.term.writeln(`\x1b[38;5;245m  ${hint}\x1b[0m`);
+    return;
+  }
+  if (/^ping(?:\s|$)/i.test(command)) { await window.DengLocalPrompt.run(command, window.DengLocalPrompt.termSink(state.term)); return; }
+  echo();
+  const profile = await post('/api/quick-connect', { command, auth: 'password', keyId: '' });
+  temporaryProfiles.set(profile.id, profile);
+  await connect(profile.id, true, { sessionId: state.id });
 }
 function dropSessionView(id, expected = null) {
   const state = sessions.get(id); if (!state || expected && state !== expected) return;
@@ -518,11 +540,12 @@ function renderSessionInfo() {
   // status: the green dot plus badge replaces the plain "已连接" text.
   const currentConnected = !!state?.connected && !state?.handoffProvisional;
   $('#terminal-state').hidden = currentConnected; $('#terminal-current-badge').hidden = !currentConnected;
-  $('#command-history').disabled = false; $('#command-input').disabled = !!state && !state.connected; $('#command-input').placeholder = state ? '输入命令并回车发送 · ↑↓ 历史' : '本机：输入 ssh 用户@主机 或 ping 主机'; window.DengQuickConnect?.reflect(); $('#command-input').value = ''; resizeCommandInput(); $('#reconnect').disabled = !state || !!(state.pendingConnection || state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain); $('#disconnect').disabled = !state?.connected || !!(state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain);
+  const localPrompt = !!state && !state.connected && !state.pendingConnection && !state.disconnecting && !state.detaching && !state.handoffProvisional && !state.ownershipUncertain;
+  $('#command-history').disabled = false; $('#command-input').disabled = !!state && !(state.connected || localPrompt); $('#command-input').placeholder = state ? (state.connected ? '输入命令并回车发送 · ↑↓ 历史' : localPrompt ? '本机提示符：ssh 用户@主机 · reconnect · ping 主机 · exit' : '输入命令并回车发送 · ↑↓ 历史') : '本机：输入 ssh 用户@主机 或 ping 主机'; window.DengQuickConnect?.reflect(); $('#command-input').value = ''; resizeCommandInput(); $('#reconnect').disabled = !state || !!(state.pendingConnection || state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain); $('#disconnect').disabled = !state?.connected || !!(state.disconnecting || state.detaching || state.handoffProvisional || state.ownershipUncertain);
   $('#follow-terminal').checked = state ? !!state.follow : pendingFollow; $('#follow-terminal').disabled = !!state && (!state.ready || !filesUsable(state));
   renderMonitor(state?.connected ? state.stats : null); renderLatency(); renderCommands(); window.DengCommonApps?.render(); window.DengProcessView?.reflect(); window.DengPinnedNav?.reflect(); updateStatus();
 }
-$('#command-form').onsubmit = event => { event.preventDefault(); const state = current(); const input = $('#command-input'); if (!state && input.value.trim()) { const command = input.value; input.value = ''; if (/^ping(?:\s|$)/i.test(command.trim())) safe(() => window.DengLocalPrompt.run(command))(); else safe(() => window.DengQuickConnect.run(command))(); return; } if (!state?.ready || !input.value) return; if (!pasteTerminalText(state, input.value, { execute: true })) return; input.value = ''; resizeCommandInput(); };
+$('#command-form').onsubmit = event => { event.preventDefault(); const state = current(); const input = $('#command-input'); if (!state && input.value.trim()) { const command = input.value; input.value = ''; if (/^ping(?:\s|$)/i.test(command.trim())) safe(() => window.DengLocalPrompt.run(command))(); else safe(() => window.DengQuickConnect.run(command))(); return; } if (state && !state.connected && !state.pendingConnection && !state.detaching && !state.handoffProvisional && !state.ownershipUncertain && input.value.trim()) { const command = input.value; input.value = ''; safe(() => sessionLocalCommand(state, command))(); return; } if (!state?.ready || !input.value) return; if (!pasteTerminalText(state, input.value, { execute: true })) return; input.value = ''; resizeCommandInput(); };
 $('#command-input').onkeydown = event => { if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) { event.preventDefault(); $('#command-form').requestSubmit(); return; } const state = current(); if (!state || !['ArrowUp', 'ArrowDown'].includes(event.key)) return; event.preventDefault(); state.historyIndex = Math.max(0, Math.min(state.history.length, state.historyIndex + (event.key === 'ArrowUp' ? -1 : 1))); event.target.value = state.history[state.historyIndex] || ''; resizeCommandInput(); };
 $('#reconnect').onclick = safe(() => { const state = current(); return state && connect(state.profileId, true, { sessionId: state.id }); });
 $('#disconnect').onclick = safe(() => disconnectSession());

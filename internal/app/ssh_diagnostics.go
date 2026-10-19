@@ -208,6 +208,17 @@ func (s *Session) startConnectionDiagnostics() {
 	}()
 }
 
+// sshShellExitDiagnostic classifies a finished remote shell: an exit status
+// (including non-zero) means the shell ended on its own, which is a normal
+// user-initiated close; anything else is a channel or transport anomaly.
+func sshShellExitDiagnostic(err error) (string, string) {
+	var exitStatus *ssh.ExitError
+	if err == nil || errors.As(err, &exitStatus) {
+		return "DS-100", "remote-shell-exit"
+	}
+	return "DS-210", sshDiagnosticErrorKind(err)
+}
+
 func sshDiagnosticErrorKind(err error) string {
 	if err == nil {
 		return "completed"
