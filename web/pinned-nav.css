@@ -13,3 +13,20 @@
 [data-theme="dark"] .pinned-chip:hover { border-color: #7fa8c8; color: #e2edf4; }
 #pin-session.active svg { color: #8fc0b0; }
 #pin-session.active { background: #78a99b4d; border-color: #78a99b80; }
+
+/* Overflow beyond the 7 visible chips collapses into a dropdown. */
+.pinned-more-wrap { position: relative; display: flex; flex: none; }
+.pinned-more { width: 28px; height: 28px; border-radius: 9px; border: 1px solid var(--border, #d3dfe8); background: var(--surface, #ffffff); color: var(--muted, #7d93a5); cursor: pointer; display: flex; align-items: center; justify-content: center; --wails-draggable: no-drag; }
+.pinned-more:hover { border-color: var(--accent, #658daf); color: var(--accent, #527fa4); }
+.pinned-more svg { width: 13px; height: 13px; transform: rotate(90deg); transition: transform .16s; }
+.pinned-more.open svg { transform: rotate(-90deg); }
+.pinned-more-menu { position: fixed; z-index: 60; min-width: 190px; max-height: 320px; overflow: auto; padding: 5px; border-radius: 11px; border: 1px solid var(--border, #dbe6ee); background: var(--surface, #ffffff); box-shadow: 0 10px 26px #293f5626; display: flex; flex-direction: column; gap: 3px; --wails-draggable: no-drag; }
+.pinned-more-item { display: flex; align-items: center; gap: 7px; height: 30px; padding: 0 9px; border: 0; border-radius: 8px; background: transparent; color: var(--text, #3d5468); font-size: 12px; cursor: pointer; text-align: left; }
+.pinned-more-item:hover { background: var(--surface-hover, #e6edf2); }
+.pinned-more-item svg { width: 13px; height: 13px; color: #6f9e90; flex: none; }
+.pinned-more-item span { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+[data-theme="dark"] .pinned-more { background: #1b2836; border-color: #33465a; color: #8fa6b8; }
+[data-theme="dark"] .pinned-more:hover { border-color: #7fa8c8; color: #e2edf4; }
+[data-theme="dark"] .pinned-more-menu { background: #16222e; border-color: #2a3a48; box-shadow: 0 10px 26px #00000066; }
+[data-theme="dark"] .pinned-more-item { color: #c6d6e2; }
+[data-theme="dark"] .pinned-more-item:hover { background: #223243; }
