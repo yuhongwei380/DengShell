@@ -140,7 +140,7 @@ func (a *App) Handler(assets fs.FS) http.Handler {
 		if lockState.Locked {
 			uiPreferences = map[string]json.RawMessage{}
 		}
-		data, _ := json.Marshal(map[string]any{"securityLock": lockState, "base": a.baseURL, "token": a.token, "theme": preferences.Theme, "uiScale": preferences.UIScale, "uiPreferences": uiPreferences, "uiFontRuntime": a.uiFontRuntime()})
+		data, _ := json.Marshal(map[string]any{"securityLock": lockState, "base": a.baseURL, "token": a.token, "theme": preferences.Theme, "uiScale": preferences.UIScale, "uiPreferences": uiPreferences, "uiFontRuntime": a.uiFontRuntime(), "version": ApplicationVersion})
 		fmt.Fprintf(w, "window.CLOUDSHELL = %s;", data)
 	})
 	mux.HandleFunc("GET /api/ui-fonts/runtime", func(w http.ResponseWriter, r *http.Request) { writeJSON(w, a.uiFontRuntime()) })

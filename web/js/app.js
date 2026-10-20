@@ -64,6 +64,8 @@ $('#theme-toggle').onclick = () => window.CloudShellTheme.toggle();
 window.addEventListener('cloudshell:theme', reflectTheme);
 reflectTheme();
 const boot = window.CLOUDSHELL;
+$('#app-version').textContent = boot?.version || '';
+$('#app-version').title = boot?.version ? `当前版本 ${boot.version}` : '';
 const desktopPage = location.protocol === 'wails:' || location.hostname === 'wails.localhost';
 let bridgeReady;
 function waitForDesktop() {
