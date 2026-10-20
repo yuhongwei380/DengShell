@@ -70,6 +70,11 @@
 [data-short="true"] .disk-io { margin-top:8px; }
 .terminal-command-bar textarea { resize:none; width:100%; min-width:0; min-height:46px; max-height:140px; border:0; background:transparent; color:#dae7ee; font:11px/18px var(--terminal-family,monospace); padding:5px 0; scrollbar-width:thin; }
 .terminal-command-bar textarea::placeholder { color:#809aa9; }
+/* Empty box shows guidance, not command text: enlarge the hint and center it in
+   the tall bar. Once the user types, :placeholder-shown drops and the compact
+   top-aligned monospace line returns, so multi-line editing is unaffected. */
+.terminal-command-bar textarea:placeholder-shown { font-size:13px; line-height:20px; padding-top:13px; padding-bottom:13px; }
+.terminal-command-bar:has(textarea:placeholder-shown) > svg { margin-top:15px; }
 .ping-chart { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:7px; margin-top:13px; padding:5px 0; }
 .ping-axis { position:relative; min-width:24px; color:var(--muted); font-size:9px; line-height:1; font-variant-numeric:tabular-nums; }
 .ping-axis > span { position:absolute; right:0; transform:translateY(-50%); white-space:nowrap; }
