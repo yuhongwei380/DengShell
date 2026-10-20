@@ -89,6 +89,33 @@ func TestQuickConnectionOnlyPersistsWhenExplicitlySaved(t *testing.T) {
 		t.Fatal("saved quick connection missing after restart")
 	}
 }
+func TestQuickConnectionSaveRemembersCredentialsWhenAsked(t *testing.T) {
+	a, host, port := authenticationFixture(t, &ssh.ServerConfig{PasswordCallback: func(_ ssh.ConnMetadata, p []byte) (*ssh.Permissions, error) { return nil, nil }})
+	response := issueRequest(t, a, "POST", "/api/quick-connect", map[string]any{"command": "ssh -p " + strconvI(port) + " demo@" + host})
+	if response.Code != 200 {
+		t.Fatal(response.Body.String())
+	}
+	var p Profile
+	json.Unmarshal(response.Body.Bytes(), &p)
+	if _, err := a.Connect(context.Background(), p.ID, "synthetic-only"); err != nil {
+		t.Fatal(err)
+	}
+	response = issueRequest(t, a, "POST", "/api/quick-connect/"+p.ID+"/save", map[string]any{"name": "Remembered quick", "group": "Quick", "remember": true, "secret": "hunter2"})
+	if response.Code != 200 {
+		t.Fatal(response.Body.String())
+	}
+	saved, err := a.store.Get(p.ID)
+	if err != nil || saved.Secret != "hunter2" {
+		t.Fatal("remembered credential not persisted")
+	}
+	reopened, err := OpenStore(a.store.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p, err := reopened.Get(saved.ID); err != nil || p.Secret != "hunter2" {
+		t.Fatal("remembered credential missing after restart")
+	}
+}
 func strconvI(n int) string { data, _ := json.Marshal(n); return string(data) }
 func TestClearCompletedTransfersPreservesActiveAndRetryable(t *testing.T) {
 	a, err := New(t.TempDir())

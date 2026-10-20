@@ -116,8 +116,9 @@ window.DengPinnedNav = (() => {
     if (!state || !profile) return;
     if (isPinned(profile.id)) { await unpin(profile.id); return; }
     if (temporaryProfiles.has(profile.id)) {
-      // Pinning a quick-connect session persists it first, like "保存连接".
-      const saved = await post(`/api/quick-connect/${profile.id}/save`, { name: profile.name, group: '快速连接', notes: '', remember: false, secret: '' });
+      // Pinning a quick-connect session persists it first, like "保存连接",
+      // carrying the credentials used this run so the pin reconnects silently.
+      const saved = await post(`/api/quick-connect/${profile.id}/save`, { name: profile.name, group: '快速连接', notes: '', remember: credentials.has(profile.id), secret: credentials.get(profile.id) || '' });
       temporaryProfiles.delete(profile.id);
       profiles = profiles.filter(p => p.id !== saved.id);
       profiles.push(saved);

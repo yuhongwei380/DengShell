@@ -31,7 +31,10 @@ window.DengQuickConnect = (() => {
     savingID = profile.id; saveGeneration++;
     const f = saveDialog.querySelector('form'); f.elements.name.value = profile.name; f.elements.group.value = '快速连接';
     window.DengProfileNotes.init(f.elements.notes, profile.notes || '');
-    f.elements.remember.checked = false; f.elements.remember.closest('label').hidden = profile.auth === 'agent' || !credentials.has(savingID);
+    // Quick-connect credentials the user just typed are remembered by default
+    // when the connection is saved; the checkbox stays visible to opt out.
+    const canRemember = profile.auth !== 'agent' && credentials.has(savingID);
+    f.elements.remember.checked = canRemember; f.elements.remember.closest('label').hidden = !canRemember;
     $('#quick-save-target').textContent = `${profile.user}@${profile.host}:${profile.port}`;
     $('#quick-save-error').textContent = ''; saveDialog.showModal(); f.elements.name.focus();
   }

@@ -20,10 +20,23 @@ try {
   await page.evaluate(()=>{document.querySelector('#quick-save-dialog').close();activate('save-b');document.querySelector('#save-quick-connection').click()});
   await page.evaluate(outcome=>{if(outcome==='success')qaSave.resolve({...temporaryProfiles.get('save-a'),temporary:false});else qaSave.reject(Error('old request failed'));},outcome);
   await page.waitForFunction(()=>!document.querySelector('#quick-save-dialog [type=submit]').disabled);
-  assert(await page.$eval('#quick-save-dialog',e=>e.open),'late result closed another connection dialog');
+  assert(await page.$eval('#quick-save-dialog',e=>e.open),'late save result must not close the newer dialog');
   assert.equal(await page.$eval('#quick-save-dialog [name=name]',e=>e.value),'save-b');
   assert.equal(await page.$eval('#quick-save-error',e=>e.textContent),'');
   await page.evaluate(()=>{document.querySelector('#quick-save-dialog').close();temporaryProfiles.set('save-a',{id:'save-a',name:'save-a',host:'example.invalid',user:'qa',port:22,temporary:true,auth:'password'});window.qaSave=null});
  }
- fs.writeFileSync(stage+'/quick-connect-races.json',JSON.stringify({passed:true,lateSaveSuccessIsolated:true,lateSaveFailureIsolated:true}));console.log('PASS quick connection save success/failure cannot close or overwrite another dialog');
+ // Credentials typed during quick connect are remembered by default when the
+ // connection is saved; without a cached credential the box stays hidden.
+ await page.evaluate(()=>{credentials.set('save-a','qa-secret-pw');profiles=profiles.filter(p=>p.id!=='save-a');activate('save-a');document.querySelector('#save-quick-connection').click()});
+ assert.equal(await page.$eval('#quick-save-dialog [name=remember]',e=>e.checked),true);
+ assert.equal(await page.$eval('#quick-save-dialog [name=remember]',e=>e.closest('label').hidden),false);
+ await page.evaluate(()=>{document.querySelector('#quick-save-dialog form').requestSubmit()});
+ await page.waitForFunction(()=>!!window.qaSave);
+ const saveBody=JSON.parse(await page.evaluate(()=>qaSave.body.body));
+ assert.equal(saveBody.remember,true);assert.equal(saveBody.secret,'qa-secret-pw');
+ await page.evaluate(()=>{qaSave.resolve({...temporaryProfiles.get('save-a'),temporary:false});document.querySelector('#quick-save-dialog').close();temporaryProfiles.set('save-b',{id:'save-b',name:'save-b',host:'example.invalid',user:'qa',port:22,temporary:true,auth:'password'});activate('save-b');document.querySelector('#save-quick-connection').click()});
+ assert.equal(await page.$eval('#quick-save-dialog [name=remember]',e=>e.closest('label').hidden),true);
+ assert.equal(await page.$eval('#quick-save-dialog [name=remember]',e=>e.checked),false);
+ await page.evaluate(()=>{document.querySelector('#quick-save-dialog').close()});
+ fs.writeFileSync(stage+'/quick-connect-races.json',JSON.stringify({passed:true,lateSaveSuccessIsolated:true,lateSaveFailureIsolated:true,quickCredentialsRememberedByDefault:true}));console.log('PASS quick connect save races + credentials remembered by default');
 }finally{await browser.close()}

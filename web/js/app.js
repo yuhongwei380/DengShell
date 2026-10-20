@@ -895,7 +895,9 @@ function showConnectionForm(profile = null, groupID = '') {
   form.elements.proxyPassword.placeholder = profile?.proxy?.hasPassword ? '已保存，留空保留' : '代理密码（可选）';
   $('#proxy-settings').open = !!profile?.needsProxy; updateProxyFields();
   chooseConnectionGroup(profile, groupID);
-  form.elements.remember.checked = !!profile?.hasSecret; $('#saved-secret-note').hidden = !profile?.hasSecret; $('#reset-host-key').hidden = !profile;
+  // A profile connected this run with a typed password has it cached in memory;
+  // offer to remember it even when nothing was persisted yet.
+  form.elements.remember.checked = !!profile?.hasSecret || (!!profile && credentials.has(profile.id)); $('#saved-secret-note').hidden = !profile?.hasSecret; $('#reset-host-key').hidden = !profile;
   $('#connection-form-title').textContent = profile?.needsProxy ? '编辑连接 · 请补充代理或确认直连' : profile ? '编辑连接' : '新建连接'; $('#save-connection').textContent = profile ? '保存更改' : '保存并连接'; updateAuthFields(); if (profile?.protocol === 'serial') void window.DengSerial.loadPorts(); $('#connection-dialog').showModal(); $('#connection-form .connection-form-body').scrollTop = 0;
 }
 function updateAuthFields() {
@@ -930,7 +932,9 @@ $('#connection-form').onsubmit = safe(async event => {
   event.preventDefault(); const form = event.target, values = Object.fromEntries(new FormData(form)), isNew = !values.id;
   if (!window.DengProfileNotes.validate(form.elements.notes)) return;
   const key = managedKeys.find(key => key.id === values.keyId), needsSecret = values.auth === 'password' || (values.auth === 'key' && (!key || (key.encrypted && !key.hasPassphrase)));
-  const secret = needsSecret ? values.secret : '', remember = needsSecret && form.elements.remember.checked;
+  // Empty secret field plus "remember" keeps the credential used this run
+  // (in-memory cache) instead of silently dropping it.
+  const secret = needsSecret ? (values.secret || credentials.get(values.id) || '') : '', remember = needsSecret && form.elements.remember.checked;
   const previous = profiles.find(profile => profile.id === values.id);
   const proxy = { type: values.proxyId ? 'direct' : values.proxyType, host: values.proxyHost, port: Number(values.proxyPort), user: values.proxyUser, password: values.proxyPassword, clearPassword: form.elements.clearProxyPassword.checked };
   for (const name of ['proxyType', 'proxyHost', 'proxyPort', 'proxyUser', 'proxyPassword', 'clearProxyPassword']) delete values[name];
