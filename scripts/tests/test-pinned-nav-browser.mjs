@@ -1,7 +1,8 @@
 // Opt-in browser regression for the pinned links bar: every chip and overflow
 // item exposes a close button, and unpinning must go through the shared
-// confirmation dialog before the layout is rewritten. Right-click no longer
-// unpins at all.
+// confirmation dialog before the layout is rewritten. Right-click renames the
+// connection in place: the saved profile name (the same field the server
+// manager edits) updates everywhere, while cancel changes nothing.
 // Edge on Windows hands the browser process off from the launcher stub, so the
 // browser is spawned directly and driven over CDP instead of puppeteer.launch.
 import fs from 'node:fs';
@@ -63,13 +64,29 @@ try {
   await page.waitForFunction(() => appearance.layout['dengshell.pinned.v1'].length === 7 && document.querySelectorAll('.pinned-chip').length === 7 && !document.querySelector('.pinned-more'));
   assert.deepEqual(await page.evaluate(() => appearance.layout['dengshell.pinned.v1']), created.slice(1));
   checks.push('Confirming removes the pin, persists the layout and reflows the overflow');
-  // Right-click no longer unpins: the close button is the only affordance.
+  // Right-click opens the rename dialog prefilled with the current name;
+  // cancelling changes nothing anywhere.
   await page.evaluate(() => document.querySelector('.pinned-chip').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })));
-  await new Promise(resolve => setTimeout(resolve, 300));
-  assert(!await page.$('#action-dialog[open]'), 'right-click must not open the unpin confirmation');
-  assert.equal(await page.$$eval('.pinned-chip', els => els.length), 7);
+  await page.waitForSelector('#action-dialog[open]');
+  assert((await page.$eval('#action-title', e => e.textContent)).includes('重命名连接'));
+  assert.equal(await page.$eval('#action-input', e => e.value), '固定测试-2');
+  await page.click('#action-cancel');
+  await page.waitForFunction(() => !document.querySelector('#action-dialog').open);
+  assert.equal(await page.$eval('.pinned-chip .pinned-chip-open span', e => e.textContent), '固定测试-2');
+  checks.push('Right-click opens a prefilled rename dialog; cancel changes nothing');
+  // Confirming renames the saved profile: the chip, the in-app profile list
+  // (the same name the server manager edits) and the persisted config all
+  // update, while the pin layout stays untouched.
+  const renamed = '改名后的连接';
+  await page.evaluate(() => document.querySelector('.pinned-chip').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })));
+  await page.waitForSelector('#action-dialog[open]');
+  await page.$eval('#action-input', (el, value) => { el.value = value; }, renamed);
+  await page.click('#action-confirm');
+  await page.waitForFunction(name => document.querySelector('.pinned-chip .pinned-chip-open span')?.textContent === name, {}, renamed);
+  assert.equal(await page.evaluate(id => profiles.find(profile => profile.id === id)?.name, created[1]), renamed);
+  assert.equal((await api('/api/config')).data.servers.find(profile => profile.id === created[1]).name, renamed);
   assert.deepEqual(await page.evaluate(() => appearance.layout['dengshell.pinned.v1']), created.slice(1));
-  checks.push('Right-click no longer unpins; only the close button does, with confirmation');
+  checks.push('Renaming updates the chip, the shared profile name and the persisted config; pins stay put');
   assert.deepEqual(errors, []);
   fs.writeFileSync(stage + '/pinned-nav.json', JSON.stringify({ passed: true, checks, errors }, null, 2)); console.log('PASS', checks);
 } catch (error) { if (page) await page.screenshot({ path: stage + '/pinned-nav-failure.png' }); throw error } finally { try { await browser?.close(); } catch {} try { child.kill(); } catch {} try { fs.rmSync(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 }); } catch {} }

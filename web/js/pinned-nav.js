@@ -35,14 +35,33 @@ window.DengPinnedNav = (() => {
     if (!await ask({ title: `取消固定 ${profile.name}？`, description: `将从链接栏移除 ${profile.name}（${profileSubtitle(profile)}）。连接配置与已保存数据不受影响，之后可重新固定。`, confirm: '取消固定' })) return;
     await unpin(profile.id);
   }
+  // Right-click renames in place: the name is the same field the server
+  // manager edits, so the saved profile is re-posted with only the name
+  // changed. Secrets and proxy passwords round-trip through the public view
+  // untouched (store.Save keeps them while the auth shape is unchanged).
+  async function renameProfile(profile) {
+    const answer = await ask({ title: '重命名连接', description: `修改「${profile.name}」的名称，与服务器管理里该连接的名称同步。`, input: true, value: profile.name, confirm: '保存' });
+    if (answer === null) return;
+    const name = String(answer).trim();
+    if (!name) { toast('名称不能为空'); return; }
+    if (name === profile.name) return;
+    const saved = await post('/api/profiles', { ...profile, name, clearSecret: false });
+    const index = profiles.findIndex(entry => entry.id === saved.id);
+    if (index >= 0) profiles[index] = saved; else profiles.push(saved);
+    renderConnections(); renderTabs(); renderSessionInfo();
+    render(); reflect();
+    toast(`已重命名为「${saved.name}」`);
+  }
+  const chipTitle = profile => `${profile.name} · ${profileSubtitle(profile)}\n左键快速连接 · 右键重命名 · × 关闭（取消固定需确认）`;
   function chipFor(profile) {
     const chip = node('span', 'pinned-chip');
     const open = node('button', 'pinned-chip-open');
     open.type = 'button';
     open.append(icon('server'), node('span', '', profile.name));
     open.onclick = () => openConnection(profile);
+    chip.oncontextmenu = event => { event.preventDefault(); safe(() => renameProfile(profile))(); };
     chip.append(open, removeButtonFor(profile));
-    chip.title = `${profile.name} · ${profileSubtitle(profile)}\n左键快速连接 · × 关闭（取消固定需确认）`;
+    chip.title = chipTitle(profile);
     return chip;
   }
   function moreFor(overflow) {
@@ -60,8 +79,9 @@ window.DengPinnedNav = (() => {
       open.type = 'button';
       open.append(icon('server'), node('span', '', profile.name));
       open.onclick = () => { menu.hidden = true; openConnection(profile); };
+      item.oncontextmenu = event => { event.preventDefault(); safe(() => renameProfile(profile))(); };
       item.append(open, removeButtonFor(profile));
-      item.title = `${profile.name} · ${profileSubtitle(profile)}\n左键快速连接 · × 关闭（取消固定需确认）`;
+      item.title = chipTitle(profile);
       menu.append(item);
     });
     btn.onclick = event => {
