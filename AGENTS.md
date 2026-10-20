@@ -17,3 +17,16 @@ chip 与 ▾ 溢出项右键弹出预填名称的输入框，保存后写回同�
 与服务器管理中的连接名称同步。验证：go 测试、npm run check、
 test-pinned-nav 浏览器回归全部通过。
 ```
+
+## 发版说明规范（docs/release/RELEASE-<版本>.md）
+
+- 新的构建**不再向「近期变化」逐条累加**；当前版本的 Release Note 保留原样。
+- 后续发版说明只写**本次变化**，按类别一行一条，简要干练：
+
+```
+调整：XXXX
+修复：XXXX
+新增：XXXX
+```
+
+- 完整变更历史以根目录 `CHANGELOG.md` 与 `docs/release/archive/` 为准，发版说明不重复罗列。
