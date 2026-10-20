@@ -1,6 +1,7 @@
 'use strict';
 // Pinned connections bar: pin the current session (saving a quick-connect
-// session first) and it appears in the top bar for one-click reconnect.
+// session first) and it appears in the top bar; each click opens a fresh
+// session tab, like double-clicking the server list.
 // The id list lives in appearance.layout under one key, whitelisted by the
 // backend layout validator (validSavedLayoutKey in preferences.go).
 window.DengPinnedNav = (() => {
@@ -17,8 +18,11 @@ window.DengPinnedNav = (() => {
   const MAX_CHIPS = 7;
   const profileSubtitle = profile => profile.protocol === 'serial' ? window.DengSerial.label(profile) : `${profile.user}@${profile.host}:${profile.port}`;
   function openConnection(profile) {
-    const existing = [...sessions.values()].find(s => s.profileId === profile.id);
-    if (existing) activate(existing.id); else connect(profile.id);
+    // Same semantics as double-clicking in the server list: every click opens a
+    // fresh session tab, even when a session for this profile already exists
+    // (activating the old one made repeat clicks look dead). connect() coalesces
+    // only in-flight requests, so accidental double clicks cannot stack up.
+    connect(profile.id);
   }
   function removeButtonFor(profile) {
     const remove = node('button', 'pinned-chip-remove');
@@ -52,7 +56,7 @@ window.DengPinnedNav = (() => {
     render(); reflect();
     toast(`已重命名为「${saved.name}」`);
   }
-  const chipTitle = profile => `${profile.name} · ${profileSubtitle(profile)}\n左键快速连接 · 右键重命名 · × 关闭（取消固定需确认）`;
+  const chipTitle = profile => `${profile.name} · ${profileSubtitle(profile)}\n左键新建会话 · 右键重命名 · × 关闭（取消固定需确认）`;
   function chipFor(profile) {
     const chip = node('span', 'pinned-chip');
     const open = node('button', 'pinned-chip-open');

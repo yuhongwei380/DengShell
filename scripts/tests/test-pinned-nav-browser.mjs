@@ -87,6 +87,25 @@ try {
   assert.equal((await api('/api/config')).data.servers.find(profile => profile.id === created[1]).name, renamed);
   assert.deepEqual(await page.evaluate(() => appearance.layout['dengshell.pinned.v1']), created.slice(1));
   checks.push('Renaming updates the chip, the shared profile name and the persisted config; pins stay put');
+  // Clicking a chip always opens a fresh session, even when one for that
+  // profile is already open and active: the old activate-if-exists path made
+  // repeat clicks look completely dead.
+  const clickCalls = await page.evaluate(() => {
+    const calls = { connect: [], activate: [] };
+    const originalConnect = connect, originalActivate = activate;
+    connect = id => { calls.connect.push(id); return Promise.resolve(null); };
+    activate = id => { calls.activate.push(id); };
+    const target = appearance.layout['dengshell.pinned.v1'][0];
+    sessions.set('qa-existing', { id: 'qa-existing', profileId: target, connected: true });
+    activeID = 'qa-existing';
+    document.querySelector('.pinned-chip .pinned-chip-open').click();
+    sessions.delete('qa-existing'); activeID = null;
+    connect = originalConnect; activate = originalActivate;
+    return calls;
+  });
+  assert.deepEqual(clickCalls.connect, [created[1]], 'chip click must call connect for the pinned profile');
+  assert.deepEqual(clickCalls.activate, [], 'chip click must not merely activate the existing session');
+  checks.push('Clicking a chip with an existing active session still opens a new connection');
   assert.deepEqual(errors, []);
   fs.writeFileSync(stage + '/pinned-nav.json', JSON.stringify({ passed: true, checks, errors }, null, 2)); console.log('PASS', checks);
 } catch (error) { if (page) await page.screenshot({ path: stage + '/pinned-nav-failure.png' }); throw error } finally { try { await browser?.close(); } catch {} try { child.kill(); } catch {} try { fs.rmSync(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 }); } catch {} }
