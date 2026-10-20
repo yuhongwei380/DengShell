@@ -111,8 +111,8 @@ function reflectServerExplorerDetails() {
   const chosen = [...serverManager.selectedProfiles], profile = chosen.length === 1 ? profiles.find(p => p.id === chosen[0]) : null;
   details.replaceChildren();
   if (profile) {
-    details.append(node('strong', '', `${profile.name} · ${profile.user}@${profile.host}:${profile.port}`));
-    const tree = serverGroupTree(); details.append(node('span', '', `${serverGroupPath(profile, tree)}${profile.auth === 'key' && !profile.keyId && !profile.keyPath ? ' · 待配置私钥' : ''}`)); details.title = `${profile.name}\n${profile.user}@${profile.host}:${profile.port}\n${serverGroupPath(profile, tree)}`;
+    details.append(node('strong', '', `${profile.name} · ${profileAddressText(profile)}`));
+    const tree = serverGroupTree(); details.append(node('span', '', `${serverGroupPath(profile, tree)}${profile.auth === 'key' && !profile.keyId && !profile.keyPath ? ' · 待配置私钥' : ''}`)); details.title = `${profile.name}\n${profileAddressText(profile)}\n${serverGroupPath(profile, tree)}`;
     if (profile.notes) {
       const note = serverManagerButton(`备注：${profile.notes.replace(/\s+/g, ' ')}`, () => window.DengProfileNotes.open(profile), 'server-notes-preview');
       note.title = '查看完整备注'; details.append(note);
@@ -122,11 +122,11 @@ function reflectServerExplorerDetails() {
 function openServerProfileMenu(profile, actions, anchor) {
   closeServerGroupMenu(); const menu = $('#server-group-menu'); serverManager.menuProfile = profile.id;
   const buttons = [];
-  if (!profile.deletedAt) buttons.push(serverManagerButton([...sessions.values()].some(s => s.profileId === profile.id && s.connected) ? '新建 SSH 会话' : '连接', () => { closeServerGroupMenu(); return connect(profile.id); }));
+  if (!profile.deletedAt) buttons.push(serverManagerButton([...sessions.values()].some(s => s.profileId === profile.id && s.connected) ? profile.protocol === 'serial' ? '新建串口会话' : '新建 SSH 会话' : '连接', () => { closeServerGroupMenu(); return connect(profile.id); }));
   if (profile.notes) buttons.push(serverManagerButton('查看备注', () => window.DengProfileNotes.open(profile)));
   for (const button of actions.children) buttons.push(button);
   if (!profile.deletedAt) buttons.push(serverManagerButton('定位所属分组', () => { closeServerGroupMenu(); serverManager.tab = 'servers'; chooseServerFolder(profile.groupId); serverManager.selectedProfiles.add(profile.id); reflectServerSelection(); const row = [...$('#server-folder-list').querySelectorAll('[data-group-id]')].find(row => row.dataset.groupId === profile.groupId); row?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }));
-  buttons.push(serverManagerButton('复制地址', async () => { await copyText(`${profile.user}@${profile.host}:${profile.port}`); closeServerGroupMenu(); toast('地址已复制'); }));
+  buttons.push(serverManagerButton('复制地址', async () => { await copyText(profile.protocol === 'serial' ? profile.serialPort || profile.host : `${profile.user}@${profile.host}:${profile.port}`); closeServerGroupMenu(); toast('地址已复制'); }));
   // Preserve row action handlers when the same menu is reopened.
   menu.replaceChildren(...buttons.map(button => { const copy = button.cloneNode(true); copy.onclick = event => { closeServerGroupMenu(); return button.onclick?.(event); }; copy.setAttribute('role', 'menuitem'); return copy; }));
   menu.hidden = false;

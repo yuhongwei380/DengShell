@@ -2,7 +2,7 @@
 
 **把 SSH 终端、远程文件、服务器监控和常用命令放在一个窗口里。**
 
-DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VPS、维护 Linux 服务器、编辑远程配置和排查网络问题。支持 Windows、Linux、macOS 桌面，可同时连接多台服务器，并按自己的习惯调整字体、背景、布局和监控曲线。
+DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VPS、维护 Linux 服务器、编辑远程配置和排查网络问题。支持 Windows、Linux、macOS 桌面（发行包仅提供 Windows 与 macOS），可同时连接多台服务器，并按自己的习惯调整字体、背景、布局和监控曲线。
 
 本说明对应 **v26.10.0 · 构建 20261018117**。本分支更新源为 GitHub Releases，界面字体为阿里巴巴普惠体 3.0。R20 以来的累计变化汇总在 [更新日志](CHANGELOG.md)。
 
@@ -36,7 +36,8 @@ DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VP
 | 密钥管理器 | 导入与生成密钥、复制公钥、查看指纹、统一保存私钥口令 |
 | 代理管理器 | 保存 SOCKS5 / HTTP CONNECT 代理，为各条连接选择代理 |
 | 多会话终端 | 标签切换、断开与重连、会话拆分为独立窗口、窗口之间合并标签 |
-| 固定连接栏 | 标题栏下方固定常用连接，左键快速连接或切换，点 × 或右键取消固定（弹窗二次确认），重启保留 |
+| 串口终端 | 在终端标签中打开本机串口（Windows `COM*`、Linux/macOS 设备文件），配置波特率、数据位、校验位、停止位与流控（RTS/CTS、XON/XOFF），与 SSH 一样保存、分组和固定 |
+| 固定连接栏 | 标题栏下方固定常用连接，左键快速连接或切换，点 × 关闭按钮取消固定（弹窗二次确认），重启保留 |
 | 命令管理 | 汇总各台 VPS 的命令历史、搜索与复制、再次执行、彩色分组快捷命令 |
 | SFTP 文件管理 | 上传与下载、目录上传、传输队列、重命名、权限修改、打包下载 |
 | 文件查看与编辑 | 显示实际用户和用户组名称，按大小及修改时间排序，内置多编码文本编辑器 |
@@ -53,68 +54,21 @@ DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VP
 
 在本仓库的 **[Releases](https://github.com/yuhongwei380/DevShell/releases)** 页面选择适合自己系统的文件。安装好的程序无需另外安装 Go 或 Node.js。
 
+自 2026-10-20 起发版只提供 **Windows 安装版与 macOS 包**：不再发布 Windows 绿色 ZIP 和 Linux DEB / RPM / pacman / tar.gz。已安装的 Linux 版可继续使用，内置更新检查会明确提示 Linux 已停止发布；历史安装包仍可在 Releases 旧版本中下载。
+
 | 平台与用途 | 下载文件 | 使用方式 |
 | --- | --- | --- |
 | Windows 10 / 11 x64 安装版 | `DevShell-Setup-x64.exe` | 运行安装器，从开始菜单或桌面启动，可通过控制面板卸载；此前 DengShell 安装版升级时自动沿用原安装目录与数据 |
-| Windows x64 绿色版 | `DevShell-windows-x64.zip` | 解压后运行 `DevShell.exe`，配置保存在旁边的 `data/` |
-| Debian / Ubuntu x86-64 | `DengShell-linux-x64.deb` | 使用系统包管理器安装 |
-| Fedora / openSUSE x86-64 | `DengShell-linux-x64.rpm` | 使用对应发行版的包管理器安装 |
-| Arch Linux / 兼容 pacman 的 x86-64 桌面 | `DengShell-linux-x64.pkg.tar.zst` | 使用 `sudo pacman -U` 安装 |
-| 其他满足依赖的 Linux x86-64 桌面 | `DengShell-linux-x64.tar.gz` | 解压运行，或安装到当前用户的应用菜单 |
 | macOS 13+，Apple 芯片与 Intel | `DengShell-macos-universal.dmg` / `.zip` | 通用应用，临时签名、未公证预览版 |
 
 Windows 版本需要 Microsoft Edge WebView2，缺少时程序会提供安装指引。安装版默认安装到当前用户目录，卸载保留个人配置。
 
-**关于 `up.*` 文件**：Releases 页里的 `up.exe`、`up.deb`、`up.pkg.tar.zst` 及同名 `.json` 描述文件是**内置在线更新的载荷**，由已安装客户端的启动更新检查自动下载消费，无需（也不要）手动下载运行。流程：启动时获取描述文件 → 校验构建号大于本机（防回退）→ 弹窗确认后下载并校验 SHA-256 → 替换程序（保留旧程序副本）→ 自动重启，数据目录不变。这些文件名是更新协议的固定契约（见 [更新契约](build/UPDATER-CONTRACT.md)），旧客户端按名字寻找新载荷，不可改名。
-
-Linux 版本使用 GTK3 和 WebKitGTK 4.1，发行构建以 Ubuntu 22.04 / glibc 2.35 为基线。当前包不适用于 ARM、32 位、Alpine/musl 或缺少对应运行库的系统。
+**关于 `up.*` 文件**：Releases 页里的 `up.exe` 及同名 `.json` 描述文件是 **Windows 内置在线更新的载荷**，由已安装客户端的启动更新检查自动下载消费，无需（也不要）手动下载运行。流程：启动时获取描述文件 → 校验构建号大于本机（防回退）→ 弹窗确认后下载并校验 SHA-256 → 替换程序（保留旧程序副本）→ 自动重启，数据目录不变。这些文件名是更新协议的固定契约（见 [更新契约](build/UPDATER-CONTRACT.md)），旧客户端按名字寻找新载荷，不可改名。Linux 载荷 `up.deb` / `up.pkg.tar.zst` 已随 Linux 发版停止，不再发布。
 
 **测试情况：**
 
-- **Linux：已测试通过。** 已在 Ubuntu 22.04、Ubuntu 24.04、Debian 12、Fedora 43 、openSUSE Tumbleweed 和 Arch Linux 容器中通过安装、原生界面启动及卸载保留配置测试。具体范围见 [功能审查与验证](build/FUNCTIONAL-AUDIT-v0.03.md)。
 - **Windows：** 发布验证覆盖原生 WebView2 启动、安装／卸载保留配置、压缩程序及从最小化状态升级后显示窗口。自动验证使用 GitHub Windows 运行器，结果见 [Windows 验证记录](https://github.com/yuhongwei380/DevShell/actions/workflows/windows-release-validation.yml)；不等同于全部 Windows 10／11 实体设备、显卡和托盘组合已验证。
-
-### Linux 安装示例
-
-Debian / Ubuntu：
-
-```bash
-sudo apt install ./DengShell-linux-x64.deb
-```
-
-Fedora：
-
-```bash
-sudo dnf install ./DengShell-linux-x64.rpm
-```
-
-openSUSE：
-
-```bash
-sudo zypper install ./DengShell-linux-x64.rpm
-```
-
-Arch Linux：
-
-```bash
-sudo pacman -U ./DengShell-linux-x64.pkg.tar.zst
-```
-
-通用包：
-
-```bash
-tar -xzf DengShell-linux-x64.tar.gz
-cd DengShell-linux-x64
-bash data/support/start.sh
-```
-
-需要加入当前用户的应用菜单时，在解压后的目录执行：
-
-```bash
-bash data/support/install.sh
-```
-
-各发行版的依赖和数据目录说明见 [Linux 使用说明](build/linux/README.txt)。
+- **Linux（历史版本）：** 此前 Linux 发行包已在 Ubuntu 22.04、Ubuntu 24.04、Debian 12、Fedora 43、openSUSE Tumbleweed 和 Arch Linux 容器中通过安装、原生界面启动及卸载保留配置测试，具体范围见 [功能审查与验证](build/FUNCTIONAL-AUDIT-v0.03.md)。Linux 发版已停止，源码仍可自行构建。
 
 ## 服务器与多级目录
 
@@ -396,7 +350,7 @@ SWAP 支持常用容量及自定义大小，并根据文件系统和交换区类
 
 ### 升级
 
-启动时可以检查新版本，确认后下载并验证 Ed25519 发行签名、大小、SHA-256、有效期和更高构建号。Windows、Debian / Ubuntu 和 Arch pacman 提供相应在线更新流程；Linux 会请求系统安装授权。旧 Arch 版需先手动安装一次 R28 或更新版，之后重启软件即可检查新版本、确认下载并安装。此功能不添加 pacman 仓库，`pacman -Syu` 不会单独从官网获取 DengShell 更新。RPM 和通用包通过对应安装包升级。当前属于退出并重启的更新方式，不保留正在运行的 SSH 会话；GitHub 发布本身不自动部署官网的更新文件。
+启动时可以检查新版本，确认后下载并验证 Ed25519 发行签名、大小、SHA-256、有效期和更高构建号。在线更新载荷仅发布 Windows `up.exe`；自 2026-10-20 起 Linux 停止发版，已安装的 Linux 客户端检查更新时会看到「Linux 版已停止发布更新」的明确提示，当前版本可继续使用，历史安装包保留在 Releases 旧版本。当前属于退出并重启的更新方式，不保留正在运行的 SSH 会话；GitHub 发布本身不自动部署官网的更新文件。
 
 检查更新与下载共用代理策略：优先读取对应协议的 `HTTPS_PROXY` / `HTTP_PROXY`，其次 `ALL_PROXY`（兼容小写名称），并遵守 `NO_PROXY`。未设置环境变量时，Windows 跟随当前用户的系统代理（包括 FlClash 系统代理和可解析的 PAC）；Linux 读取 GNOME 或 KDE 的手动代理。支持 HTTP CONNECT、HTTPS 代理和 SOCKS5；代理地址变化在下一次请求生效，正在下载的连接需取消后重试。没有代理时直连；已配置的代理连接失败不会偷偷改为直连。Linux 自动代理脚本尚不支持，可改用系统手动代理或上述环境变量。SSH 连接仍使用各自的连接代理设置。
 

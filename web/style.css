@@ -156,8 +156,8 @@ svg use { pointer-events: none; }
    keeps stretching to the top while pinned chips and tabs stack on the right. */
 .session-bar { min-width: 0; display: flex; flex-direction: column; align-items: stretch; gap: 5px; padding: 0 0 6px; flex: none; }
 .session-row { height: 42px; min-width: 0; display: flex; align-items: center; gap: 5px; }
-.connection-button { flex-shrink: 0; padding: 6px 10px; color: #8da8bc; margin-right: 3px; display: flex; align-items: center; border-radius: 9px; }
-.connection-button svg { width: 22px; height: 22px; }
+.connection-button { flex-shrink: 0; width: 30px; height: 30px; padding: 0; color: #8da8bc; display: flex; align-items: center; justify-content: center; border-radius: 9px; }
+.connection-button svg { width: 20px; height: 20px; }
 .connection-button:hover { background: #e5edf4; }
 .session-tabs { min-width: 0; display: flex; gap: 7px; overflow: auto; scrollbar-width: none; height: 35px; }
 .session-tab { display: flex; align-items: center; gap: 10px; min-width: 148px; padding: 0 7px 0 12px; border-radius: 10px; color: #97a8b5; font-size: 12px; }
@@ -184,7 +184,7 @@ svg use { pointer-events: none; }
 .prompt-path { color: #aecadb; }
 .prompt-sign { color: #a0b6c5; }
 .cursor { display: inline-block; height: 1.05em; width: .5em; background: #b3c9d5; vertical-align: -.15em; opacity: .8; margin-left: 3px; border-radius: 2px; }
-.terminal-command-bar { display: flex; align-items: center; position: relative; margin: 3px 12px 8px; padding: 3px 8px 3px 11px; gap: 9px; min-height: 32px; border-radius: 9px; background: #152b3a66; color: #8ca8bb; }
+.terminal-command-bar { display: flex; align-items: center; position: relative; margin: 3px 12px 8px; padding: 3px 8px 3px 11px; gap: 9px; min-height: 44px; border-radius: 9px; background: #152b3a66; color: #8ca8bb; }
 .terminal-command-bar > svg { width: 16px; height: 16px; }
 .terminal-command-bar form { flex: 1; min-width: 0; display: flex; }
 .terminal-command-bar input { border: 0; width: 100%; background: transparent; color: #dae7ee; font-size: 11px; padding: 5px 0; }

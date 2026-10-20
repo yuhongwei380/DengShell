@@ -164,8 +164,18 @@ func (d *Desktop) OpenTerminal(sessionID string) error {
 	}
 	return d.OpenTerminalWithHandoff(sessionID, nonce)
 }
+
+// OpenSerialTerminal bridges the serial terminal WebSocket through the same
+// native IPC path as SSH terminals. Serial sessions never participate in
+// window handoff, so there is no nonce to validate.
+func (d *Desktop) OpenSerialTerminal(sessionID string) error {
+	return d.openTerminalSocketPath(sessionID, "/api/serial/sessions/"+url.PathEscape(sessionID)+"/terminal", "")
+}
 func (d *Desktop) openTerminalSocket(sessionID, nonce string) error {
-	address := strings.Replace(d.app.URL(), "http:", "ws:", 1) + "/api/sessions/" + url.PathEscape(sessionID) + "/terminal?token=" + url.QueryEscape(d.app.Token())
+	return d.openTerminalSocketPath(sessionID, "/api/sessions/"+url.PathEscape(sessionID)+"/terminal", nonce)
+}
+func (d *Desktop) openTerminalSocketPath(sessionID, path, nonce string) error {
+	address := strings.Replace(d.app.URL(), "http:", "ws:", 1) + path + "?token=" + url.QueryEscape(d.app.Token())
 	if nonce != "" {
 		address += "&handoff=" + url.QueryEscape(nonce)
 	}

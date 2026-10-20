@@ -40,7 +40,7 @@ const ApplicationPackageVersion = "26.10.0"
 // three-digit daily sequence. Increase it for every published build, including
 // packaging-only releases; update manifests must exceed it. The sequence tracks
 // the upstream DengShell build numbering (107–114 ported on 2026-10-18).
-const ApplicationBuild uint64 = 20261018124
+const ApplicationBuild uint64 = 20261018127
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,
@@ -251,6 +251,12 @@ func checkUpdateTrusted(ctx context.Context, client *http.Client, address, platf
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
+		// Release policy 2026-10-20: Linux payloads (up.deb / up.pkg.tar.zst)
+		// are no longer published. A 404 on a Linux manifest means "retired",
+		// not "network failure", so deployed Linux clients get an honest hint.
+		if response.StatusCode == http.StatusNotFound && strings.HasPrefix(platform, "linux-") {
+			result.Reason = "linux-discontinued"
+		}
 		return result
 	}
 	data, e := io.ReadAll(io.LimitReader(response.Body, 65537))

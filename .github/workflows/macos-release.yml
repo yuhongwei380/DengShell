@@ -1,0 +1,51 @@
+name: macOS release build
+
+# Releases publish Windows + macOS only (policy 2026-10-20). This job builds
+# the universal (Apple Silicon + Intel) app bundle, ZIP and DMG with
+# scripts/build-macos.py and attaches them to the same tag as the Windows
+# workflow. Signing stays ad-hoc (no Developer ID secret here), matching the
+# "临时签名、未公证" note in the README download table.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: existing tag to (re)publish
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Build universal app, ZIP and DMG
+        run: python3 scripts/build-macos.py --arch universal --output build/macos-release
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${{ github.event.inputs.tag || github.ref_name }}"
+          version=$(sed -n 's/^const ApplicationVersion = "\([^"]*\)".*/\1/p' internal/app/updates.go)
+          notes="build/RELEASE-$version.md"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release edit "$tag" --title "DevShell $tag" --notes-file "$notes"
+          else
+            gh release create "$tag" --title "DevShell $tag" --notes-file "$notes"
+          fi
+          gh release upload "$tag" \
+            build/macos-release/DengShell-macos-universal.dmg \
+            build/macos-release/DengShell-macos-universal.zip \
+            build/macos-release/SHA256SUMS.txt \
+            build/macos-release/build-info.json \
+            --clobber

@@ -9,7 +9,7 @@
  function reflect(){
   const state=current(),button=document.getElementById('detach-terminal');if(!button)return;
   button.hidden=sessions.size<2;
-  button.disabled=!state?.ready||!!state.detaching||!!state.ownershipUncertain;
+  button.disabled=!state?.ready||!!state.detaching||!!state.ownershipUncertain||!!state.serial;
   button.setAttribute('aria-busy',String(!!state?.detaching));
   button.querySelector('span').textContent=state?.detaching?'正在拆分…':'独立窗口';
   button.title=state?.detaching?'正在交接原 SSH 会话，请稍候':'将当前 SSH 拆分为独立窗口';
@@ -29,7 +29,7 @@
   const job=pending.get(message.nonce);if(job?.state===state){if(message.type==='handoff-error')job.reject(new Error(message.message||'终端交接暂不可用，请重试'));else job.resolve()}return true;
  }
  async function detach(state,target=null) {
-  if(!state?.ready||!state.connected||state.detaching||state.ownershipUncertain)return;
+  if(!state?.ready||!state.connected||state.detaching||state.ownershipUncertain||state.serial)return;
   if ([...localTasks.values()].some(task=>task.sessionId===state.id && task.file && ['queued','uploading'].includes(task.status))) throw new Error('请等待本窗口的浏览器文件上传完成后再移动');
   if(!state.serialize)throw new Error('终端快照组件尚未准备好');
   const popup=target||native()?null:window.open('about:blank','dengshell-'+nonce(),'popup=yes,width=1100,height=760');
@@ -80,7 +80,7 @@
  }
  function bindTab(tab,state=null) {
   tab.dataset.dragBound='true';tab.style.setProperty('--wails-draggable','no-drag');
-  const canDetach=()=>!!(state?.ready&&state.connected&&!state.localOnly&&!state.detaching&&!state.handoffProvisional&&!state.ownershipUncertain);
+  const canDetach=()=>!!(state?.ready&&state.connected&&!state.localOnly&&!state.detaching&&!state.handoffProvisional&&!state.ownershipUncertain&&!state.serial);
   tab.title=state?.detaching?'正在移至独立窗口…':'拖动调整标签顺序'+(canDetach()?' · 拖出标签栏以拆分':'')+' · Esc 取消';
   let drag=null,suppressUntil=0;
   const cleanup=()=>{

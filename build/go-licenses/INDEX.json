@@ -7,6 +7,13 @@
     ]
   },
   {
+    "module": "go.bug.st/serial",
+    "version": "v1.8.0",
+    "licenses": [
+      "go.bug.st_serial@v1.8.0-LICENSE.txt"
+    ]
+  },
+  {
     "module": "github.com/Microsoft/go-winio",
     "version": "v0.6.2",
     "licenses": [

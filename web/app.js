@@ -69,7 +69,7 @@ let bridgeReady;
 function waitForDesktop() {
   if (!bridgeReady) bridgeReady = (async () => {
     const deadline = Date.now() + 5000;
-    while (!native()?.Request) { if (Date.now() >= deadline) throw new Error('桌面接口尚未就绪，请点击顶部服务器管理按钮重试'); await new Promise(resolve => setTimeout(resolve, 40)); }
+    while (!native()?.Request) { if (Date.now() >= deadline) throw new Error('桌面接口尚未就绪，请点击服务器管理按钮重试'); await new Promise(resolve => setTimeout(resolve, 40)); }
   })().catch(error => { bridgeReady = null; throw error; });
   return bridgeReady;
 }
@@ -160,6 +160,7 @@ function releaseConnectionAttempt(state) {
 }
 async function connect(profileID, force = false, options = {}) {
   if (connectionProfile(profileID)?.protocol === "rdp") return window.DengRDP.connect(profileID, {...options, previousID: force ? options.sessionId : null});
+  if (connectionProfile(profileID)?.protocol === "serial") return window.DengSerial.connect(profileID, {...options, previousID: force ? options.sessionId : null});
   const matches = [...sessions.values()].filter(s => s.profileId === profileID);
   const previous = force ? (options.sessionId ? sessions.get(options.sessionId) : matches.find(s => s.id === activeID) || matches[0]) : null;
   // Reconnect keeps the same profile in its own tab. A disconnected tab may
@@ -319,7 +320,7 @@ function showConnectionProgress(state, message, failed = false) {
 function makeSessionState(info) { return { ...info, connected: true, ready: false, cwd: info.home, entries: [], folders: new Map(), expanded: new Set(), history: getCommandHistory(info.profileId), historyIndex: getCommandHistory(info.profileId).length, navGeneration: 0, stats: null, chart: [], latency: null, follow: false, ws: null }; }
 // Desktop IPC keeps WebKit independent of system proxy and loopback policies.
 class DesktopSocket {
-  constructor(id, handoffNonce = '') {
+  constructor(id, handoffNonce = '', opener = '') {
     this.readyState = WebSocket.CONNECTING; let finished = false; let writes = Promise.resolve();
     const finish = () => { if (finished) return; finished = true; this.readyState = WebSocket.CLOSED; off(); this.onclose?.(); };
     const off = window.runtime.EventsOn('cloudshell:terminal:' + id, message => {
@@ -330,7 +331,12 @@ class DesktopSocket {
     });
     this.send = data => { writes = writes.then(() => (native().SendTerminalWithHandoff ? native().SendTerminalWithHandoff(id, handoffNonce, data) : native().SendTerminal(id, data))).catch(() => finish()); };
     this.close = () => { (native().CloseTerminalWithHandoff ? native().CloseTerminalWithHandoff(id, handoffNonce) : native().CloseTerminal(id)).finally(finish); };
-    queueMicrotask(() => { this.readyState = WebSocket.OPEN; (native().OpenTerminalWithHandoff ? native().OpenTerminalWithHandoff(id, handoffNonce) : native().OpenTerminal(id)).catch(error => { toast(String(error)); this.onerror?.(); finish(); }); });
+    queueMicrotask(() => {
+      this.readyState = WebSocket.OPEN;
+      // Serial tabs dial the serial terminal endpoint through the same IPC pipe.
+      const request = opener === 'serial' ? native().OpenSerialTerminal(id) : native().OpenTerminalWithHandoff ? native().OpenTerminalWithHandoff(id, handoffNonce) : native().OpenTerminal(id);
+      request.catch(error => { toast(String(error)); this.onerror?.(); finish(); });
+    });
   }
 }
 
@@ -363,8 +369,8 @@ function createTerminal(state) {
   terminal.parser.registerOscHandler(7, data => { if (!state.follow) return false; try { const url = new URL(data); if (url.protocol === 'file:') { const path = decodeURIComponent(url.pathname); if (path !== state.cwd) navigate(path, state).catch(error => toast(error?.message || String(error))); } } catch {} return true; });
   const openSocket = () => {
   if (state.closed) return;
-  const socketURL = new URL(endpoint(`/api/sessions/${state.id}/terminal`)); socketURL.protocol = socketURL.protocol === 'https:' ? 'wss:' : 'ws:'; socketURL.searchParams.set('token', boot.token); socketURL.searchParams.set('cols', String(terminal.cols)); socketURL.searchParams.set('rows', String(terminal.rows)); if (state.handoffNonce) socketURL.searchParams.set('handoff', state.handoffNonce);
-  const ws = native() ? new DesktopSocket(state.id, state.handoffNonce || '') : new WebSocket(socketURL); ws.binaryType = 'arraybuffer'; state.ws = ws;
+  const socketURL = new URL(endpoint(`${state.serial ? '/api/serial/sessions/' : '/api/sessions/'}${state.id}/terminal`)); socketURL.protocol = socketURL.protocol === 'https:' ? 'wss:' : 'ws:'; socketURL.searchParams.set('token', boot.token); socketURL.searchParams.set('cols', String(terminal.cols)); socketURL.searchParams.set('rows', String(terminal.rows)); if (state.handoffNonce) socketURL.searchParams.set('handoff', state.handoffNonce);
+  const ws = native() ? new DesktopSocket(state.id, state.handoffNonce || '', state.serial ? 'serial' : '') : new WebSocket(socketURL); ws.binaryType = 'arraybuffer'; state.ws = ws;
   ws.onmessage = event => {
     if (state.closed || !state.connected || sessions.get(state.id) !== state) return;
     if (event.data instanceof ArrayBuffer) {
@@ -377,7 +383,7 @@ function createTerminal(state) {
     if (message.type === 'ready') {
       // The relay sends ready only after the remote shell starts, before its
       // first output. Window handoffs must not add text to a running shell.
-      if (state.announceConnectionReady) { state.announceConnectionReady = false; showConnectionProgress(state, '✅  连接主机成功！'); if (state.sftpAvailable === false && !state.sftpPending) showConnectionProgress(state, 'ℹ️  SFTP 文件服务不可用，SSH 终端可正常使用。'); }
+      if (state.announceConnectionReady) { state.announceConnectionReady = false; showConnectionProgress(state, state.serial ? '✅  串口已打开！' : '✅  连接主机成功！'); if (!state.serial && state.sftpAvailable === false && !state.sftpPending) showConnectionProgress(state, 'ℹ️  SFTP 文件服务不可用，SSH 终端可正常使用。'); }
       if (state.sftpPending) void refreshFileStatus(state);
       acceptShellIntegration(state, message.integration); state.ready = true; applyPendingFollow(state); state.handoffProvisional = false; state.ownershipUncertain = false; terminal.options.disableStdin = !!state.detaching || !state.connected; state.restoring = false; state.restoration = null;
       if (!state.terminalOutputStarted && !state.terminalBackgroundTimer) state.terminalBackgroundTimer = setTimeout(() => { state.terminalBackgroundTimer = null; if (!state.closed && state.connected && sessions.get(state.id) === state) { state.terminalBackgroundReady = true; if (current() === state) { pollStats(); pollLatency(); } } }, 1000);
@@ -410,13 +416,16 @@ function markSessionDisconnected(state) {
   if (state.closed || !state.connected) return;
   state.connected = false; state.ready = false; state.navGeneration++; state.navAbort?.abort();
   state.term.options.disableStdin = true;
-  state.term.writeln('\r\n\x1b[38;5;245m🔌  连接已断开，终端内容已保留。点击重新连接可建立新会话。\x1b[0m');
+  if (state.serial) state.term.writeln('\r\n\x1b[38;5;245m🔌  串口已关闭，终端内容已保留。点击重新连接可重新打开串口。\x1b[0m');
+  else state.term.writeln('\r\n\x1b[38;5;245m🔌  连接已断开，终端内容已保留。点击重新连接可建立新会话。\x1b[0m');
   state.term.writeln('\x1b[38;5;245m💡  本机提示符已就绪：在下方输入框输入 ssh 用户@主机 连接新地址，reconnect 重连本会话，exit 关闭标签。\x1b[0m');
   // The remote shell is gone and terminal stdin is disabled: a blinking cursor
   // would suggest the terminal still takes input, so hide it. Reconnect builds
   // a fresh terminal where the cursor is visible again.
   state.term.write('\x1b[?25l');
-  showDisconnectDiagnostic(state);
+  // Serial sessions have no SSH disconnect diagnostic endpoint; the reason is
+  // already visible (device unplugged, port closed, or the tab was closed).
+  if (!state.serial) showDisconnectDiagnostic(state);
   renderTabs();
   if (activeID === state.id) { renderSessionInfo(); renderFiles(); $('#command-input').focus(); }
 }
@@ -455,7 +464,7 @@ async function disconnectSession(state = current()) {
   state.disconnecting = true;
   if (activeID === state.id) $('#disconnect').disabled = true;
   try {
-    await remove(`/api/sessions/${state.id}`);
+    await remove(state.serial ? `/api/serial/sessions/${state.id}` : `/api/sessions/${state.id}`);
     markSessionDisconnected(state); state.ws?.close();
   } finally {
     state.disconnecting = false;
@@ -497,6 +506,7 @@ function dropSessionView(id, expected = null) {
 }
 async function closeSession(id) {
   if (window.DengRDP?.has(id)) return window.DengRDP.close(id);
+  if (window.DengSerial?.has(id)) return window.DengSerial.close(id);
   const state = sessions.get(id); if (!state || state.detaching || state.handoffProvisional) return;
   dropSessionView(id);
   if (state.ownershipUncertain || state.localOnly) return;
@@ -513,7 +523,7 @@ function renderTabs() {
     tab.dataset.failed = String(!!state.connectionFailed);
     const label = node('span', 'session-tab-text');
     label.append(node('span', 'session-tab-label', profile ? sessionDisplayName(state) : '已删除配置'));
-    const button = node('button'); button.type = 'button'; button.append(node('span', `status-dot ${state.connected ? 'green' : 'blue'}`), label); button.onclick = () => activate(state.id); button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(selected)); button.setAttribute('aria-current', selected ? 'page' : 'false'); button.title = profile ? `${profile.name} · ${profile.user}@${profile.host}:${profile.port}` : '已删除配置';
+    const button = node('button'); button.type = 'button'; button.append(node('span', `status-dot ${state.connected ? 'green' : 'blue'}`), label); button.onclick = () => activate(state.id); button.setAttribute('role', 'tab'); button.setAttribute('aria-selected', String(selected)); button.setAttribute('aria-current', selected ? 'page' : 'false'); button.title = profile ? (profile.protocol === 'serial' ? `${profile.name} · ${window.DengSerial.label(profile)}` : `${profile.name} · ${profile.user}@${profile.host}:${profile.port}`) : '已删除配置';
     if (selected && state.connected) tab.classList.add('current-session');
     button.setAttribute('aria-busy', String(!!state.pendingConnection));
     if (state.localOnly) button.title += ` · ${state.connectionMessage}`;
@@ -538,7 +548,7 @@ function updateStatus() { $('#connection-button').setAttribute('aria-label', '�
 function renderSessionInfo() {
   const state = current(), profile = profileFor(state);
   $('#welcome-state').hidden = !!state; window.DengLocalPrompt?.reflect();
-  $('#terminal-meta-host').textContent = profile ? `${profile.user}@${sessionDisplayName(state)}` : 'SSH 终端'; $('#terminal-state').textContent = state?.handoffProvisional ? '正在接收标签…' : state?.pendingConnection ? '正在连接…' : state?.connectionFailed ? '连接未完成' : state?.connected ? '已连接' : state?.disconnectDiagnostic ? `已断开 · ${state.disconnectDiagnostic.code}` : '待连接';
+  $('#terminal-meta-host').textContent = profile ? (profile.protocol === 'serial' ? window.DengSerial.label(profile) : `${profile.user}@${sessionDisplayName(state)}`) : 'SSH 终端'; $('#terminal-state').textContent = state?.handoffProvisional ? '正在接收标签…' : state?.pendingConnection ? '正在连接…' : state?.connectionFailed ? '连接未完成' : state?.connected ? '已连接' : state?.disconnectDiagnostic ? `已断开 · ${state.disconnectDiagnostic.code}` : '待连接';
   $('#terminal-state').title = state?.disconnectDiagnostic?.message || '';
   // The "当前连接" badge lives in the session header, merged with the connected
   // status: the green dot plus badge replaces the plain "已连接" text.
@@ -768,7 +778,7 @@ function monitorVisible() { return !document.hidden && !window.DengShellWindowHi
 function monitorPollDelay(value, interval) { return Number.isFinite(value) ? Math.max(0, Math.min(interval, value)) + 5 : interval; }
 async function pollNetwork() {
   if(window.DengSecurityLock?.isLocked())return;
-  const state = current(); if (!state?.connected || (!state.terminalOutputStarted && !state.terminalBackgroundReady) || networkRequests.has(state) || !monitorVisible()) return;
+  const state = current(); if (!state?.connected || state.serial || (!state.terminalOutputStarted && !state.terminalBackgroundReady) || networkRequests.has(state) || !monitorVisible()) return;
   clearTimeout(networkTimer); networkTimer = 0; networkRequests.add(state); networkPolledSession = state.id;
   let delay = 1000;
   try {
@@ -793,7 +803,7 @@ async function pollNetwork() {
   }
 }
 async function pollStats() {
-  const state = current(); if (!state?.connected || (!state.terminalOutputStarted && !state.terminalBackgroundReady) || statsRequests.has(state) || !monitorVisible()) return;
+  const state = current(); if (!state?.connected || state.serial || (!state.terminalOutputStarted && !state.terminalBackgroundReady) || statsRequests.has(state) || !monitorVisible()) return;
   if ((!networkTimer && !networkRequests.has(state)) || networkPolledSession !== state.id) pollNetwork();
   clearTimeout(statsTimer); statsTimer = 0; statsRequests.add(state); const includeProcesses = true;
   let delay = 5000;
@@ -847,7 +857,7 @@ function drawCharts(samples) {
 }
 const latencyRequests = new Set();
 async function pollLatency() {
-  const state = current(); if (!state?.connected || (!state.terminalOutputStarted && !state.terminalBackgroundReady) || latencyRequests.has(state) || !monitorVisible()) return;
+  const state = current(); if (!state?.connected || state.serial || (!state.terminalOutputStarted && !state.terminalBackgroundReady) || latencyRequests.has(state) || !monitorVisible()) return;
   latencyRequests.add(state);
   try {
     const sample = await api(`/api/sessions/${state.id}/latency`); if (sessions.get(state.id) !== state || !state.connected) return;
@@ -859,7 +869,7 @@ function renderLatency() { renderLatencyDetails(); }
 setInterval(pollLatency, 1000);
 setInterval(() => {
   if (!monitorVisible()) { clearTimeout(networkTimer); clearTimeout(statsTimer); networkTimer = statsTimer = 0; return; }
-  if (!current()?.connected) return;
+  if (!current()?.connected || current().serial) return;
   if (!networkRequests.has(current()) && !networkTimer) pollNetwork();
   if (!statsRequests.has(current()) && !statsTimer) pollStats();
   renderNetwork(current().stats);
@@ -877,7 +887,7 @@ function showConnectionForm(profile = null, groupID = '') {
   if (profile?.temporary) { window.DengQuickConnect.open(`ssh -p ${profile.port} ${profile.user}@${profile.host}`); return; }
   const form = $('#connection-form'); form.reset(); form.elements.id.value = profile?.id || '';
   renderKeyChoices(); renderProxyChoices(); form.elements.proxyId.value = profile?.proxyId || '';
-  for (const key of ['name', 'notes', 'host', 'user', 'port', 'auth', 'keyPath', 'keyId', 'protocol', 'domain']) if (profile?.[key] != null) form.elements[key].value = profile[key];
+  for (const key of ['name', 'notes', 'host', 'user', 'port', 'auth', 'keyPath', 'keyId', 'protocol', 'domain', 'serialPort', 'baudRate', 'dataBits', 'parity', 'stopBits', 'flowControl']) if (profile?.[key] != null) form.elements[key].value = profile[key];
   form.elements.rdpClipboard.checked = !!profile?.rdpClipboard;
   window.DengProfileNotes.init(form.elements.notes, profile?.notes || '');
   form.elements.proxyType.value = profile?.proxy?.type || 'direct';
@@ -886,13 +896,18 @@ function showConnectionForm(profile = null, groupID = '') {
   $('#proxy-settings').open = !!profile?.needsProxy; updateProxyFields();
   chooseConnectionGroup(profile, groupID);
   form.elements.remember.checked = !!profile?.hasSecret; $('#saved-secret-note').hidden = !profile?.hasSecret; $('#reset-host-key').hidden = !profile;
-  $('#connection-form-title').textContent = profile?.needsProxy ? '编辑连接 · 请补充代理或确认直连' : profile ? '编辑连接' : '新建连接'; $('#save-connection').textContent = profile ? '保存更改' : '保存并连接'; updateAuthFields(); $('#connection-dialog').showModal(); $('#connection-form .connection-form-body').scrollTop = 0;
+  $('#connection-form-title').textContent = profile?.needsProxy ? '编辑连接 · 请补充代理或确认直连' : profile ? '编辑连接' : '新建连接'; $('#save-connection').textContent = profile ? '保存更改' : '保存并连接'; updateAuthFields(); if (profile?.protocol === 'serial') void window.DengSerial.loadPorts(); $('#connection-dialog').showModal(); $('#connection-form .connection-form-body').scrollTop = 0;
 }
 function updateAuthFields() {
   const form = $('#connection-form'), auth = form.elements.auth.value, key = managedKeys.find(key => key.id === form.elements.keyId.value);
-  const rdp = form.elements.protocol.value === 'rdp';
+  const rdp = form.elements.protocol.value === 'rdp', serial = form.elements.protocol.value === 'serial';
+  // Serial profiles carry no address, login, or proxy fields; normalizeSerialProfile
+  // clears them in Go, so hide the inputs and drop their required flags.
+  $('#connection-address-row').hidden = serial; $('#connection-login-section').hidden = serial; $('#proxy-settings').hidden = serial;
+  $('#serial-settings').hidden = !serial; $('#serial-params').hidden = !serial;
+  form.elements.host.required = !serial; form.elements.port.required = !serial; form.elements.user.required = !serial; form.elements.serialPort.required = serial;
   $('#connection-auth-field').hidden = rdp; $('#rdp-domain-field').hidden = !rdp; $('#rdp-clipboard-field').hidden = !rdp; $('#rdp-connection-note').hidden = !rdp;
-  $('#reset-host-key').hidden = rdp || !form.elements.id.value;
+  $('#reset-host-key').hidden = rdp || serial || !form.elements.id.value;
   const needsSecret = auth === 'password' || (auth === 'key' && (!key || (key.encrypted && !key.hasPassphrase)));
   $('#key-library-field').hidden = auth !== 'key'; $('#key-path-field').hidden = auth !== 'key' || !!form.elements.keyId.value;
   $('#secret-field').hidden = !needsSecret; $('#remember-secret-field').hidden = !needsSecret;
@@ -902,10 +917,11 @@ function updateAuthFields() {
 }
 $('#connection-form').elements.auth.onchange = updateAuthFields;
 $('#connection-protocol').onchange = () => {
-  const form = $('#connection-form'), rdp = form.elements.protocol.value === 'rdp';
+  const form = $('#connection-form'), protocol = form.elements.protocol.value, rdp = protocol === 'rdp', serial = protocol === 'serial';
   if (rdp) form.elements.auth.value = 'password';
-  if (['22','3389',''].includes(form.elements.port.value)) form.elements.port.value = rdp ? '3389' : '22';
+  if (!serial && ['22','3389',''].includes(form.elements.port.value)) form.elements.port.value = rdp ? '3389' : '22';
   if (!form.elements.id.value && ['root','Administrator',''].includes(form.elements.user.value)) form.elements.user.value = rdp ? 'Administrator' : 'root';
+  if (serial) window.DengSerial.loadPorts();
   updateAuthFields();
 };
 $('#new-connection').onclick = () => showConnectionForm(); $('#cancel-connection').onclick = () => $('#connection-dialog').close();
@@ -918,7 +934,12 @@ $('#connection-form').onsubmit = safe(async event => {
   const previous = profiles.find(profile => profile.id === values.id);
   const proxy = { type: values.proxyId ? 'direct' : values.proxyType, host: values.proxyHost, port: Number(values.proxyPort), user: values.proxyUser, password: values.proxyPassword, clearPassword: form.elements.clearProxyPassword.checked };
   for (const name of ['proxyType', 'proxyHost', 'proxyPort', 'proxyUser', 'proxyPassword', 'clearProxyPassword']) delete values[name];
-  const saved = await post('/api/profiles', { ...values, rdpClipboard: form.elements.rdpClipboard.checked, port: Number(values.port), secret: remember ? secret : '', clearSecret: !remember, proxy });
+  // Serial profiles mirror the device name into Host so search and history keep
+  // working; the Go normalizer clears the network-only fields.
+  const serial = values.protocol === 'serial';
+  if (serial) values.host = String(values.serialPort || '').trim();
+  else for (const name of ['serialPort', 'baudRate', 'dataBits', 'parity', 'stopBits', 'flowControl']) delete values[name];
+  const saved = await post('/api/profiles', { ...values, rdpClipboard: form.elements.rdpClipboard.checked, port: serial ? 0 : Number(values.port), baudRate: Number(values.baudRate) || 0, dataBits: Number(values.dataBits) || 0, stopBits: Number(values.stopBits) || 0, secret: remember ? secret : '', clearSecret: !remember, proxy });
   credentials.delete(saved.id);
   if (secret) credentials.set(saved.id, secret); else if (!remember) credentials.delete(saved.id);
   $('#connection-dialog').close(); await loadProfiles(); if (isNew) await connect(saved.id); else { renderSessionInfo(); toast('连接配置已保存，下次连接时生效'); }

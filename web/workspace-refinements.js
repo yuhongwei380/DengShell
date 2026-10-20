@@ -131,7 +131,7 @@ function renderCommandHistory() {
     row.append(button, copy, execute); return row;
   }));
 }
-function resizeCommandInput() { const input = $('#command-input'); input.style.height = 'auto'; input.style.height = `${Math.min(76, input.scrollHeight)}px`; }
+function resizeCommandInput() { const input = $('#command-input'); input.style.height = 'auto'; input.style.height = `${Math.min(140, input.scrollHeight)}px`; }
 function openCommandHistory() { historySession = current(); $('#history-filter').value = ''; renderCommandHistory(); $('#history-dialog').showModal(); $('#history-filter').focus(); refreshGlobalCommandHistory().catch(error => toast(`命令历史刷新失败：${error.message || error}`)); }
 function processMemoryText(process) {
   if (!process.memoryReady || process.memoryEstimated || !Number.isSafeInteger(process.memory) || process.memory < 0) return '—';

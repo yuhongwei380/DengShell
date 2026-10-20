@@ -15,6 +15,12 @@
 #connection-form .connection-fields { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px 12px; min-width:0; }
 #connection-form .connection-section:first-child .connection-fields { grid-template-columns:minmax(0,1fr) 165px; }
 #connection-form .connection-address-row { display:grid; grid-template-columns:minmax(0,1fr) 80px; gap:12px; }
+/* Serial device and parameters replace the address row when protocol=serial. */
+#connection-form .connection-serial-row { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; }
+#connection-form .connection-serial-row small { display:block; margin-top:4px; font-size:10px; line-height:1.5; color:var(--muted); }
+#connection-form .connection-serial-params { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:10px 12px; }
+#connection-form .connection-serial-params .serial-baud-field { grid-column:span 2; }
+#connection-form #serial-connection-note { grid-column:1/-1; }
 #connection-form .port-field { max-width:none; }
 #connection-form input:not([type="checkbox"]):not([type="hidden"]),
 #connection-form .themed-select-trigger { height:36px; min-height:36px; padding:7px 10px; font:inherit; font-size:12px; line-height:20px; border-radius:8px; }
@@ -47,4 +53,7 @@
 }
 @container connection-editor (max-width:380px) {
   #connection-form .connection-fields, #connection-form .connection-section:first-child .connection-fields { grid-template-columns:minmax(0,1fr); }
+  #connection-form .connection-serial-row { grid-template-columns:minmax(0,1fr); }
+  #connection-form .connection-serial-params { grid-template-columns:repeat(2,minmax(0,1fr)); }
+  #connection-form .connection-serial-params .serial-baud-field { grid-column:span 2; }
 }

@@ -212,6 +212,7 @@ func (a *App) SecurityLockStatus() SecurityLockStatus {
 	s.mu.Unlock()
 	if status.Locked {
 		a.stopRDPLocked()
+		a.stopSerialLocked()
 	}
 	return status
 }

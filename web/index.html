@@ -10,17 +10,17 @@
   <script src="security-lock.js?v=20260921-v002-b72"></script>
   <script src="theme.js?v=20260920-v002-b70"></script>
   <link rel="stylesheet" href="vendor/xterm.css">
-  <link rel="stylesheet" href="style.css?v=20261019-pin4">
+  <link rel="stylesheet" href="style.css?v=20261019-serial1">
   <link rel="stylesheet" href="theme.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="workspace-tools.css?v=20261001-composer">
   <link rel="stylesheet" href="appearance.css?v=20261019-pin4">
   <link rel="stylesheet" href="process-view.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="workspace-refinements.css?v=20261018-addr1">
+  <link rel="stylesheet" href="workspace-refinements.css?v=20261019-serial1">
   <link rel="stylesheet" href="file-browser.css?v=20260921-v002-b72">
   <link rel="stylesheet" href="themed-select.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="config-document.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="startup-update.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="desktop-polish.css?v=20261019-pin5">
+  <link rel="stylesheet" href="desktop-polish.css?v=20261019-serial1">
   <link rel="stylesheet" href="server-manager.css?v=20260928-card1">
   <link rel="stylesheet" href="connection-extras.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="help-guide.css?v=20260920-v002-b70">
@@ -40,7 +40,7 @@
   <link rel="stylesheet" href="security-lock.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="soft-dark.css?v=20260923-v002-b80">
 <link rel="stylesheet" href="rdp.css?v=20260927-preview1">
-  <link rel="stylesheet" href="connection-form.css?v=20260928-layout2">
+  <link rel="stylesheet" href="connection-form.css?v=20261019-serial1">
   <link rel="stylesheet" href="upload-confirmation.css?v=20260928-overwrite1">
 </head>
 <body>
@@ -90,7 +90,6 @@
       <button class="icon-button brand-settings" id="settings-button" title="设置" aria-label="设置" aria-haspopup="menu" aria-controls="settings-menu" aria-expanded="false"><img class="brand-logo" src="assets/dengshell.svg" alt="" draggable="false"></button>
       <button class="icon-button theme-toggle header-pill theme-pill" id="theme-toggle" aria-label="深色模式" aria-pressed="false" title="切换到深色模式"><svg class="theme-moon"><use href="#i-moon"/></svg><svg class="theme-sun"><use href="#i-sun"/></svg></button>
       <button class="icon-button header-pill" id="security-lock-button" aria-label="立即锁定" title="请先在设置中启用安全锁定" disabled><svg><use href="#i-lock"/></svg></button>
-      <button id="connection-button" class="connection-button" title="服务器管理" aria-label="服务器管理"><svg><use href="#i-server"/></svg></button>
     </div>
     <div class="pinned-bar" id="pinned-bar" aria-label="链接栏" hidden></div>
     <div class="window-controls" id="window-controls" hidden><button data-window-action="minimise" title="最小化" aria-label="最小化"><svg><use href="#i-minimise"/></svg></button><button data-window-action="toggle-maximise" id="window-maximise" title="最大化" aria-label="最大化"><svg><use href="#i-maximise"/></svg></button><button data-window-action="close" class="window-close" title="关闭窗口" aria-label="关闭窗口"><svg><use href="#i-close"/></svg></button></div>
@@ -125,6 +124,7 @@
     <main class="main-panel">
       <nav class="session-bar" aria-label="SSH 会话">
         <div class="session-row">
+          <button id="connection-button" class="connection-button" title="服务器管理" aria-label="服务器管理"><svg><use href="#i-server"/></svg></button>
           <button class="icon-button add-session" id="add-session" aria-label="快速连接" title="快速连接"><svg><use href="#i-plus"/></svg></button>
           <div id="session-tabs" class="session-tabs"></div>
           <button class="icon-button" id="toggle-monitor" aria-label="系统与磁盘信息" title="系统与磁盘信息" aria-expanded="false"><svg><use href="#i-cpu"/></svg></button>
@@ -193,14 +193,26 @@
     <h3 id="connection-basic-title">连接信息</h3>
     <div class="connection-fields">
       <label>名称<input name="name" required maxlength="100" placeholder="例如：Tokyo-01"></label>
-      <label class="connection-protocol-field">连接类型<select name="protocol" id="connection-protocol"><option value="">SSH 终端</option><option value="rdp">RDP 远程桌面 · 测试版</option></select></label>
+      <label class="connection-protocol-field">连接类型<select name="protocol" id="connection-protocol"><option value="">SSH 终端</option><option value="rdp">RDP 远程桌面 · 测试版</option><option value="serial">串口终端</option></select></label>
     </div>
-    <div class="connection-address-row">
+    <div class="connection-address-row" id="connection-address-row">
       <label class="host-field">服务器地址<input name="host" required maxlength="253" placeholder="主机名或 IP"></label>
       <label class="port-field">端口<input name="port" type="number" min="1" max="65535" value="22" required></label>
     </div>
+    <div class="connection-serial-row" id="serial-settings" hidden>
+      <label class="serial-port-field">串口<input name="serialPort" maxlength="255" placeholder="例如 COM3 或 /dev/ttyUSB0" autocomplete="off"><small id="serial-ports-note">打开对话框时自动检测本机串口。</small></label>
+      <label class="serial-choice-field">检测到的串口<div class="input-with-button"><select id="serial-port-choices"><option value="">未检测到串口</option></select><button type="button" id="refresh-serial-ports">刷新</button></div></label>
+    </div>
+    <div class="connection-serial-params" id="serial-params" hidden>
+      <label class="serial-baud-field">波特率<input name="baudRate" id="serial-baud" list="serial-baud-presets" inputmode="numeric" value="115200"><datalist id="serial-baud-presets"><option value="1200"></option><option value="2400"></option><option value="4800"></option><option value="9600"></option><option value="19200"></option><option value="38400"></option><option value="57600"></option><option value="115200"></option><option value="230400"></option><option value="460800"></option><option value="921600"></option></datalist></label>
+      <label>数据位<select name="dataBits"><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8" selected>8</option></select></label>
+      <label>校验位<select name="parity"><option value="none" selected>无</option><option value="odd">奇</option><option value="even">偶</option><option value="mark">标记</option><option value="space">空格</option></select></label>
+      <label>停止位<select name="stopBits"><option value="1" selected>1</option><option value="2">2</option></select></label>
+      <label>流控<select name="flowControl"><option value="none" selected>无</option><option value="rtscts">RTS/CTS</option><option value="xonxoff">XON/XOFF</option></select></label>
+      <p id="serial-connection-note">串口随标签打开与关闭；安全锁定会立即关闭所有串口，解锁后需重新连接。最多同时打开 16 个串口会话。</p>
+    </div>
     </section>
-    <section class="connection-section" aria-labelledby="connection-login-title">
+    <section class="connection-section" id="connection-login-section" aria-labelledby="connection-login-title">
     <h3 id="connection-login-title">登录凭据</h3>
     <div class="connection-fields">
     <label>用户名<input name="user" required maxlength="100" value="root"></label>
@@ -336,19 +348,19 @@
   <script src="font-library.js?v=20261019-brand1"></script>
   <script src="path-history.js?v=20260925-v002-b86"></script>
   <script src="directory-favorites.js?v=20260925-v002-b86"></script>
-  <script src="connection-extras.js?v=20260928-layout2"></script>
+  <script src="connection-extras.js?v=20261019-serial1"></script>
   <script src="file-browser.js?v=20260925-v002-b86"></script>
   <script src="latency-chart.js?v=20260920-v002-b70"></script>
-  <script src="workspace-refinements.js?v=20260920-v002-b70"></script>
+  <script src="workspace-refinements.js?v=20261019-serial1"></script>
   <script src="themed-select.js?v=20260920-v002-b70"></script>
   <script src="terminal-integration.js?v=20261018-follow3"></script>
   <script src="mtr-installation.js?v=20261019-brand1"></script>
   <script src="config-document.js?v=20260920-v002-b70"></script>
-  <script src="startup-update.js?v=20261019-brand1"></script>
+  <script src="startup-update.js?v=20261020-linuxend1"></script>
   <script src="portable-preferences.js?v=20261018-pin2"></script>
-  <script src="server-manager.js?v=20260928-card1"></script>
-  <script src="server-explorer.js?v=20260925-v002-b86"></script>
-  <script src="help-guide.js?v=20261019-local1"></script>
+  <script src="server-manager.js?v=20261019-serial1"></script>
+  <script src="server-explorer.js?v=20261019-serial1"></script>
+  <script src="help-guide.js?v=20261019-serial1"></script>
   <script src="chart-styles.js?v=20260920-v002-b70"></script>
   <script src="appearance-tools.js?v=20261019-brand1"></script>
   <script src="terminal-snapshot.js?v=20260920-v002-b70"></script>
@@ -356,16 +368,17 @@
   <script src="window-preview.js?v=20260920-v002-b70"></script>
   <script src="window-transfers.js?v=20261019-brand1"></script>
   <script src="session-tab-order.js?v=20260928-drag1"></script>
-  <script src="session-windows.js?v=20261019-brand1"></script>
+  <script src="session-windows.js?v=20261019-serial1"></script>
   <script src="session-tabs-layout.js?v=20260920-v002-b70"></script>
   <script src="system-identity.js?v=20260920-v002-b70"></script>
   <script src="rdp.js?v=20260927-preview1"></script>
+  <script src="serial.js?v=20261019-serial1"></script>
   <script src="upload-confirmation.js?v=20260928-overwrite1"></script>
-  <script src="app.js?v=20261019-local1"></script>
+  <script src="app.js?v=20261019-serial1"></script>
   <script src="quick-connect.js?v=20260920-v002-b70"></script>
   <script src="local-prompt.js?v=20261019-local1"></script>
-  <script src="pinned-nav.js?v=20261019-pin5"></script>
-  <script src="process-view.js?v=20260920-v002-b70"></script>
+  <script src="pinned-nav.js?v=20261019-pinunpin1"></script>
+  <script src="process-view.js?v=20261019-serial1"></script>
   <script src="common-apps.js?v=20261019-brand1"></script>
   <script src="text-model.js?v=20260920-v002-b70"></script>
   <script src="remote-text-document.js?v=20260920-v002-b70"></script>

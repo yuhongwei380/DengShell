@@ -36,6 +36,13 @@ type Profile struct {
 	HasSecret    bool        `json:"hasSecret,omitempty"`
 	Proxy        ProxyConfig `json:"proxy"`
 	ProxyID      string      `json:"proxyId,omitempty"`
+	// Serial profile fields; only meaningful when Protocol == "serial".
+	SerialPort  string `json:"serialPort,omitempty"`
+	BaudRate    int    `json:"baudRate,omitempty"`
+	DataBits    int    `json:"dataBits,omitempty"`
+	Parity      string `json:"parity,omitempty"`
+	StopBits    int    `json:"stopBits,omitempty"`
+	FlowControl string `json:"flowControl,omitempty"`
 }
 
 type Config struct {
@@ -153,26 +160,34 @@ func (s *Store) saveProfile(p Profile, clearSecret, allowNewID bool) (Profile, e
 		}
 		p.Proxy = ProxyConfig{Type: "direct"}
 	}
-	if p.Name == "" || p.Host == "" || p.User == "" {
-		return Profile{}, errors.New("请填写名称、服务器地址和用户名")
-	}
-	if strings.ContainsAny(p.Host, " /\r\n\t") || len(p.Host) > 253 {
-		return Profile{}, errors.New("服务器地址应为主机名或 IP，不包含端口")
-	}
-	if p.Port == 0 {
-		p.Port = 22
-		if p.Protocol == "rdp" {
-			p.Port = 3389
+	if p.Protocol == "serial" {
+		// Serial profiles carry a device path instead of a network address;
+		// normalizeSerialProfile has already copied SerialPort into Host.
+		if p.Name == "" || p.Host == "" {
+			return Profile{}, errors.New("请填写名称和串口")
 		}
-	}
-	if p.Port < 1 || p.Port > 65535 {
-		return Profile{}, errors.New("端口应为 1–65535")
-	}
-	if p.Auth == "" {
-		p.Auth = "password"
-	}
-	if p.Auth != "password" && p.Auth != "key" && p.Auth != "agent" {
-		return Profile{}, errors.New("不支持的认证方式")
+	} else {
+		if p.Name == "" || p.Host == "" || p.User == "" {
+			return Profile{}, errors.New("请填写名称、服务器地址和用户名")
+		}
+		if strings.ContainsAny(p.Host, " /\r\n\t") || len(p.Host) > 253 {
+			return Profile{}, errors.New("服务器地址应为主机名或 IP，不包含端口")
+		}
+		if p.Port == 0 {
+			p.Port = 22
+			if p.Protocol == "rdp" {
+				p.Port = 3389
+			}
+		}
+		if p.Port < 1 || p.Port > 65535 {
+			return Profile{}, errors.New("端口应为 1–65535")
+		}
+		if p.Auth == "" {
+			p.Auth = "password"
+		}
+		if p.Auth != "password" && p.Auth != "key" && p.Auth != "agent" {
+			return Profile{}, errors.New("不支持的认证方式")
+		}
 	}
 	if p.Auth != "key" {
 		p.KeyID = ""

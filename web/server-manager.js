@@ -154,6 +154,11 @@ async function openSelectedServers() {
   finally { serverManager.batch = null; reflectServerSelection(); safe(refreshServerManagerHistory)(); toast(`连接请求完成：已打开 ${batch.connected} / ${batch.total} 台`); }
 }
 
+// Shared one-line address text for any connection protocol; serial profiles
+// show the device and line parameters instead of user@host:port.
+function profileAddressText(profile) {
+  return profile.protocol === 'serial' ? `串口 · ${window.DengSerial.label(profile)}` : `${profile.protocol === 'rdp' ? 'RDP · ' : ''}${profile.user}@${profile.host}:${profile.port}`;
+}
 function renderServerProfile(profile, tree, mode = 'servers', history = null) {
   const row = node('div', 'server-profile-row'); row.dataset.profileId = profile.id;
   const deleted = mode === 'trash' || !!profile.deletedAt;
@@ -163,7 +168,7 @@ function renderServerProfile(profile, tree, mode = 'servers', history = null) {
   button.dataset.selectable = String(!deleted);
   if (!deleted) { button.setAttribute('aria-pressed', String(serverManager.selectedProfiles.has(profile.id))); button.setAttribute('aria-describedby', 'server-selection-hint'); }
   const glyph = node('span', 'server-icon'); glyph.append(icon('server'));
-  const text = node('span', 'connection-card-text'); text.append(node('strong', '', profile.name), node('small', '', connecting.has(profile.id) ? '正在连接…' : `${profile.protocol === "rdp" ? "RDP · " : ""}${profile.user}@${profile.host}:${profile.port}${profile.auth === 'key' && !profile.keyId && !profile.keyPath ? ' · 待配置私钥' : ''}`));
+  const text = node('span', 'connection-card-text'); text.append(node('strong', '', profile.name), node('small', '', connecting.has(profile.id) ? '正在连接…' : `${profileAddressText(profile)}${profile.auth === 'key' && !profile.keyId && !profile.keyPath ? ' · 待配置私钥' : ''}`));
   if (profile.notes?.trim()) {
     const note = node('span', 'server-card-notes');
     note.setAttribute('aria-label', '服务器备注');
@@ -189,7 +194,7 @@ function renderServerProfile(profile, tree, mode = 'servers', history = null) {
     serverManager.selectedProfiles.clear(); serverManager.selectedProfiles.add(profile.id); serverManager.focusedProfile = profile.id; reflectServerSelection();
   });
   row.ondblclick = safe(event => { if (isConnectionTarget(event) && !event.ctrlKey && !event.metaKey) { clearServerSelection(); return connect(profile.id); } });
-  button.title = `${profile.name}\n${profile.user}@${profile.host}:${profile.port}\n${serverGroupPath(profile, tree)}`;
+  button.title = `${profile.name}\n${profileAddressText(profile)}\n${serverGroupPath(profile, tree)}`;
   if (profile.notes) button.title += `\n备注：${profile.notes}`;
   button.onkeydown = event => {
     if ((event.ctrlKey || event.metaKey) && event.key === ' ') { event.preventDefault(); event.stopPropagation(); toggleServerSelection(profile); }

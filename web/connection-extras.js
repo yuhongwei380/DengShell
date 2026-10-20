@@ -92,7 +92,7 @@ window.DengProfileNotes = (() => {
   function open(value) {
     if (!dialog || !value) return;
     profile = value;
-    $('#profile-notes-target').textContent = `${value.name} · ${value.user}@${value.host}:${value.port}`;
+    $('#profile-notes-target').textContent = `${value.name} · ${profileAddressText(value)}`;
     $('#profile-notes-content').textContent = value.notes || '暂无备注';
     $('#edit-profile-notes').hidden = !!value.deletedAt;
     dialog.showModal();

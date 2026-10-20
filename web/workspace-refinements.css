@@ -68,7 +68,7 @@
 [data-narrow="true"] .diagnostics-footer { flex-wrap:wrap; }
 [data-short="true"] .disk-readout { padding:6px 7px; gap:4px; }
 [data-short="true"] .disk-io { margin-top:8px; }
-.terminal-command-bar textarea { resize:none; width:100%; min-width:0; max-height:76px; border:0; background:transparent; color:#dae7ee; font:11px/18px var(--terminal-family,monospace); padding:5px 0; scrollbar-width:thin; }
+.terminal-command-bar textarea { resize:none; width:100%; min-width:0; min-height:46px; max-height:140px; border:0; background:transparent; color:#dae7ee; font:11px/18px var(--terminal-family,monospace); padding:5px 0; scrollbar-width:thin; }
 .terminal-command-bar textarea::placeholder { color:#809aa9; }
 .ping-chart { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:7px; margin-top:13px; padding:5px 0; }
 .ping-axis { position:relative; min-width:24px; color:var(--muted); font-size:9px; line-height:1; font-variant-numeric:tabular-nums; }

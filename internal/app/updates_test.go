@@ -334,3 +334,24 @@ func TestDownloadMustMatchOfferAndBytes(t *testing.T) {
 		})
 	}
 }
+
+// Release policy 2026-10-20: Linux payloads are no longer published, so the
+// fixed up.deb / up.pkg.tar.zst manifests answer 404. Deployed Linux clients
+// must read that as "retired", not as a network failure; other platforms keep
+// the generic unavailable reason.
+func TestLinuxManifestGoneReportsDiscontinued(t *testing.T) {
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	}))
+	defer s.Close()
+	for _, tc := range []struct{ platform, want string }{
+		{"linux-amd64", "linux-discontinued"},
+		{ArchUpdatePlatform, "linux-discontinued"},
+		{"windows-amd64", "unavailable"},
+	} {
+		result := checkUpdateTrusted(context.Background(), s.Client(), s.URL+"/up.json", tc.platform, strings.Repeat("a", 64), UpdateReceipt{}, map[string]ed25519.PublicKey{}, time.Now())
+		if result.Status != "none" || result.Reason != tc.want {
+			t.Fatalf("platform %s: got %+v, want reason %s", tc.platform, result, tc.want)
+		}
+	}
+}

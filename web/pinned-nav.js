@@ -15,6 +15,7 @@ window.DengPinnedNav = (() => {
     await persistAppearance({ layout: { [LAYOUT_KEY]: pinned } });
   }
   const MAX_CHIPS = 7;
+  const profileSubtitle = profile => profile.protocol === 'serial' ? window.DengSerial.label(profile) : `${profile.user}@${profile.host}:${profile.port}`;
   function openConnection(profile) {
     const existing = [...sessions.values()].find(s => s.profileId === profile.id);
     if (existing) activate(existing.id); else connect(profile.id);
@@ -23,15 +24,15 @@ window.DengPinnedNav = (() => {
     const remove = node('button', 'pinned-chip-remove');
     remove.type = 'button';
     remove.append(icon('close'));
-    remove.title = '取消固定';
+    remove.title = '关闭（取消固定）';
     remove.setAttribute('aria-label', `取消固定 ${profile.name}`);
     remove.onclick = event => { event.stopPropagation(); safe(() => confirmUnpin(profile))(); };
     return remove;
   }
-  // Unpinning is destructive enough to ask first: the delete button and the
-  // right-click gesture both route through the shared confirmation dialog.
+  // Unpinning is destructive enough to ask first: the close button is the only
+  // unpin affordance and always routes through the shared confirmation dialog.
   async function confirmUnpin(profile) {
-    if (!await ask({ title: `取消固定 ${profile.name}？`, description: `将从链接栏移除 ${profile.name}（${profile.user}@${profile.host}:${profile.port}）。连接配置与已保存数据不受影响，之后可重新固定。`, confirm: '取消固定' })) return;
+    if (!await ask({ title: `取消固定 ${profile.name}？`, description: `将从链接栏移除 ${profile.name}（${profileSubtitle(profile)}）。连接配置与已保存数据不受影响，之后可重新固定。`, confirm: '取消固定' })) return;
     await unpin(profile.id);
   }
   function chipFor(profile) {
@@ -41,8 +42,7 @@ window.DengPinnedNav = (() => {
     open.append(icon('server'), node('span', '', profile.name));
     open.onclick = () => openConnection(profile);
     chip.append(open, removeButtonFor(profile));
-    chip.title = `${profile.name} · ${profile.user}@${profile.host}:${profile.port}\n左键快速连接 · × 取消固定（需确认）`;
-    chip.oncontextmenu = event => { event.preventDefault(); safe(() => confirmUnpin(profile))(); };
+    chip.title = `${profile.name} · ${profileSubtitle(profile)}\n左键快速连接 · × 关闭（取消固定需确认）`;
     return chip;
   }
   function moreFor(overflow) {
@@ -61,8 +61,7 @@ window.DengPinnedNav = (() => {
       open.append(icon('server'), node('span', '', profile.name));
       open.onclick = () => { menu.hidden = true; openConnection(profile); };
       item.append(open, removeButtonFor(profile));
-      item.title = `${profile.name} · ${profile.user}@${profile.host}:${profile.port}\n左键快速连接 · × 取消固定（需确认）`;
-      item.oncontextmenu = event => { event.preventDefault(); menu.hidden = true; safe(() => confirmUnpin(profile))(); };
+      item.title = `${profile.name} · ${profileSubtitle(profile)}\n左键快速连接 · × 关闭（取消固定需确认）`;
       menu.append(item);
     });
     btn.onclick = event => {

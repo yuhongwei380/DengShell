@@ -1,6 +1,7 @@
 // Opt-in browser regression for the pinned links bar: every chip and overflow
-// item exposes a delete button, and unpinning (button or right-click) must go
-// through the shared confirmation dialog before the layout is rewritten.
+// item exposes a close button, and unpinning must go through the shared
+// confirmation dialog before the layout is rewritten. Right-click no longer
+// unpins at all.
 // Edge on Windows hands the browser process off from the launcher stub, so the
 // browser is spawned directly and driven over CDP instead of puppeteer.launch.
 import fs from 'node:fs';
@@ -62,13 +63,13 @@ try {
   await page.waitForFunction(() => appearance.layout['dengshell.pinned.v1'].length === 7 && document.querySelectorAll('.pinned-chip').length === 7 && !document.querySelector('.pinned-more'));
   assert.deepEqual(await page.evaluate(() => appearance.layout['dengshell.pinned.v1']), created.slice(1));
   checks.push('Confirming removes the pin, persists the layout and reflows the overflow');
-  // Right-click now routes through the same confirmation instead of unpinning.
+  // Right-click no longer unpins: the close button is the only affordance.
   await page.evaluate(() => document.querySelector('.pinned-chip').dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })));
-  await page.waitForSelector('#action-dialog[open]');
-  await page.click('#action-confirm');
-  await page.waitForFunction(() => document.querySelectorAll('.pinned-chip').length === 6);
-  assert.deepEqual(await page.evaluate(() => appearance.layout['dengshell.pinned.v1']), created.slice(2));
-  checks.push('Right-click unpin also requires confirmation');
+  await new Promise(resolve => setTimeout(resolve, 300));
+  assert(!await page.$('#action-dialog[open]'), 'right-click must not open the unpin confirmation');
+  assert.equal(await page.$$eval('.pinned-chip', els => els.length), 7);
+  assert.deepEqual(await page.evaluate(() => appearance.layout['dengshell.pinned.v1']), created.slice(1));
+  checks.push('Right-click no longer unpins; only the close button does, with confirmation');
   assert.deepEqual(errors, []);
   fs.writeFileSync(stage + '/pinned-nav.json', JSON.stringify({ passed: true, checks, errors }, null, 2)); console.log('PASS', checks);
 } catch (error) { if (page) await page.screenshot({ path: stage + '/pinned-nav-failure.png' }); throw error } finally { try { await browser?.close(); } catch {} try { child.kill(); } catch {} try { fs.rmSync(profileDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 }); } catch {} }

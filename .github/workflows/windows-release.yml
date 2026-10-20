@@ -41,8 +41,6 @@ jobs:
         run: python scripts/stage-windows.py --binary build/out/DevShell-prepared.exe --stage build/out/stage
       - name: Build installer
         run: python scripts/package-windows.py --stage build/out/stage --output build/out/DevShell-Setup-x64.exe
-      - name: Build portable zip
-        run: python -c "import importlib.util; from pathlib import Path; s=importlib.util.spec_from_file_location('pr','scripts/package-release.py'); pr=importlib.util.module_from_spec(s); s.loader.exec_module(pr); pr.zip_tree(Path('build/out/stage'), Path('build/out/DevShell-windows-x64.zip'))"
       - name: Build update artifacts
         run: python scripts/make-windows-update.py --binary build/out/DevShell-prepared.exe --output-dir build/out/update
       - name: Publish GitHub Release
@@ -56,6 +54,6 @@ jobs:
           } else {
             gh release create $tag --title "DevShell $tag" --notes-file $notes
           }
-          gh release upload $tag build/out/DevShell-Setup-x64.exe build/out/DevShell-windows-x64.zip build/out/update/up.exe build/out/update/up.exe.json --clobber
+          gh release upload $tag build/out/DevShell-Setup-x64.exe build/out/update/up.exe build/out/update/up.exe.json --clobber
         env:
           GH_TOKEN: ${{ github.token }}

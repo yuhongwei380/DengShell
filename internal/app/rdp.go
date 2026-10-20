@@ -69,8 +69,11 @@ func normalizeRDPProfile(p *Profile) error {
 		p.RDPClipboard = false
 		return nil
 	}
+	if p.Protocol == "serial" {
+		return normalizeSerialProfile(p)
+	}
 	if p.Protocol != "rdp" {
-		return errors.New("连接类型应为 SSH 或 RDP")
+		return errors.New("连接类型应为 SSH、RDP 或串口")
 	}
 	if p.Auth != "" && p.Auth != "password" {
 		return errors.New("RDP 连接使用用户名和密码认证")

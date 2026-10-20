@@ -13,7 +13,7 @@
   const get = suffix => document.getElementById('process-view-' + suffix);
   const shown = view => active === view.id && views.get(view.id) === view;
   const visible = view => shown(view) && monitorVisible();
-  const connected = view => !!sessions.get(view.id)?.connected;
+  const connected = view => { const state = sessions.get(view.id); return !!state?.connected && !state.serial; };
   function create(id) {
     const view = { id, search: '', sort: 'cpu', desc: true, page: 1, size: 100, paused: false, generation: 0, loadedGeneration: -1, data: null, busy: false, queued: false, next: 0, error: '' };
     views.set(id, view); return view;
@@ -87,7 +87,8 @@
   }
   function open() {
     const state = current();
-    if (!state || (!state.connected && !views.has(state.id))) return;
+    // Serial sessions have no remote host to sample processes from.
+    if (!state || state.serial || (!state.connected && !views.has(state.id))) return;
     if (!views.has(state.id)) create(state.id);
     activate(state.id, 'processes');
   }
