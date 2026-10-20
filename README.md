@@ -63,12 +63,12 @@ DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VP
 
 Windows 版本需要 Microsoft Edge WebView2，缺少时程序会提供安装指引。安装版默认安装到当前用户目录，卸载保留个人配置。
 
-**关于 `up.*` 文件**：Releases 页里的 `up.exe` 及同名 `.json` 描述文件是 **Windows 内置在线更新的载荷**，由已安装客户端的启动更新检查自动下载消费，无需（也不要）手动下载运行。流程：启动时获取描述文件 → 校验构建号大于本机（防回退）→ 弹窗确认后下载并校验 SHA-256 → 替换程序（保留旧程序副本）→ 自动重启，数据目录不变。这些文件名是更新协议的固定契约（见 [更新契约](build/UPDATER-CONTRACT.md)），旧客户端按名字寻找新载荷，不可改名。Linux 载荷 `up.deb` / `up.pkg.tar.zst` 已随 Linux 发版停止，不再发布。
+**关于 `up.*` 文件**：Releases 页里的 `up.exe` 及同名 `.json` 描述文件是 **Windows 内置在线更新的载荷**，由已安装客户端的启动更新检查自动下载消费，无需（也不要）手动下载运行。流程：启动时获取描述文件 → 校验构建号大于本机（防回退）→ 弹窗确认后下载并校验 SHA-256 → 替换程序（保留旧程序副本）→ 自动重启，数据目录不变。这些文件名是更新协议的固定契约（见 [更新契约](docs/release/UPDATER-CONTRACT.md)），旧客户端按名字寻找新载荷，不可改名。Linux 载荷 `up.deb` / `up.pkg.tar.zst` 已随 Linux 发版停止，不再发布。
 
 **测试情况：**
 
 - **Windows：** 发布验证覆盖原生 WebView2 启动、安装／卸载保留配置、压缩程序及从最小化状态升级后显示窗口。自动验证使用 GitHub Windows 运行器，结果见 [Windows 验证记录](https://github.com/yuhongwei380/DevShell/actions/workflows/windows-release-validation.yml)；不等同于全部 Windows 10／11 实体设备、显卡和托盘组合已验证。
-- **Linux（历史版本）：** 此前 Linux 发行包已在 Ubuntu 22.04、Ubuntu 24.04、Debian 12、Fedora 43、openSUSE Tumbleweed 和 Arch Linux 容器中通过安装、原生界面启动及卸载保留配置测试，具体范围见 [功能审查与验证](build/FUNCTIONAL-AUDIT-v0.03.md)。Linux 发版已停止，源码仍可自行构建。
+- **Linux（历史版本）：** 此前 Linux 发行包已在 Ubuntu 22.04、Ubuntu 24.04、Debian 12、Fedora 43、openSUSE Tumbleweed 和 Arch Linux 容器中通过安装、原生界面启动及卸载保留配置测试，具体范围见 [功能审查与验证](docs/release/FUNCTIONAL-AUDIT-v0.03.md)。Linux 发版已停止，源码仍可自行构建。
 
 ## 服务器与多级目录
 
@@ -170,7 +170,7 @@ Windows 和 Linux X11 支持拖动标签到其他窗口；Wayland 下使用合�
 
 拖动命令或命令分组可调整顺序，拖到其他分组可移动命令。排序会保存，空分组也保留。
 
-编辑命令时可插入 1–5 号参数，例如 `docker logs [p#1 容器] --tail [p#2 行数]`。调用后在 **命令编辑区** 填写参数、检查实际命令预览，再发送；参数和长命令草稿在本次运行中保留，便于多次调整。发送目标单独显示，打开命令或切换服务器标签时跟随当前会话；手动选择的目标会保留到下次切换标签或打开命令。终端输入条旁的编辑按钮也可展开编辑区。详见 [命令与编辑器说明](build/COMMANDS-AND-EDITORS.md)。
+编辑命令时可插入 1–5 号参数，例如 `docker logs [p#1 容器] --tail [p#2 行数]`。调用后在 **命令编辑区** 填写参数、检查实际命令预览，再发送；参数和长命令草稿在本次运行中保留，便于多次调整。发送目标单独显示，打开命令或切换服务器标签时跟随当前会话；手动选择的目标会保留到下次切换标签或打开命令。终端输入条旁的编辑按钮也可展开编辑区。详见 [命令与编辑器说明](docs/release/COMMANDS-AND-EDITORS.md)。
 
 ## SFTP 文件管理与编辑
 
@@ -321,7 +321,7 @@ ICMP 走本机路由或 TUN，不经过应用设置的 SOCKS5 / HTTP 代理；�
 
 这些操作在用户确认后执行，涉及系统设置时需要远端 root 或 sudo 权限。BBR 实际效果取决于内核与网络环境；第三方脚本的内容由其维护者提供，测速可能消耗大量流量。
 
-SWAP 支持常用容量及自定义大小，并根据文件系统和交换区类型判断可执行操作。交换分区与 zram 只关闭交换用途；重新设置时按工具提示处理重启要求。具体行为见 [常用应用说明](build/COMMON-APPS.md)。
+SWAP 支持常用容量及自定义大小，并根据文件系统和交换区类型判断可执行操作。交换分区与 zram 只关闭交换用途；重新设置时按工具提示处理重启要求。具体行为见 [常用应用说明](docs/release/COMMON-APPS.md)。
 
 ## 配置备份与升级
 
@@ -435,4 +435,4 @@ DengShell 应用代码采用 [MIT License](LICENSE)，可按许可使用、修�
 
 ### v0.03 · 2026-10-03
 
-修复远程文件路径、特殊文件读取、目录切换、安全锁多实例、同步认证和 SFTP 上传兼容问题；延迟采样按会话隔离，命令发送失败保留草稿，Windows 程序使用 UPX 压缩。详见 [v0.03 发布说明](build/RELEASE-v0.03.md)。
+修复远程文件路径、特殊文件读取、目录切换、安全锁多实例、同步认证和 SFTP 上传兼容问题；延迟采样按会话隔离，命令发送失败保留草稿，Windows 程序使用 UPX 压缩。详见 [v0.03 发布说明](docs/release/RELEASE-v0.03.md)。

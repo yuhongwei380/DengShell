@@ -28,9 +28,9 @@
 xcode-select --install
 npm ci
 npm run vendor
-python3 scripts/check-environment.py
-python3 scripts/build-macos.py --arch universal --jobs 4
-python3 scripts/test-macos-app.py build/macos/DengShell.app
+python3 scripts/tools/check-environment.py
+python3 scripts/build/build-macos.py --arch universal --jobs 4
+python3 scripts/tests/test-macos-app.py build/macos/DengShell.app
 ```
 
 输出位于 `build/macos/`，包括 `.app`、DMG、ZIP、校验清单和构建信息。已有应用不会被覆盖，可通过 `--output 新目录` 保存下一次构建。

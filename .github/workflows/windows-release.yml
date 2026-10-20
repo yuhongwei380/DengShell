@@ -38,17 +38,17 @@ jobs:
       - name: Prepare Windows image
         run: go run ./cmd/prepare-windows-image -in build/out/DevShell.exe -out build/out/DevShell-prepared.exe
       - name: Stage distribution
-        run: python scripts/stage-windows.py --binary build/out/DevShell-prepared.exe --stage build/out/stage
+        run: python scripts/build/stage-windows.py --binary build/out/DevShell-prepared.exe --stage build/out/stage
       - name: Build installer
-        run: python scripts/package-windows.py --stage build/out/stage --output build/out/DevShell-Setup-x64.exe
+        run: python scripts/build/package-windows.py --stage build/out/stage --output build/out/DevShell-Setup-x64.exe
       - name: Build update artifacts
-        run: python scripts/make-windows-update.py --binary build/out/DevShell-prepared.exe --output-dir build/out/update
+        run: python scripts/build/make-windows-update.py --binary build/out/DevShell-prepared.exe --output-dir build/out/update
       - name: Publish GitHub Release
         shell: pwsh
         run: |
           $tag = "${{ github.event.inputs.tag || github.ref_name }}"
           $version = (Select-String -Path internal/app/updates.go -Pattern 'const ApplicationVersion = "([^"]+)"').Matches[0].Groups[1].Value
-          $notes = "build/RELEASE-$version.md"
+          $notes = "docs/release/RELEASE-$version.md"
           if (gh release view $tag 2>$null) {
             gh release edit $tag --title "DevShell $tag" --notes-file $notes
           } else {

@@ -5,43 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DevShell · SSH 工作台</title>
   <meta name="referrer" content="no-referrer">
-  <script src="bootstrap.js"></script>
+  <script src="js/bootstrap.js"></script>
   <script>if(location.protocol!=='wails:'&&location.hostname!=='wails.localhost'){const nonce=new URLSearchParams(location.search).get('window');if(/^[A-Za-z0-9_-]{24,96}$/.test(nonce||'')){window.CLOUDSHELL.detachedNonce=nonce;}}</script>
-  <script src="security-lock.js?v=20260921-v002-b72"></script>
-  <script src="theme.js?v=20260920-v002-b70"></script>
+  <script src="js/security-lock.js?v=20260921-v002-b72"></script>
+  <script src="js/theme.js?v=20260920-v002-b70"></script>
   <link rel="stylesheet" href="vendor/xterm.css">
-  <link rel="stylesheet" href="style.css?v=20261019-serial1">
-  <link rel="stylesheet" href="theme.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="workspace-tools.css?v=20261001-composer">
-  <link rel="stylesheet" href="appearance.css?v=20261019-pin4">
-  <link rel="stylesheet" href="process-view.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="workspace-refinements.css?v=20261019-serial1">
-  <link rel="stylesheet" href="file-browser.css?v=20260921-v002-b72">
-  <link rel="stylesheet" href="themed-select.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="config-document.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="startup-update.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="desktop-polish.css?v=20261019-serial1">
-  <link rel="stylesheet" href="server-manager.css?v=20260928-card1">
-  <link rel="stylesheet" href="connection-extras.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="help-guide.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="appearance-tools.css?v=20261018-follow1">
-  <link rel="stylesheet" href="pinned-nav.css?v=20261019-pin8">
-  <link rel="stylesheet" href="font-library.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/style.css?v=20261019-serial1">
+  <link rel="stylesheet" href="css/theme.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/workspace-tools.css?v=20261001-composer">
+  <link rel="stylesheet" href="css/appearance.css?v=20261019-pin4">
+  <link rel="stylesheet" href="css/process-view.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/workspace-refinements.css?v=20261019-serial1">
+  <link rel="stylesheet" href="css/file-browser.css?v=20260921-v002-b72">
+  <link rel="stylesheet" href="css/themed-select.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/config-document.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/startup-update.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/desktop-polish.css?v=20261019-serial1">
+  <link rel="stylesheet" href="css/server-manager.css?v=20260928-card1">
+  <link rel="stylesheet" href="css/connection-extras.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/help-guide.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/appearance-tools.css?v=20261018-follow1">
+  <link rel="stylesheet" href="css/pinned-nav.css?v=20261019-pin8">
+  <link rel="stylesheet" href="css/font-library.css?v=20260920-v002-b70">
   <link rel="icon" href="assets/dengshell.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="file-tools.css?v=20261010-editor-wrap">
-  <link rel="stylesheet" href="desktop-tray.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="latency-chart.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="common-apps.css?v=20261018-follow2">
-  <link rel="stylesheet" href="session-windows.css?v=20261018-tools2">
-  <link rel="stylesheet" href="system-identity.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="chart-styles.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="light-theme.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="ui-appearance.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="security-lock.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="soft-dark.css?v=20260923-v002-b80">
-<link rel="stylesheet" href="rdp.css?v=20260927-preview1">
-  <link rel="stylesheet" href="connection-form.css?v=20261019-serial1">
-  <link rel="stylesheet" href="upload-confirmation.css?v=20260928-overwrite1">
+  <link rel="stylesheet" href="css/file-tools.css?v=20261010-editor-wrap">
+  <link rel="stylesheet" href="css/desktop-tray.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/latency-chart.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/common-apps.css?v=20261018-follow2">
+  <link rel="stylesheet" href="css/session-windows.css?v=20261018-tools2">
+  <link rel="stylesheet" href="css/system-identity.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/chart-styles.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/light-theme.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/ui-appearance.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/security-lock.css?v=20260920-v002-b70">
+  <link rel="stylesheet" href="css/soft-dark.css?v=20260923-v002-b80">
+<link rel="stylesheet" href="css/rdp.css?v=20260927-preview1">
+  <link rel="stylesheet" href="css/connection-form.css?v=20261019-serial1">
+  <link rel="stylesheet" href="css/upload-confirmation.css?v=20260928-overwrite1">
 </head>
 <body>
   <svg class="icon-sprite" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><defs>
@@ -341,51 +341,51 @@
   <script src="vendor/xterm.js"></script>
   <script src="vendor/addon-fit.js"></script>
   <script src="vendor/addon-serialize.js"></script>
-  <script src="command-composer.js?v=20261001-composer"></script>
-  <script src="workspace-tools.js?v=20260925-v002-b86"></script>
-  <script src="appearance.js?v=20261018-pin2"></script>
-  <script src="ui-appearance.js?v=20261019-brand1"></script>
-  <script src="font-library.js?v=20261019-brand1"></script>
-  <script src="path-history.js?v=20260925-v002-b86"></script>
-  <script src="directory-favorites.js?v=20260925-v002-b86"></script>
-  <script src="connection-extras.js?v=20261019-serial1"></script>
-  <script src="file-browser.js?v=20260925-v002-b86"></script>
-  <script src="latency-chart.js?v=20260920-v002-b70"></script>
-  <script src="workspace-refinements.js?v=20261019-serial1"></script>
-  <script src="themed-select.js?v=20260920-v002-b70"></script>
-  <script src="terminal-integration.js?v=20261018-follow3"></script>
-  <script src="mtr-installation.js?v=20261019-brand1"></script>
-  <script src="config-document.js?v=20260920-v002-b70"></script>
-  <script src="startup-update.js?v=20261020-linuxend1"></script>
-  <script src="portable-preferences.js?v=20261018-pin2"></script>
-  <script src="server-manager.js?v=20261019-serial1"></script>
-  <script src="server-explorer.js?v=20261019-serial1"></script>
-  <script src="help-guide.js?v=20261019-serial1"></script>
-  <script src="chart-styles.js?v=20260920-v002-b70"></script>
-  <script src="appearance-tools.js?v=20261019-brand1"></script>
-  <script src="terminal-snapshot.js?v=20260920-v002-b70"></script>
-  <script src="server-addresses.js?v=20261018-addr1"></script>
-  <script src="window-preview.js?v=20260920-v002-b70"></script>
-  <script src="window-transfers.js?v=20261019-brand1"></script>
-  <script src="session-tab-order.js?v=20260928-drag1"></script>
-  <script src="session-windows.js?v=20261019-serial1"></script>
-  <script src="session-tabs-layout.js?v=20260920-v002-b70"></script>
-  <script src="system-identity.js?v=20260920-v002-b70"></script>
-  <script src="rdp.js?v=20260927-preview1"></script>
-  <script src="serial.js?v=20261019-serial1"></script>
-  <script src="upload-confirmation.js?v=20260928-overwrite1"></script>
-  <script src="app.js?v=20261019-serial1"></script>
-  <script src="quick-connect.js?v=20260920-v002-b70"></script>
-  <script src="local-prompt.js?v=20261019-local1"></script>
-  <script src="pinned-nav.js?v=20261019-pinunpin1"></script>
-  <script src="process-view.js?v=20261019-serial1"></script>
-  <script src="common-apps.js?v=20261019-brand1"></script>
-  <script src="text-model.js?v=20260920-v002-b70"></script>
-  <script src="remote-text-document.js?v=20260920-v002-b70"></script>
-  <script src="text-search.js?v=20260920-v002-b70"></script>
-  <script src="text-editor-tools.js?v=20261010-editor-wrap"></script>
-  <script src="text-editor.js?v=20261010-editor-wrap"></script>
-  <script src="file-tools.js?v=20261019-brand1"></script>
-  <script src="desktop-tray.js?v=20260920-v002-b70"></script>
+  <script src="js/command-composer.js?v=20261001-composer"></script>
+  <script src="js/workspace-tools.js?v=20260925-v002-b86"></script>
+  <script src="js/appearance.js?v=20261018-pin2"></script>
+  <script src="js/ui-appearance.js?v=20261019-brand1"></script>
+  <script src="js/font-library.js?v=20261019-brand1"></script>
+  <script src="js/path-history.js?v=20260925-v002-b86"></script>
+  <script src="js/directory-favorites.js?v=20260925-v002-b86"></script>
+  <script src="js/connection-extras.js?v=20261019-serial1"></script>
+  <script src="js/file-browser.js?v=20260925-v002-b86"></script>
+  <script src="js/latency-chart.js?v=20260920-v002-b70"></script>
+  <script src="js/workspace-refinements.js?v=20261019-serial1"></script>
+  <script src="js/themed-select.js?v=20260920-v002-b70"></script>
+  <script src="js/terminal-integration.js?v=20261018-follow3"></script>
+  <script src="js/mtr-installation.js?v=20261019-brand1"></script>
+  <script src="js/config-document.js?v=20260920-v002-b70"></script>
+  <script src="js/startup-update.js?v=20261020-linuxend1"></script>
+  <script src="js/portable-preferences.js?v=20261018-pin2"></script>
+  <script src="js/server-manager.js?v=20261019-serial1"></script>
+  <script src="js/server-explorer.js?v=20261019-serial1"></script>
+  <script src="js/help-guide.js?v=20261019-serial1"></script>
+  <script src="js/chart-styles.js?v=20260920-v002-b70"></script>
+  <script src="js/appearance-tools.js?v=20261019-brand1"></script>
+  <script src="js/terminal-snapshot.js?v=20260920-v002-b70"></script>
+  <script src="js/server-addresses.js?v=20261018-addr1"></script>
+  <script src="js/window-preview.js?v=20260920-v002-b70"></script>
+  <script src="js/window-transfers.js?v=20261019-brand1"></script>
+  <script src="js/session-tab-order.js?v=20260928-drag1"></script>
+  <script src="js/session-windows.js?v=20261019-serial1"></script>
+  <script src="js/session-tabs-layout.js?v=20260920-v002-b70"></script>
+  <script src="js/system-identity.js?v=20260920-v002-b70"></script>
+  <script src="js/rdp.js?v=20260927-preview1"></script>
+  <script src="js/serial.js?v=20261019-serial1"></script>
+  <script src="js/upload-confirmation.js?v=20260928-overwrite1"></script>
+  <script src="js/app.js?v=20261019-serial1"></script>
+  <script src="js/quick-connect.js?v=20260920-v002-b70"></script>
+  <script src="js/local-prompt.js?v=20261019-local1"></script>
+  <script src="js/pinned-nav.js?v=20261019-pinunpin1"></script>
+  <script src="js/process-view.js?v=20261019-serial1"></script>
+  <script src="js/common-apps.js?v=20261019-brand1"></script>
+  <script src="js/text-model.js?v=20260920-v002-b70"></script>
+  <script src="js/remote-text-document.js?v=20260920-v002-b70"></script>
+  <script src="js/text-search.js?v=20260920-v002-b70"></script>
+  <script src="js/text-editor-tools.js?v=20261010-editor-wrap"></script>
+  <script src="js/text-editor.js?v=20261010-editor-wrap"></script>
+  <script src="js/file-tools.js?v=20261019-brand1"></script>
+  <script src="js/desktop-tray.js?v=20260920-v002-b70"></script>
 </body>
 </html>

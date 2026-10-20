@@ -42,7 +42,7 @@
 ## 日常检查与构建
 
 ```bash
-python3 scripts/check-environment.py
+python3 scripts/tools/check-environment.py
 go mod verify
 npm ci
 npm run vendor

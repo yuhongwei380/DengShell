@@ -27,7 +27,7 @@ func TestUploadNoticesBrowser(t *testing.T) {
 	defer server.Close()
 	a.baseURL = "http://" + server.Listener.Addr().String()
 	server.Start()
-	script, err := filepath.Abs("../../scripts/test-upload-notices.mjs")
+	script, err := filepath.Abs("../../scripts/tests/test-upload-notices.mjs")
 	if err != nil {
 		t.Fatal(err)
 	}

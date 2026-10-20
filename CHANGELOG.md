@@ -1,10 +1,17 @@
 # DevShell 更新日志
 
+## 2026-10-20 仓库结构整理：前端、脚本与文档分目录 · v26.10.0 构建 20261018128
+
+- 前端资源按类型归位：**`web/js/`**（49 个脚本）与 **`web/css/`**（31 个样式）；`index.html`、`assets/`、`vendor/` 保留在 `web/` 根，嵌入目录与运行时行为不变。
+- 脚本按用途归位：**`scripts/build/`**（打包与发版）、**`scripts/tests/`**（全部回归测试）、**`scripts/tools/`**（vendor、环境检查、诊断等）；CI 工作流、npm scripts 与 Go 浏览器测试路径同步更新。
+- 发版与协议文档从 `build/` 移到 **`docs/release/`**；`build/` 只保留图片、许可证、示例配置与平台目录。
+- 程序行为无变化；`go build/vet/test`、前端语法检查、回归测试与打包冒烟全部通过。
+
 ## 2026-10-20 发版策略：仅发布 Windows 与 macOS · 停止绿色版与 Linux 发版 · v26.10.0 构建 20261018127
 
 - 后续发版只提供 **Windows 安装包**（`DevShell-Setup-x64.exe`）与 **macOS 通用 DMG/ZIP**；不再发布 Windows 绿色 ZIP 与 Linux DEB / RPM / pacman / tar.gz。
 - 新增 **macOS 发版工作流**：打 tag 自动构建 Apple 芯片 + Intel 通用包（DMG、ZIP、SHA-256 清单）并上传到同一 Release；ad-hoc 签名、未公证，与 README 说明一致。
-- Windows 发版工作流移除绿色 ZIP 的构建与上传；`scripts/package-release.py` 精简为 Windows + 源码打包，仍是 CI 暂存逻辑的单一来源。
+- Windows 发版工作流移除绿色 ZIP 的构建与上传；`scripts/build/package-release.py` 精简为 Windows + 源码打包，仍是 CI 暂存逻辑的单一来源。
 - 删除 Linux 打包脚本 `build-linux-release.sh` / `package-linux.py` / `package-arch.py` / `install-linux.sh`；`build/linux/` 保留作历史构建基线与兼容性证据。
 - **已安装的 Linux 客户端**：更新载荷不再发布后，更新检查收到 404 会明确提示「Linux 版已停止发布更新，当前版本可继续使用；如需升级请改用 Windows / macOS 版」，不再误报网络故障；历史安装包仍可在 Releases 旧版本获取。
 
