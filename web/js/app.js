@@ -47,7 +47,7 @@ function toast(message) {
   }, 4500);
 }
 const safe = fn => (...args) => { try { return Promise.resolve(fn(...args)).catch(error => toast(error?.message || String(error))); } catch (error) { toast(error?.message || String(error)); } };
-const native = () => window.go?.main?.Desktop;
+const native = () => window.go?.desktop?.Desktop;
 function syncDesktopTheme() {
   const desktop = native();
   if (desktop?.SetTheme) desktop.SetTheme(window.CloudShellTheme.preference).catch(error => console.warn('无法同步窗口主题', error));

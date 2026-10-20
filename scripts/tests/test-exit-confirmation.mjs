@@ -16,7 +16,7 @@ try{
  await page.evaluate(()=>{
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());setDrawer(false);
   window.nativeQuits=0;window.nativeCancels=0;window.failQuit=false;
-  window.go={main:{Desktop:{ConfirmQuit:async()=>{if(failQuit)throw Error('fixture save failure');nativeQuits++},CancelQuit:async()=>{nativeCancels++}}}};
+  window.go={desktop:{Desktop:{ConfirmQuit:async()=>{if(failQuit)throw Error('fixture save failure');nativeQuits++},CancelQuit:async()=>{nativeCancels++}}}};
  });
  // Exercise the actual focus handler with a delayed authoritative lock reply.
  await page.setRequestInterception(true);page.on('request',async r=>{if(r.url().endsWith('/api/security-lock/status'))await new Promise(resolve=>setTimeout(resolve,150));await r.continue()});

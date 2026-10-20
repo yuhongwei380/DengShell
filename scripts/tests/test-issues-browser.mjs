@@ -47,7 +47,7 @@ try {
  // gate remain real. Closing sockets must never wait on APIs that await unlock.
  await page.evaluate(async()=>{
   sessions.clear();localTasks.clear();window.socketCloses=0;window.nativeQuits=0;window.nativeCancels=0;
-  window.go={main:{Desktop:{ConfirmQuit:async()=>{nativeQuits++},CancelQuit:async()=>{nativeCancels++}}}};
+  window.go={desktop:{Desktop:{ConfirmQuit:async()=>{nativeQuits++},CancelQuit:async()=>{nativeCancels++}}}};
   const id='lock-owner';sessions.set(id,{...makeSessionState({id,profileId:'issue-tab-0',home:'/'}),connected:true,ready:false,ws:{close(){socketCloses++}},term:{dispose(){}},host:document.createElement('div')});activeID=id;
   const headers={'Content-Type':'application/json','X-CloudShell-Token':CLOUDSHELL.token};
   const req=async(path,body)=>{const r=await fetch(CLOUDSHELL.base+'/api/security-lock/'+path,{method:'POST',headers,body:JSON.stringify(body)});return r.json()};

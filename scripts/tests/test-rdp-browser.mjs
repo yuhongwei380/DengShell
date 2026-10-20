@@ -17,7 +17,7 @@ try {
   document.querySelectorAll('dialog[open]').forEach(d=>d.close());setDrawer(false);
   qa={calls:[],rdp:[],seq:0};window.runtime={EventsOn:()=>()=>{}};
   const real=api;api=(path,options)=>path==='/api/rdp'?Promise.resolve({available:true,sessions:structuredClone(qa.rdp)}):real(path,options);
-  window.go={main:{Desktop:{Request:async(method,path,body)=>{const r=await fetch(CLOUDSHELL.base+path,{method,headers:{'Content-Type':'application/json','X-CloudShell-Token':CLOUDSHELL.token},body:method==='GET'?undefined:body});const data=await r.text();if(!r.ok)throw new Error('DENGSHELL_ERROR:'+data);return data},
+  window.go={desktop:{Desktop:{Request:async(method,path,body)=>{const r=await fetch(CLOUDSHELL.base+path,{method,headers:{'Content-Type':'application/json','X-CloudShell-Token':CLOUDSHELL.token},body:method==='GET'?undefined:body});const data=await r.text();if(!r.ok)throw new Error('DENGSHELL_ERROR:'+data);return data},
    RDPConnect:async(profileId,secret)=>{const p=connectionProfile(profileId);const item={id:'rdp-qa-'+(++qa.seq),profileId,name:p.name,status:'connecting',message:'🔗  正在连接远程桌面…',createdAt:new Date().toISOString()};qa.lastSecret=secret;qa.rdp.push(item);return structuredClone(item)},
    OpenTerminal:async()=>{},SendTerminal:async()=>{},CloseTerminal:async()=>{},RDPViewport:async(...args)=>{qa.calls.push(args);if(qa.calls.length>1000)qa.calls.shift()},RDPResolution:async(...args)=>{qa.resolution=args},RDPSendSecureAttention:async()=>{}
   }}};

@@ -64,7 +64,7 @@
   async function refreshNativeTheme() {
     clearTimeout(nativeTimer);
     if (nativePending || preference !== 'system' || document.hidden || window.DengShellWindowHidden) return;
-    const desktop = window.go?.main?.Desktop;
+    const desktop = window.go?.desktop?.Desktop;
     if (!desktop?.SystemTheme) { nativeTimer = setTimeout(refreshNativeTheme, 2000); return; }
     nativePending = true;
     try {

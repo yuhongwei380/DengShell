@@ -50,7 +50,7 @@ try {
  await new Promise((resolve,reject)=>{const end=Date.now()+10000;const timer=setInterval(()=>{if(fs.existsSync(path.join(local,'DevShell-files.tar.gz'))){clearInterval(timer);resolve()}else if(Date.now()>end){clearInterval(timer);reject(new Error('archive download timeout'))}},50)});
  const {execFileSync}=await import('node:child_process');const archive=execFileSync('tar',['-tzf',path.join(local,'DevShell-files.tar.gz')],{encoding:'utf8'});assert.match(archive,/a.txt/);assert.match(archive,/folder\/child.txt/);assert.doesNotMatch(archive,/b.txt|keep.txt|other/);
  // The desktop bridge receives the whole selection once, including folders.
- await page.evaluate(async()=>{window.qaArchives=[];window.go={main:{Desktop:{DownloadSelectionArchive:async(id,paths)=>{qaArchives.push({id,paths});return '/fixture/output.tar.gz'}}}};try{await downloadSelected()}finally{delete window.go}});
+ await page.evaluate(async()=>{window.qaArchives=[];window.go={desktop:{Desktop:{DownloadSelectionArchive:async(id,paths)=>{qaArchives.push({id,paths});return '/fixture/output.tar.gz'}}}};try{await downloadSelected()}finally{delete window.go}});
  const nativeArchive=await page.evaluate(()=>qaArchives);assert.equal(nativeArchive.length,1);assert.equal(nativeArchive[0].id,sessionID);assert.deepEqual(nativeArchive[0].paths.sort(),['a.txt','folder'].map(name=>path.join(remote,name)));
  // Appearance and modal bounds in both themes. Delete key uses the same batch.
  await choose(['a.txt','b.txt']);await page.keyboard.press('Delete');await dialog();

@@ -14,9 +14,9 @@ function harness({ theme = 'system', dark = false, native } = {}) {
   document.hidden = false; document.body = {};
   document.getElementById = id => elements.get(id) || null;
   document.createElement = () => ({ querySelector: () => control });
-  elements.set('settings-menu', { querySelector: () => ({ after() {} }) });
+  elements.set('settings-menu', { querySelector: () => ({ after() {} }), prepend() {} });
   const localStorage = { getItem: key => storage.get(key) ?? null, setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key), get length() { return storage.size; }, key: i => [...storage.keys()][i] };
-  window.CLOUDSHELL = { theme }; if (native) window.go = { main: { Desktop: { SystemTheme: native } } };
+  window.CLOUDSHELL = { theme }; if (native) window.go = { desktop: { Desktop: { SystemTheme: native } } };
   const context = vm.createContext({ window, document, localStorage, Event, CustomEvent, structuredClone,
     matchMedia: query => query.includes('reduced') ? { matches: true } : media,
     setTimeout: (fn, delay) => { const id = ++timerID; timers.set(id, { fn, delay }); return id; },

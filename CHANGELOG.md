@@ -1,5 +1,11 @@
 # DevShell 更新日志
 
+## 2026-10-20 修复桌面接口尚未就绪（桥接路径回归） · v26.10.0 构建 20261018129
+
+- 修复桌面窗口打开后所有功能报「桌面接口尚未就绪，请点击服务器管理按钮重试」：构建 20261018128 的结构整理把 `Desktop` 从根包移入 `internal/desktop`，Wails 绑定命名空间随之从 `window.go.main.Desktop` 变为 `window.go.desktop.Desktop`，前端未同步导致桌面模式所有请求 5 秒超时、完全不可用；`app.js`、`security-lock.js`、`theme.js` 与回归测试同步改用新路径。
+- **已更新到 20261018128 的用户无法内置更新**（更新入口同样依赖该桥），请手动安装一次最新 `DevShell-Setup-x64.exe`，连接、密钥等数据自动沿用。
+- 补充 `test-system-theme` 的 `settings-menu` mock 缺失的 `prepend`，修复该测试在 Node 24 下必然失败的问题。
+
 ## 2026-10-20 仓库结构整理：前端、脚本与文档分目录 · v26.10.0 构建 20261018128
 
 - 前端资源按类型归位：**`web/js/`**（49 个脚本）与 **`web/css/`**（31 个样式）；`index.html`、`assets/`、`vendor/` 保留在 `web/` 根，嵌入目录与运行时行为不变。

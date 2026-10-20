@@ -33,7 +33,7 @@ try {
   await page.evaluate(async () => {
     document.querySelectorAll('dialog[open]').forEach(e => e.close());
     await chooseAppearance({onboardingCompleted: true, uiScale: 1}); setDrawer(false);
-    window.go = {main: {Desktop: {
+    window.go = {desktop: {Desktop: {
       WriteClipboard(text) { window.wrapClipboard = text; return Promise.resolve(); },
       ReadClipboard() { return Promise.resolve(window.wrapPaste); },
       async Request(method, path, body) {
