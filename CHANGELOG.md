@@ -1,17 +1,12 @@
 # DevShell 更新日志
 
-## 2026-10-20 本机探测命令扩展与链接栏修复 · v26.10.0 构建 20261018136
+## 2026-10-20 本机探测命令扩展、ping 输出与链接栏修复 · v26.10.0 构建 20261018136
 
 - 新增：未连接任何服务器时（欢迎页与断开连接的会话内），本机提示符在 `ping` 之外支持 `traceroute 主机`、`nslookup 主机`、`curl [-I] 网址`。nslookup/curl 用 Go 标准库实现（curl 仅 http/https、不跟随重定向、响应体 64KB 截断），traceroute 只调用系统 tracert/traceroute，参数固定、主机严格校验，绝不执行用户 shell；并发限 2、输出限 256KB、超时分级。
 - 新增：标题栏明暗切换按钮左侧显示大版本号（v26.10.0），由 boot.js 注入，悬停显示「当前版本」。
+- 修复：断开连接的会话里用本机提示符执行 `ping 主机`，多行结果（含 `-t` 持续探测）在终端中逐行向右阶梯缩进：xterm 把裸 `\n` 按「只下移一行、保持列位」处理；`local-prompt.js` 的 `termSink` 现将正文内部换行统一转为 `\r\n` 再写入 xterm，无会话时的 `<pre>` 草稿板路径不受影响。
 - 修复：链接栏点击已有会话的连接无任何响应（旧逻辑只激活既有会话，已激活时看似失效）；现每次点击都新开标签建立独立会话，与服务器列表双击同语义。
-- 验证：`TestLocalProbe*` 三项、`test-local-prompt-terminal-browser`（CRLF 无阶梯 + nslookup 端到端）、`test-pinned-nav` 六项浏览器回归全部通过；`go build`、`npm run check` 通过；版本标签无头 Edge 截图确认。
-
-## 2026-10-20 修复本机 ping 输出阶梯缩进 · v26.10.0 构建 20261018135
-
-- 断开连接的会话里用本机提示符执行 `ping 主机`，多行结果（含 `-t` 持续探测）在终端中逐行向右阶梯缩进：xterm 把裸 `\n` 按「只下移一行、保持列位」处理，每行从上一行结尾处开始。
-- `local-prompt.js` 的 `termSink` 现将正文内部换行统一转为 `\r\n` 再写入 xterm；无会话时的 `<pre>` 草稿板路径不受影响。
-- 新增浏览器回归 `test-local-prompt-terminal-browser.mjs`：headless xterm 缓冲逐行断言左对齐；回退修复可复现阶梯（已验证），修复后通过。`npm run check` 通过。
+- 验证：`TestLocalProbe*` 三项、`test-local-prompt-terminal-browser`（headless xterm 缓冲逐行断言无阶梯 + nslookup 端到端）、`test-pinned-nav` 六项浏览器回归全部通过；`go build`、`npm run check` 通过；版本标签无头 Edge 截图确认。
 
 ## 2026-10-20 命令输入框引导提示居中 · v26.10.0 构建 20261018134
 
