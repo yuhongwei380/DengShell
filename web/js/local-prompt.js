@@ -30,7 +30,10 @@ window.DengLocalPrompt = (() => {
   }
   function termSink(term) {
     return (text, kind) => {
-      const body = text.replace(/[\r\n]+$/, '');
+      // xterm treats a bare LF as "move down, keep the column": multi-line
+      // payloads (ping output) must use CRLF, or every line starts where the
+      // previous one ended and the output staircases to the right.
+      const body = text.replace(/[\r\n]+$/, '').replace(/\r?\n/g, '\r\n');
       term.writeln(kind === 'cmd' ? `\x1b[38;5;114m${body}\x1b[0m` : `\x1b[38;5;245m${body}\x1b[0m`);
       return null;
     };
