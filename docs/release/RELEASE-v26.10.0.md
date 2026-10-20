@@ -1,9 +1,10 @@
-# DevShell v26.10.0 · 构建 20261018127
+# DevShell v26.10.0 · 构建 20261018128
 
 Phoenix 分支（[yuhongwei380/DevShell](https://github.com/yuhongwei380/DevShell)）；版本号 `vX.Y.Z`，内部构建号 `YYYYMMDD` + 三位序号递增防回退。
 
 ## 近期变化
 
+- 仓库结构整理：前端按 `web/js`、`web/css` 归位，脚本按 `scripts/build`、`scripts/tests`、`scripts/tools` 归位，发版文档移入 `docs/release`，Go 源码按功能归入 `internal/desktop`、`internal/updater`；程序行为不变。
 - 发版策略调整：只提供 Windows 安装包与 macOS 通用 DMG/ZIP；不再发布 Windows 绿色 ZIP 与 Linux DEB/RPM/pacman/tar.gz。已安装的 Linux 版可继续使用，更新检查会明确提示 Linux 已停止发布。
 - 新增「串口终端」连接类型：一键检测本机串口，可配置波特率、数据位、校验位、停止位与流控，与 SSH、RDP 一样保存、分组、固定，双击即在终端标签中打开。
 - 链接栏固定项通过 × 关闭按钮取消固定，点击后弹窗二次确认再移除，防止误删；不再支持右键取消固定。
