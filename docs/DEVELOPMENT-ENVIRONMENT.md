@@ -8,13 +8,14 @@
 
 | 部分 | 职责 |
 | --- | --- |
-| `main.go`、`desktop*.go`、`theme*.go`、`window*.go` | 启动、Wails 桌面窗口、前后端桥接、主题、托盘、独立窗口 |
+| `main.go`、`startup_error*.go` | 启动入口、命令行参数、启动错误对话框 |
+| `internal/desktop/`（`desktop*.go`、`theme*.go`、`window*.go`、`detached_cache*.go`） | Wails 桌面窗口、前后端桥接、主题、托盘、独立窗口 |
 | `internal/app/app.go`、`store.go`、`persistence*.go` | 本机回环 HTTP API、加密配置、原子保存与数据迁移 |
 | `internal/app/ssh*.go`、`terminal*.go`、`sftp*.go` | SSH 认证、主机指纹、会话、终端数据转发、SFTP 文件通道 |
 | `internal/app/files.go`、`file_tools.go`、`upload_pipeline.go` | 文件浏览、编辑、上传下载队列 |
 | `internal/app/monitor*.go`、`network*.go`、`icmp*.go` | 通过 SSH 监控远端 Linux，以及本机网络检测 |
 | `internal/app/preferences*.go`、`font_library*.go`、`media.go` | 个性化、在线字体、导入背景 |
-| `internal/app/updates*.go`、`internal/updatetrust/`、`update_helper*.go` | 签名更新描述、包验证和各平台更新助手 |
+| `internal/app/updates*.go`、`internal/updatetrust/`、`internal/updater/` | 签名更新描述、包验证和各平台更新助手 |
 | `web/` | 原生 HTML/CSS/JavaScript，xterm.js 终端；资源通过 Go embed 内置 |
 | `scripts/`、`cmd/`、`.github/workflows/` | 测试、依赖资源复制、平台打包、发行签名工具与 CI |
 
@@ -48,7 +49,7 @@ npm ci
 npm run vendor
 npm run check
 go test -buildvcs=false -timeout 12m ./...
-go test -buildvcs=false -tags desktop,production,webkit2_41 -timeout 5m .
+go test -buildvcs=false -tags desktop,production,webkit2_41 -timeout 5m ./internal/desktop ./internal/updater .
 ```
 
 Linux 桌面开发构建使用 `bash build.sh`；Windows 交叉编译使用 `bash build.sh --windows`。这两个命令会写入各自的构建输出，执行前应确认当前需要的目标。隔离测试可通过 `go build -o 缓存目录/程序` 和运行参数 `--config 临时目录` 完成。

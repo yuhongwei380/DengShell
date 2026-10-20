@@ -5,6 +5,7 @@
 - 前端资源按类型归位：**`web/js/`**（49 个脚本）与 **`web/css/`**（31 个样式）；`index.html`、`assets/`、`vendor/` 保留在 `web/` 根，嵌入目录与运行时行为不变。
 - 脚本按用途归位：**`scripts/build/`**（打包与发版）、**`scripts/tests/`**（全部回归测试）、**`scripts/tools/`**（vendor、环境检查、诊断等）；CI 工作流、npm scripts 与 Go 浏览器测试路径同步更新。
 - 发版与协议文档从 `build/` 移到 **`docs/release/`**；`build/` 只保留图片、许可证、示例配置与平台目录。
+- Go 根目录按功能归位：桌面壳层（`desktop*.go`、`theme*.go`、`window*.go`、`detached_cache*.go`）移入 **`internal/desktop/`**，在线更新助手（`update_helper*.go`）移入 **`internal/updater/`**；根目录只保留入口 `main.go`、启动错误对话框（`startup_error*.go`）与 Windows 资源 `.syso`。仅调整包边界与导出标识符，程序行为不变。
 - 程序行为无变化；`go build/vet/test`、前端语法检查、回归测试与打包冒烟全部通过。
 
 ## 2026-10-20 发版策略：仅发布 Windows 与 macOS · 停止绿色版与 Linux 发版 · v26.10.0 构建 20261018127

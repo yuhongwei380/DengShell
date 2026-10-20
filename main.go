@@ -2,6 +2,8 @@ package main
 
 import (
 	"cloudshell/internal/app"
+	"cloudshell/internal/desktop"
+	"cloudshell/internal/updater"
 	"embed"
 	"flag"
 	"io/fs"
@@ -14,8 +16,11 @@ import (
 //go:embed web
 var assets embed.FS
 
+//go:embed build/dengshell.png
+var desktopIcon []byte
+
 func main() {
-	if handleUpdateHelper() {
+	if updater.HandleFlag() {
 		return
 	}
 	detached := flag.Bool("detached-window", false, "internal independent window")
@@ -35,7 +40,7 @@ func main() {
 		}
 	}
 	if *detached {
-		if err := runDetachedProcess(content); err != nil {
+		if err := desktop.RunDetached(content, desktopIcon); err != nil {
 			showStartupError(err.Error())
 			log.Print(err)
 		}
@@ -44,7 +49,7 @@ func main() {
 
 	if *config == "" {
 		var err error
-		*config, err = portableConfigDir()
+		*config, err = desktop.PortableConfigDir()
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -62,9 +67,9 @@ func main() {
 	if err = application.Start(*address, content); err != nil {
 		log.Fatal(err)
 	}
-	if !*browser && desktopAvailable() {
+	if !*browser && desktop.Available() {
 		log.Printf("DevShell: %s", application.URL())
-		if err = runDesktop(application, content, *config); err != nil {
+		if err = desktop.Run(application, content, *config, desktopIcon); err != nil {
 			log.Print(err)
 		}
 		return
