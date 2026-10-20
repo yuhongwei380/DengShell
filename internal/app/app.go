@@ -201,6 +201,7 @@ func (a *App) Handler(assets fs.FS) http.Handler {
 		respond(w, map[string]bool{"ok": true}, err)
 	})
 	a.registerQuickConnectHTTP(mux)
+	a.registerLocalProbeHTTP(mux)
 	a.registerRDPHTTP(mux)
 	a.registerSerialHTTP(mux)
 	mux.HandleFunc("POST /api/sessions", func(w http.ResponseWriter, r *http.Request) {

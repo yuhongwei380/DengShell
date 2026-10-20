@@ -1,0 +1,93 @@
+package app
+
+import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+)
+
+func decodeProbe(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
+	t.Helper()
+	var payload map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode probe response: %v (%s)", err, w.Body.String())
+	}
+	return payload
+}
+
+func TestLocalProbeRejectsInvalidTargets(t *testing.T) {
+	a, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	for _, tc := range []struct{ path, verb, field, value string }{
+		{"/api/local-probe/nslookup", "nslookup", "host", "bad host;rm"},
+		{"/api/local-probe/traceroute", "traceroute", "host", "-h 127.0.0.1"},
+		{"/api/local-probe/nslookup", "nslookup", "host", ""},
+	} {
+		w := issueRequest(t, a, "POST", tc.path, map[string]any{tc.field: tc.value})
+		if w.Code != 400 {
+			t.Fatalf("%s accepted %q: %s", tc.verb, tc.value, w.Body.String())
+		}
+	}
+	for _, raw := range []string{"ftp://example.com", "file:///etc/passwd", "not a url", "http://"} {
+		w := issueRequest(t, a, "POST", "/api/local-probe/curl", map[string]any{"url": raw})
+		if w.Code != 400 {
+			t.Fatalf("curl accepted %q: %s", raw, w.Body.String())
+		}
+	}
+}
+
+func TestLocalProbeNslookupIPLiteral(t *testing.T) {
+	a, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	w := issueRequest(t, a, "POST", "/api/local-probe/nslookup", map[string]any{"host": "127.0.0.1"})
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	payload := decodeProbe(t, w)
+	output, _ := payload["output"].(string)
+	if payload["ok"] != true || !strings.Contains(output, "127.0.0.1") || !strings.Contains(output, "本身即 IP") {
+		t.Fatalf("unexpected nslookup output: %q", output)
+	}
+}
+
+func TestLocalProbeCurlFetchesLoopback(t *testing.T) {
+	a, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Probe", "yes")
+		if r.Method == http.MethodHead {
+			return
+		}
+		_, _ = w.Write([]byte("hello from probe"))
+	}))
+	defer server.Close()
+	w := issueRequest(t, a, "POST", "/api/local-probe/curl", map[string]any{"url": server.URL})
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	payload := decodeProbe(t, w)
+	output, _ := payload["output"].(string)
+	if payload["ok"] != true || !strings.Contains(output, "200") || !strings.Contains(output, "hello from probe") || !strings.Contains(output, "X-Probe: yes") {
+		t.Fatalf("unexpected curl output: %q", output)
+	}
+	w = issueRequest(t, a, "POST", "/api/local-probe/curl", map[string]any{"url": server.URL, "head": true})
+	if w.Code != 200 {
+		t.Fatal(w.Body.String())
+	}
+	head := decodeProbe(t, w)
+	headOutput, _ := head["output"].(string)
+	if !strings.Contains(headOutput, "200") || strings.Contains(headOutput, "hello from probe") {
+		t.Fatalf("HEAD curl should show headers only: %q", headOutput)
+	}
+}

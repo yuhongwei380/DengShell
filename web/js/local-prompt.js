@@ -1,10 +1,11 @@
 'use strict';
-// Xshell-style local prompt: while no session is active, "ping 主机" typed in
-// the command bar prints its result straight into the terminal area instead of
-// opening the quick-connect dialog. "ping 主机 -t" probes continuously until
-// stopped. The dialog keeps its own in-form probe.
+// Xshell-style local prompt: while no session is connected, network commands
+// typed in the command bar run against the local machine and print straight
+// into the terminal area instead of opening the quick-connect dialog. Supported:
+// ping 主机 [-t] (Ctrl+C stops), traceroute 主机, nslookup 主机, curl [-I] 网址.
 window.DengLocalPrompt = (() => {
   let view = null, generation = 0;
+  const commands = /^(ping|traceroute|tracert|nslookup|curl)(?:\s|$)/i;
   function ensure() {
     if (view?.isConnected) return view;
     view = node('pre', 'local-prompt-output');
@@ -38,7 +39,7 @@ window.DengLocalPrompt = (() => {
       return null;
     };
   }
-  function parse(command) {
+  function parsePing(command) {
     const tokens = command.trim().replace(/^ping(?:\s+|$)/i, '').trim().split(/\s+/).filter(Boolean);
     let continuous = false;
     const hosts = [];
@@ -58,7 +59,16 @@ window.DengLocalPrompt = (() => {
     }
     const runId = ++generation; // supersedes any running continuous probe
     sink(`[本机] $ ${command.trim()}\n`, 'cmd');
-    const parsed = parse(command);
+    const trimmed = command.trim();
+    const verb = ((trimmed.match(/^([a-z]+)/i) || [])[1] || '').toLowerCase();
+    if (verb === 'ping') { await runPing(trimmed, sink, runId); return; }
+    if (verb === 'traceroute' || verb === 'tracert') { await runHostProbe('traceroute', trimmed, sink); return; }
+    if (verb === 'nslookup') { await runHostProbe('nslookup', trimmed, sink); return; }
+    if (verb === 'curl') { await runCurl(trimmed, sink); return; }
+    sink('未知本机命令。\n\n');
+  }
+  async function runPing(command, sink, runId) {
+    const parsed = parsePing(command);
     if (!parsed) { sink('ping 后只接受主机名或 IP，可加 -t 持续探测。\n\n'); return; }
     if (parsed.continuous) { await continuous(sink, parsed.host, runId); return; }
     const pending = sink('正在从本机探测…\n');
@@ -71,6 +81,37 @@ window.DengLocalPrompt = (() => {
       if (pending) pending(text); else sink(text);
     }
     if (runId !== generation) { const text = '（已被新命令取代）\n'; if (pending) pending(text); else sink(text); }
+  }
+  async function runHostProbe(kind, command, sink) {
+    const arg = command.replace(/^[a-z]+\s+/i, '').trim();
+    if (!arg || /\s/.test(arg)) { sink(`${kind} 后只接受一个主机名或 IP。\n\n`); return; }
+    const pending = sink(kind === 'traceroute' ? '正在追踪路由（最多 20 跳）…\n' : '正在解析域名…\n');
+    const write = text => { if (pending) pending(text); else sink(text); };
+    try {
+      const payload = await post(`/api/local-probe/${kind}`, { host: arg });
+      write(`${(payload?.output || '').trimEnd()}\n\n`);
+    } catch (error) {
+      write(`${error.message || error}\n\n`);
+    }
+  }
+  async function runCurl(command, sink) {
+    const tokens = command.replace(/^curl\s+/i, '').trim().split(/\s+/).filter(Boolean);
+    let head = false;
+    const positional = [];
+    for (const token of tokens) {
+      if (token === '-I' || token === '--head') head = true;
+      else if (token.startsWith('-')) { sink('curl 仅支持网址与 -I（只看响应头）。\n\n'); return; }
+      else positional.push(token);
+    }
+    if (positional.length !== 1) { sink('curl 后需要一个 http/https 网址，可加 -I 只看响应头。\n\n'); return; }
+    const pending = sink('正在请求网址…\n');
+    const write = text => { if (pending) pending(text); else sink(text); };
+    try {
+      const payload = await post('/api/local-probe/curl', { url: positional[0], head });
+      write(`${(payload?.output || '').trimEnd()}\n\n`);
+    } catch (error) {
+      write(`${error.message || error}\n\n`);
+    }
   }
   async function continuous(sink, host, runId) {
     const status = sink('持续探测中，按 Ctrl+C 停止…\n');
@@ -128,5 +169,5 @@ window.DengLocalPrompt = (() => {
     $('#welcome-state').hidden = false;
     return true;
   }
-  return { run, reflect, handleClear, termSink };
+  return { run, reflect, handleClear, termSink, commands };
 })();

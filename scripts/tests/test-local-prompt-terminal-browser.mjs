@@ -26,5 +26,15 @@ try {
   '2  110.242.74.102  50.00 ms',
   '收到 2 / 2 个响应',
  ],'multi-line local prompt output must stay left-aligned in the terminal');
- fs.writeFileSync(stage+'/local-prompt-terminal.json',JSON.stringify({passed:true,noStaircase:true}));console.log('PASS local prompt terminal output uses CRLF and never staircases');
+ // End-to-end: a non-ping local command routes through run() to the backend and
+ // renders left-aligned in the terminal too.
+ const probe=await page.evaluate(async()=>{
+  const term=new Terminal({cols:80,rows:24,allowProposedApi:false});
+  await window.DengLocalPrompt.run('nslookup 127.0.0.1',window.DengLocalPrompt.termSink(term));
+  await new Promise(resolve=>term.write('',resolve));
+  const out=[];for(let i=0;i<term.buffer.active.length;i++){const l=term.buffer.active.getLine(i);if(l){const t=l.translateToString(true);if(t)out.push(t);}}
+  term.dispose();return out;
+ });
+ assert(probe.some(l=>l.includes('本机 DNS → 127.0.0.1'))&&probe.some(l=>l.includes('本身即 IP')),'nslookup must route to the local prompt and render its output: '+JSON.stringify(probe));
+ fs.writeFileSync(stage+'/local-prompt-terminal.json',JSON.stringify({passed:true,noStaircase:true,nslookupRouted:true}));console.log('PASS local prompt terminal output uses CRLF and nslookup routes end-to-end');
 }finally{await browser.close()}
