@@ -13,5 +13,3 @@ Phoenix 分支（[yuhongwei380/DevShell](https://github.com/yuhongwei380/DevShel
 ## 升级说明
 
 - 首次安装选 `DevShell-Setup-x64.exe`；`up.*` 文件是内置自动更新载荷，无需手动下载。
-- 构建 ≤20261018118 的旧版无法内置更新到新版，请手动安装一次最新 `DevShell-Setup-x64.exe`；连接、密钥等数据自动沿用。
-- 构建 20261018128 的桌面窗口不可用（所有请求报「桌面接口尚未就绪」）且无法内置更新，请手动安装一次最新 `DevShell-Setup-x64.exe`；数据自动沿用。
