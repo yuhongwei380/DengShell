@@ -2,8 +2,10 @@
 // Xshell-style local prompt: while no session is connected, network commands
 // typed in the command bar run against the local machine and print straight
 // into the terminal area instead of opening the quick-connect dialog. Supported:
-// ping 主机 [-t] (Ctrl+C stops), traceroute 主机, nslookup 主机, dig 主机 [类型],
-// curl [-I] 网址 (scheme-less targets default to http, like the real curl).
+// ping 主机 [-t], traceroute 主机 (hops appear live, one per line), nslookup 主机,
+// dig 主机 [类型], curl [-I] 网址 (scheme-less targets default to http, like the
+// real curl). Every command is interruptible: Ctrl+C (without a text selection)
+// aborts the request, and the backend cancels the child process or lookup.
 window.DengLocalPrompt = (() => {
   let view = null, generation = 0;
   const commands = /^(ping|traceroute|tracert|nslookup|dig|curl)(?:\s|$)/i;
@@ -51,6 +53,63 @@ window.DengLocalPrompt = (() => {
     if (hosts.length !== 1 || hosts[0].startsWith('-')) return null;
     return { host: hosts[0], continuous };
   }
+  // Console-style interrupt: Ctrl+C aborts the running probe unless it would
+  // copy a text selection. The aborted request cancels the backend context,
+  // which terminates the child process or the in-flight lookup.
+  function isInterruptKey(event) { return (event.ctrlKey || event.metaKey) && !event.altKey && event.key.toLowerCase() === 'c'; }
+  async function withInterrupt(task) {
+    const controller = new AbortController();
+    let interrupted = false;
+    const onKey = event => {
+      if (!isInterruptKey(event) || window.getSelection()?.toString()) return;
+      event.preventDefault();
+      interrupted = true;
+      controller.abort();
+    };
+    document.addEventListener('keydown', onKey);
+    try { await task(controller.signal); } finally { document.removeEventListener('keydown', onKey); }
+    return interrupted;
+  }
+  // Probes always go over the local HTTP API: the native bridge cannot abort
+  // or stream a call, and these endpoints are plain JSON/NDJSON either way.
+  async function postWithSignal(path, body, signal) {
+    const response = await fetch(endpoint(path), { method: 'POST', signal, cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-CloudShell-Token': boot.token }, body: JSON.stringify(body) });
+    const data = await response.json().catch(() => null);
+    if (data?.code === 'DENGSHELL_LOCKED') window.DengSecurityLock?.blocked();
+    if (!response.ok) throw Object.assign(new Error(data?.error || `请求失败 (${response.status})`), { code: data?.code, hostKey: data?.hostKey });
+    return data;
+  }
+  // NDJSON frames: {"c": "..."} per output line, then {"done": true}. A server
+  // without streaming support answers with the single JSON payload instead.
+  async function streamProbe(path, body, signal, onChunk) {
+    const response = await fetch(endpoint(path), { method: 'POST', signal, cache: 'no-store', headers: { 'Content-Type': 'application/json', 'X-CloudShell-Token': boot.token, 'X-DevShell-Probe-Stream': '1' }, body: JSON.stringify(body) });
+    if (!(response.headers.get('content-type') || '').includes('ndjson')) {
+      const data = await response.json().catch(() => null);
+      if (data?.code === 'DENGSHELL_LOCKED') window.DengSecurityLock?.blocked();
+      if (!response.ok) throw Object.assign(new Error(data?.error || `请求失败 (${response.status})`), { code: data?.code, hostKey: data?.hostKey });
+      if (typeof data?.output === 'string') onChunk(`${data.output}\n`);
+      return;
+    }
+    if (!response.ok) throw new Error(`请求失败 (${response.status})`);
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer += decoder.decode(chunk.value, { stream: true });
+      let index;
+      while ((index = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, index).trim();
+        buffer = buffer.slice(index + 1);
+        if (!line) continue;
+        let frame = null;
+        try { frame = JSON.parse(line); } catch { continue; }
+        if (typeof frame.c === 'string') onChunk(frame.c);
+        else if (frame.done) return;
+      }
+    }
+  }
   async function run(command, sink) {
     if (!sink) {
       const box = ensure();
@@ -74,27 +133,62 @@ window.DengLocalPrompt = (() => {
     if (!parsed) { sink('ping 后只接受主机名或 IP，可加 -t 持续探测。\n\n'); return; }
     if (parsed.continuous) { await continuous(sink, parsed.host, runId); return; }
     const pending = sink('正在从本机探测…\n');
-    try {
-      const payload = await post('/api/quick-connect/ping', { host: parsed.host });
-      const text = `${(payload?.output || '').trimEnd()}\n\n`;
-      if (pending) pending(text); else sink(text);
-    } catch (error) {
-      const text = `${error.message || error}\n\n`;
-      if (pending) pending(text); else sink(text);
-    }
-    if (runId !== generation) { const text = '（已被新命令取代）\n'; if (pending) pending(text); else sink(text); }
+    const write = text => { if (pending) pending(text); else sink(text); };
+    const interrupted = await withInterrupt(async signal => {
+      try {
+        const payload = await postWithSignal('/api/quick-connect/ping', { host: parsed.host }, signal);
+        write(`${(payload?.output || '').trimEnd()}\n\n`);
+      } catch (error) {
+        write(error?.name === 'AbortError' ? '^C 已停止。\n\n' : `${error.message || error}\n\n`);
+      }
+    });
+    if (!interrupted && runId !== generation) write('（已被新命令取代）\n');
   }
   async function runHostProbe(kind, command, sink) {
     const arg = command.replace(/^[a-z]+\s+/i, '').trim();
     if (!arg || /\s/.test(arg)) { sink(`${kind} 后只接受一个主机名或 IP。\n\n`); return; }
-    const pending = sink(kind === 'traceroute' ? '正在追踪路由（最多 20 跳）…\n' : '正在解析域名…\n');
+    if (kind === 'traceroute') { await runTraceroute(arg, sink); return; }
+    const pending = sink('正在解析域名…\n');
     const write = text => { if (pending) pending(text); else sink(text); };
-    try {
-      const payload = await post(`/api/local-probe/${kind}`, { host: arg });
-      write(`${(payload?.output || '').trimEnd()}\n\n`);
-    } catch (error) {
-      write(`${error.message || error}\n\n`);
+    const interrupted = await withInterrupt(async signal => {
+      try {
+        const payload = await postWithSignal(`/api/local-probe/${kind}`, { host: arg }, signal);
+        write(`${(payload?.output || '').trimEnd()}\n\n`);
+      } catch (error) {
+        write(error?.name === 'AbortError' ? '^C 已停止。\n\n' : `${error.message || error}\n\n`);
+      }
+    });
+    if (!interrupted) return;
+  }
+  // Streaming traceroute: the scratchpad re-renders the whole hop block in
+  // place; a session terminal appends each finished line as it arrives.
+  async function runTraceroute(arg, sink) {
+    const header = '正在追踪路由（最多 20 跳），Ctrl+C 停止…\n';
+    const pending = sink(header);
+    let acc = '', carry = '', holdCR = false, failure = null;
+    const display = text => text.replace(/\r\n?/g, '\n');
+    const feed = chunk => {
+      if (holdCR) { chunk = '\r' + chunk; holdCR = false; }
+      if (chunk.endsWith('\r')) { holdCR = true; chunk = chunk.slice(0, -1); }
+      if (!chunk) return;
+      acc += chunk;
+      if (pending) { pending(header + display(acc).trimEnd()); return; }
+      const parts = (carry + chunk.replace(/\r\n/g, '\n').replace(/\r/g, '\n')).split('\n');
+      carry = parts.pop();
+      if (parts.length) sink(`${parts.join('\n')}\n`);
+    };
+    const interrupted = await withInterrupt(async signal => {
+      try { await streamProbe('/api/local-probe/traceroute', { host: arg }, signal, feed); }
+      catch (error) { if (error?.name !== 'AbortError') failure = error; }
+    });
+    if (failure) {
+      const text = `${failure.message || failure}\n\n`;
+      if (pending) pending(header + text); else sink(text);
+      return;
     }
+    if (pending) { pending(`${header}${display(acc).trimEnd()}${interrupted ? '\n^C 已停止，本机进程已终止。' : ''}\n\n`); return; }
+    if (carry) { sink(`${carry.replace(/\r/g, '')}\n`); carry = ''; }
+    sink(interrupted ? '^C 已停止，本机进程已终止。\n\n' : '\n');
   }
   async function runDig(command, sink) {
     const tokens = command.replace(/^dig\s+/i, '').trim().split(/\s+/).filter(Boolean);
@@ -103,12 +197,14 @@ window.DengLocalPrompt = (() => {
     const type = tokens.length === 2 ? tokens[1].toUpperCase() : 'A';
     const pending = sink('正在查询 DNS…\n');
     const write = text => { if (pending) pending(text); else sink(text); };
-    try {
-      const payload = await post('/api/local-probe/dig', { host, type });
-      write(`${(payload?.output || '').trimEnd()}\n\n`);
-    } catch (error) {
-      write(`${error.message || error}\n\n`);
-    }
+    await withInterrupt(async signal => {
+      try {
+        const payload = await postWithSignal('/api/local-probe/dig', { host, type }, signal);
+        write(`${(payload?.output || '').trimEnd()}\n\n`);
+      } catch (error) {
+        write(error?.name === 'AbortError' ? '^C 已停止。\n\n' : `${error.message || error}\n\n`);
+      }
+    });
   }
   async function runCurl(command, sink) {
     const tokens = command.replace(/^curl\s+/i, '').trim().split(/\s+/).filter(Boolean);
@@ -122,35 +218,39 @@ window.DengLocalPrompt = (() => {
     if (positional.length !== 1) { sink('curl 用法：curl 网址（不带协议默认 http），可加 -I 只看响应头。\n\n'); return; }
     const pending = sink('正在请求网址…\n');
     const write = text => { if (pending) pending(text); else sink(text); };
-    try {
-      const payload = await post('/api/local-probe/curl', { url: positional[0], head });
-      write(`${(payload?.output || '').trimEnd()}\n\n`);
-    } catch (error) {
-      write(`${error.message || error}\n\n`);
-    }
+    await withInterrupt(async signal => {
+      try {
+        const payload = await postWithSignal('/api/local-probe/curl', { url: positional[0], head }, signal);
+        write(`${(payload?.output || '').trimEnd()}\n\n`);
+      } catch (error) {
+        write(error?.name === 'AbortError' ? '^C 已停止。\n\n' : `${error.message || error}\n\n`);
+      }
+    });
   }
   async function continuous(sink, host, runId) {
     const status = sink('持续探测中，按 Ctrl+C 停止…\n');
     const setStatus = text => { if (status) status(text); else sink(text); };
-    // Console-style interrupt: Ctrl+C stops the probe unless it would copy a
-    // text selection.
-    let stopped = false;
+    // Ctrl+C stops the loop immediately and also aborts the in-flight probe.
+    let stopped = false, inflight = null;
     const onKey = event => {
-      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
-        if (window.getSelection()?.toString()) return;
-        event.preventDefault();
-        stopped = true;
-      }
+      if (!isInterruptKey(event) || window.getSelection()?.toString()) return;
+      event.preventDefault();
+      stopped = true;
+      inflight?.abort();
     };
     document.addEventListener('keydown', onKey);
     let sent = 0, received = 0, header = false;
     try {
       for (;;) {
         let payload = null, failure = null;
-        try { payload = await post('/api/quick-connect/ping', { host, count: 1 }); }
+        const controller = new AbortController();
+        inflight = controller;
+        try { payload = await postWithSignal('/api/quick-connect/ping', { host, count: 1 }, controller.signal); }
         catch (error) { failure = error; }
+        finally { inflight = null; }
         if (runId !== generation) return; // a newer command owns the scratchpad
         if (failure) {
+          if (failure.name === 'AbortError') break;
           sent++;
           sink(`${sent}  ${failure.message || failure}\n`);
         } else {
@@ -165,6 +265,7 @@ window.DengLocalPrompt = (() => {
       }
     } finally {
       document.removeEventListener('keydown', onKey);
+      inflight?.abort();
     }
     if (!header) setStatus(`本机 ICMP → ${host}\n`);
     sink(`收到 ${received} / ${sent} 个响应（已停止）\n\n`);

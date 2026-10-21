@@ -3,15 +3,18 @@ package app
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -22,6 +25,8 @@ import (
 // execute a user shell command: nslookup, dig and curl are implemented with
 // the Go standard library, and traceroute only ever invokes the fixed system
 // tool with a strictly validated host (windowless, GBK-decoded on Windows).
+// Ctrl+C in the frontend aborts the request; cancelling r.Context() then
+// terminates the child process or in-flight lookup.
 var localProbeSlots = make(chan struct{}, 2)
 
 const localProbeOutputLimit = 256 << 10
@@ -52,7 +57,9 @@ func acquireLocalProbe() (func(), error) {
 }
 
 func localProbeHost(w http.ResponseWriter, r *http.Request, verb string) (string, bool) {
-	var input struct{ Host string `json:"host"` }
+	var input struct {
+		Host string `json:"host"`
+	}
 	if !decode(w, r, &input) {
 		return "", false
 	}
@@ -78,6 +85,121 @@ func decodeProbeOutput(raw []byte) string {
 }
 
 var digRecordTypes = map[string]bool{"A": true, "AAAA": true, "CNAME": true, "MX": true, "TXT": true, "NS": true}
+
+// probeStream emits {"c": "..."} NDJSON frames as output arrives, then one
+// {"done": true, "ok": ...} frame. Writes are best effort: once the client
+// aborted, encoding fails and the stream is marked closed; the request
+// context terminates the child process separately.
+type probeStream struct {
+	mu        sync.Mutex
+	enc       *json.Encoder
+	flusher   http.Flusher
+	sent      int
+	truncated bool
+	closed    bool
+}
+
+func (s *probeStream) chunk(text string) {
+	if text == "" {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
+	if room := localProbeOutputLimit - s.sent; room <= 0 {
+		if !s.truncated {
+			s.truncated = true
+			_ = s.enc.Encode(map[string]string{"c": "\n…（输出超过 256 KiB，已截断）"})
+		}
+		return
+	} else if len(text) > room {
+		text = text[:room]
+	}
+	s.sent += len(text)
+	if err := s.enc.Encode(map[string]string{"c": text}); err != nil {
+		s.closed = true
+		return
+	}
+	s.flusher.Flush()
+}
+
+func (s *probeStream) done(ok bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.closed {
+		return
+	}
+	if err := s.enc.Encode(map[string]any{"done": true, "ok": ok}); err != nil {
+		s.closed = true
+		return
+	}
+	s.flusher.Flush()
+	s.closed = true
+}
+
+// probeLineWriter forwards whole lines to the stream so GBK decoding never
+// splits a multibyte character and the UI never renders half a hop line.
+// stdout and stderr copy goroutines share one writer, hence the mutex.
+type probeLineWriter struct {
+	stream *probeStream
+	mu     sync.Mutex
+	carry  []byte
+}
+
+func (w *probeLineWriter) Write(p []byte) (int, error) {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	w.carry = append(w.carry, p...)
+	for {
+		end := bytes.IndexByte(w.carry, '\n')
+		if end < 0 {
+			break
+		}
+		line := w.carry[:end+1]
+		w.carry = w.carry[end+1:]
+		w.stream.chunk(decodeProbeOutput(line))
+	}
+	return len(p), nil
+}
+
+func (w *probeLineWriter) flush() {
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if len(w.carry) > 0 {
+		w.stream.chunk(decodeProbeOutput(w.carry))
+		w.carry = nil
+	}
+}
+
+// probeTTY gives the child a terminal. traceroute's libc output is fully
+// buffered when stdout is a pipe, which made every hop arrive only after the
+// process exited; a pty switches the child to per-line flushing.
+type probeTTY struct {
+	master, slave *os.File
+}
+
+func (t *probeTTY) pump(feed io.Writer) <-chan struct{} {
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		buf := make([]byte, 4096)
+		for {
+			n, err := t.master.Read(buf)
+			if n > 0 {
+				_, _ = feed.Write(buf[:n])
+			}
+			if err != nil {
+				return // EIO once every slave copy closed; the child exited.
+			}
+		}
+	}()
+	return done
+}
+
+func (t *probeTTY) closeSlave()  { _ = t.slave.Close() }
+func (t *probeTTY) closeMaster() { _ = t.master.Close() }
 
 func (a *App) registerLocalProbeHTTP(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/local-probe/nslookup", func(w http.ResponseWriter, r *http.Request) {
@@ -242,6 +364,12 @@ func (a *App) registerLocalProbeHTTP(mux *http.ServeMux) {
 		}
 		ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
 		defer cancel()
+		if r.Header.Get("X-DevShell-Probe-Stream") == "1" {
+			if flusher, canFlush := w.(http.Flusher); canFlush {
+				a.runTracerouteStream(ctx, w, flusher, name, path, args)
+				return
+			}
+		}
 		buffer := &limitedBuffer{limit: localProbeOutputLimit}
 		command := exec.CommandContext(ctx, path, args...)
 		hideProbeWindow(command)
@@ -313,6 +441,54 @@ func (a *App) registerLocalProbeHTTP(mux *http.ServeMux) {
 		}
 		writeJSON(w, map[string]any{"output": strings.TrimRight(out.String(), "\r\n"), "ok": response.StatusCode < 400})
 	})
+}
+
+// runTracerouteStream keeps the frontend informed hop by hop. A pty is used
+// where available so the tool line-buffers; otherwise plain pipes still work,
+// just with output arriving whenever the child flushes.
+func (a *App) runTracerouteStream(ctx context.Context, w http.ResponseWriter, flusher http.Flusher, name, path string, args []string) {
+	w.Header().Set("Content-Type", "application/x-ndjson")
+	w.WriteHeader(http.StatusOK)
+	stream := &probeStream{enc: json.NewEncoder(w), flusher: flusher}
+	writer := &probeLineWriter{stream: stream}
+	command := exec.CommandContext(ctx, path, args...)
+	hideProbeWindow(command)
+	tty, ttyErr := openLocalProbeTTY()
+	if ttyErr == nil && tty != nil {
+		command.Stdout = tty.slave
+		command.Stderr = tty.slave
+	} else {
+		command.Stdout = writer
+		command.Stderr = writer
+	}
+	var pumped <-chan struct{}
+	if tty != nil {
+		pumped = tty.pump(writer)
+	}
+	if err := command.Start(); err != nil {
+		if tty != nil {
+			tty.closeSlave()
+			tty.closeMaster()
+		}
+		stream.chunk(fmt.Sprintf("%s 执行失败：%v", name, err))
+		stream.done(false)
+		return
+	}
+	if tty != nil {
+		// The parent's slave copy must go: the master only sees EOF/EIO after
+		// every remaining slave fd closes, i.e. when the child exits.
+		tty.closeSlave()
+	}
+	runErr := command.Wait()
+	if pumped != nil {
+		<-pumped
+		tty.closeMaster()
+	}
+	writer.flush()
+	if ctx.Err() != nil {
+		stream.chunk("\n（已达到 45 秒上限，提前停止）")
+	}
+	stream.done(runErr == nil)
 }
 
 // parseLocalProbeURL mirrors the real curl tool: a scheme-less target such as

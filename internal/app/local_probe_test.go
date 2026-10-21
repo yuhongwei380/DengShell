@@ -1,11 +1,15 @@
 package app
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
+	"testing/fstest"
 )
 
 func decodeProbe(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
@@ -151,5 +155,53 @@ func TestLocalProbeCurlFetchesLoopback(t *testing.T) {
 	headOutput, _ := head["output"].(string)
 	if !strings.Contains(headOutput, "200") || strings.Contains(headOutput, "hello from probe") {
 		t.Fatalf("HEAD curl should show headers only: %q", headOutput)
+	}
+}
+
+func TestLocalProbeTracerouteStreamsNDJSON(t *testing.T) {
+	name := "traceroute"
+	if runtime.GOOS == "windows" {
+		name = "tracert"
+	}
+	if _, err := exec.LookPath(name); err != nil {
+		t.Skipf("%s not installed", name)
+	}
+	a, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	data, _ := json.Marshal(map[string]any{"host": "127.0.0.1"})
+	req := httptest.NewRequest("POST", "http://wails.localhost/api/local-probe/traceroute", bytes.NewReader(data))
+	req.Header.Set("X-CloudShell-Token", a.Token())
+	req.Header.Set("X-DevShell-Probe-Stream", "1")
+	w := httptest.NewRecorder()
+	a.Handler(fstest.MapFS{"index.html": {Data: []byte("fixture")}}).ServeHTTP(w, req)
+	if ct := w.Header().Get("Content-Type"); !strings.Contains(ct, "application/x-ndjson") {
+		t.Fatalf("stream traceroute content type = %q body=%s", ct, w.Body.String())
+	}
+	var output strings.Builder
+	done := false
+	for _, line := range strings.Split(w.Body.String(), "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		var frame map[string]any
+		if err := json.Unmarshal([]byte(line), &frame); err != nil {
+			t.Fatalf("frame %q: %v", line, err)
+		}
+		if chunk, ok := frame["c"].(string); ok {
+			output.WriteString(chunk)
+		}
+		if frame["done"] == true {
+			done = true
+		}
+	}
+	if !done {
+		t.Fatalf("missing done frame: %s", w.Body.String())
+	}
+	if !strings.Contains(output.String(), "127.0.0.1") {
+		t.Fatalf("no route output streamed: %q", output.String())
 	}
 }
