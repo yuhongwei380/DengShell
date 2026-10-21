@@ -1,5 +1,16 @@
 # DevShell 更新日志
 
+## 2026-10-21 连接凭据自动回写与 macOS 支持范围收敛 · v26.10.0 构建 20261021138
+
+- 新增：已保存但没有凭据的连接，手动输入凭据并连接成功后自动加密写回该连接（`persistRunCredential`，`web/js/app.js`）；重启、双击服务器列表或点链接栏固定项都不再重复索要密码。临时快速连接、SSH Agent 和密钥库内私钥不参与写回。
+- 新增：已存凭据被服务器拒绝（`ssh_authentication_failed`、`ssh_key_passphrase_invalid`）后，本次连接成功的凭据自动替换旧值，不再每次启动先试一遍失效的旧密码；输入框说明与 toast 同步。
+- 新增：编辑连接取消勾选「在本机保存密码／口令」记入 `declinedCredentials`，本次运行内自动回写不会推翻这一显式拒绝，重新勾选即解除。
+- 新增：远程桌面（`web/js/rdp.js`）输入的密码在会话建立后同样缓存并保存，此前连本次运行的内存缓存都没有。
+- 修复：固定到链接栏的临时连接若本窗口没有凭据可携带（密码在另一窗口输入、页面已刷新），此前静默保存成无密码连接；现在固定结果明确提示下次仍需输入。
+- 新增：快速连接保存对话框按情况写明凭据去向（SSH Agent／本窗口无凭据／默认加密保存），不再只留一个会隐藏的复选框。
+- 调整：macOS 发版只兼容最近的正式版（15、26、27），最低系统 13.0 → 15.0；`MACOSX_DEPLOYMENT_TARGET`、`-mmacosx-version-min`、`LSMinimumSystemVersion` 与 `build-info.json` 的 `minimumMacOS` 同源，构建前校验 SDK 不低于该值，CI 构建机 macos-14 → macos-15。
+- 验证：`go vet`、`go build`、`internal/app` 测试（prompt-style 两处经 stash 确认为本机既有失败）、`npm run check` 通过；新增 `TestCredentialWriteBackRoundTripThroughPublicProfile` 覆盖公开视图回投持久化、内联代理密码保留、替换旧凭据、重启后仍在、响应不泄露明文；`py_compile` 与 workflow YAML 解析通过，SDK 下限比较用 13.1／14.5／15.0／26.2／27.0／空值实测。
+
 ## 2026-10-21 traceroute 逐跳实时输出、Ctrl+C 中止与 DevShell 品牌收尾 · v26.10.0 构建 20261021137
 
 - 修复：macOS 本机提示符 `traceroute` 等 45 秒超时后才一次性显示：traceroute 的 stdout 接管道被 libc 全缓冲，进程退出前不产出。macOS/Linux CGO 构建用 `openpty(3)` 给子进程挂伪终端（`local_probe_tty_cgo.go`，无 CGO 回退 `local_probe_tty_other.go`），逐跳实时出现。
