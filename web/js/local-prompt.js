@@ -2,10 +2,11 @@
 // Xshell-style local prompt: while no session is connected, network commands
 // typed in the command bar run against the local machine and print straight
 // into the terminal area instead of opening the quick-connect dialog. Supported:
-// ping 主机 [-t] (Ctrl+C stops), traceroute 主机, nslookup 主机, curl [-I] 网址.
+// ping 主机 [-t] (Ctrl+C stops), traceroute 主机, nslookup 主机, dig 主机 [类型],
+// curl [-I] 网址 (scheme-less targets default to http, like the real curl).
 window.DengLocalPrompt = (() => {
   let view = null, generation = 0;
-  const commands = /^(ping|traceroute|tracert|nslookup|curl)(?:\s|$)/i;
+  const commands = /^(ping|traceroute|tracert|nslookup|dig|curl)(?:\s|$)/i;
   function ensure() {
     if (view?.isConnected) return view;
     view = node('pre', 'local-prompt-output');
@@ -64,6 +65,7 @@ window.DengLocalPrompt = (() => {
     if (verb === 'ping') { await runPing(trimmed, sink, runId); return; }
     if (verb === 'traceroute' || verb === 'tracert') { await runHostProbe('traceroute', trimmed, sink); return; }
     if (verb === 'nslookup') { await runHostProbe('nslookup', trimmed, sink); return; }
+    if (verb === 'dig') { await runDig(trimmed, sink); return; }
     if (verb === 'curl') { await runCurl(trimmed, sink); return; }
     sink('未知本机命令。\n\n');
   }
@@ -94,6 +96,20 @@ window.DengLocalPrompt = (() => {
       write(`${error.message || error}\n\n`);
     }
   }
+  async function runDig(command, sink) {
+    const tokens = command.replace(/^dig\s+/i, '').trim().split(/\s+/).filter(Boolean);
+    if (!tokens.length || tokens.length > 2) { sink('dig 用法：dig 主机 [A|AAAA|CNAME|MX|TXT|NS]。\n\n'); return; }
+    const host = tokens[0];
+    const type = tokens.length === 2 ? tokens[1].toUpperCase() : 'A';
+    const pending = sink('正在查询 DNS…\n');
+    const write = text => { if (pending) pending(text); else sink(text); };
+    try {
+      const payload = await post('/api/local-probe/dig', { host, type });
+      write(`${(payload?.output || '').trimEnd()}\n\n`);
+    } catch (error) {
+      write(`${error.message || error}\n\n`);
+    }
+  }
   async function runCurl(command, sink) {
     const tokens = command.replace(/^curl\s+/i, '').trim().split(/\s+/).filter(Boolean);
     let head = false;
@@ -103,7 +119,7 @@ window.DengLocalPrompt = (() => {
       else if (token.startsWith('-')) { sink('curl 仅支持网址与 -I（只看响应头）。\n\n'); return; }
       else positional.push(token);
     }
-    if (positional.length !== 1) { sink('curl 后需要一个 http/https 网址，可加 -I 只看响应头。\n\n'); return; }
+    if (positional.length !== 1) { sink('curl 用法：curl 网址（不带协议默认 http），可加 -I 只看响应头。\n\n'); return; }
     const pending = sink('正在请求网址…\n');
     const write = text => { if (pending) pending(text); else sink(text); };
     try {

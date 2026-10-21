@@ -72,9 +72,15 @@
 .terminal-command-bar textarea::placeholder { color:#809aa9; }
 /* Empty box: the guidance placeholder sits vertically centered in the tall
    bar. Typed text keeps the same 13px size (no shrink on first keystroke),
-   just top-aligned for multi-line editing. */
-.terminal-command-bar textarea:placeholder-shown { padding-top:13px; padding-bottom:13px; }
+   just top-aligned for multi-line editing. The placeholder never wraps or
+   scrolls: it stays on one line and shrinks with the bar width (container
+   queries), ellipsizing only in extreme cases. */
+.terminal-command-bar textarea:placeholder-shown { padding-top:13px; padding-bottom:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .terminal-command-bar:has(textarea:placeholder-shown) > svg { margin-top:15px; }
+.terminal-command-bar form { container-type:inline-size; }
+@container (max-width:410px) { .terminal-command-bar textarea:placeholder-shown { font-size:12px; } }
+@container (max-width:370px) { .terminal-command-bar textarea:placeholder-shown { font-size:11px; } }
+@container (max-width:330px) { .terminal-command-bar textarea:placeholder-shown { font-size:10px; } }
 .ping-chart { display:grid; grid-template-columns:max-content minmax(0,1fr); gap:7px; margin-top:13px; padding:5px 0; }
 .ping-axis { position:relative; min-width:24px; color:var(--muted); font-size:9px; line-height:1; font-variant-numeric:tabular-nums; }
 .ping-axis > span { position:absolute; right:0; transform:translateY(-50%); white-space:nowrap; }

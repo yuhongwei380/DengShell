@@ -2,11 +2,16 @@
 
 ## 2026-10-20 本机探测命令扩展、ping 输出与链接栏修复 · v26.10.0 构建 20261018136
 
-- 新增：未连接任何服务器时（欢迎页与断开连接的会话内），本机提示符在 `ping` 之外支持 `traceroute 主机`、`nslookup 主机`、`curl [-I] 网址`。nslookup/curl 用 Go 标准库实现（curl 仅 http/https、不跟随重定向、响应体 64KB 截断），traceroute 只调用系统 tracert/traceroute，参数固定、主机严格校验，绝不执行用户 shell；并发限 2、输出限 256KB、超时分级。
+- 新增：未连接任何服务器时（欢迎页与断开连接的会话内），本机提示符在 `ping` 之外支持 `traceroute 主机`、`nslookup 主机`、`dig 主机 [记录类型]`、`curl [-I] 网址`。nslookup/dig/curl 用 Go 标准库实现，traceroute 只调用系统 tracert/traceroute，参数固定、主机严格校验，绝不执行用户 shell；并发限 2、输出限 256KB、超时分级。
+- 新增：`dig` 支持 A / AAAA / CNAME / MX / TXT / NS 记录类型，输出 dig 风格问答段；IP 字面量短路。
+- 调整：`curl` 不带协议前缀时默认 http（与真实 curl 一致，`curl ip.sb` 可直接用）；仍仅 http/https、不跟随重定向、响应体 64KB 截断。
+- 修复：Windows 上 `traceroute` 弹出 cmd 窗口——子进程加 `HideWindow`，内置调用直接展示结果；输出非 UTF-8 时按 GBK 解码，中文状态（如「请求超时」）不再乱码。
+- 修复：`nslookup` 解析完成后输出「解析完成 · N 条地址记录 · 用时 Xms」，不再让人误以为仍在解析。
 - 新增：标题栏明暗切换按钮左侧显示大版本号（v26.10.0），由 boot.js 注入，悬停显示「当前版本」。
 - 修复：断开连接的会话里用本机提示符执行 `ping 主机`，多行结果（含 `-t` 持续探测）在终端中逐行向右阶梯缩进：xterm 把裸 `\n` 按「只下移一行、保持列位」处理；`local-prompt.js` 的 `termSink` 现将正文内部换行统一转为 `\r\n` 再写入 xterm，无会话时的 `<pre>` 草稿板路径不受影响。
 - 修复：链接栏点击已有会话的连接无任何响应（旧逻辑只激活既有会话，已激活时看似失效）；现每次点击都新开标签建立独立会话，与服务器列表双击同语义。
-- 验证：`TestLocalProbe*` 三项、`test-local-prompt-terminal-browser`（headless xterm 缓冲逐行断言无阶梯 + nslookup 端到端）、`test-pinned-nav` 六项浏览器回归全部通过；`go build`、`npm run check` 通过；版本标签无头 Edge 截图确认。
+- 修复：命令输入框引导提示与输入文字字号统一为 13px，首键不再突变缩小；引导提示单行显示、随输入框宽度自动缩小（容器查询），宽度不足时省略号收尾，不再出现滚动条。
+- 验证：`TestLocalProbe*`（含 dig、scheme-less curl 默认 http）、`test-local-prompt-terminal-browser`（无阶梯 + nslookup 完成提示 + dig + scheme-less curl + 占位不滚动）、`test-pinned-nav` 浏览器回归全部通过；`go build`、`go vet`、`npm run check` 通过；占位缩小无头 Edge 多宽度截图确认。
 
 ## 2026-10-20 命令输入框引导提示居中 · v26.10.0 构建 20261018134
 

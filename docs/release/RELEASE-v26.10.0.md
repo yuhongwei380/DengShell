@@ -4,13 +4,18 @@ Phoenix 分支（[yuhongwei380/DevShell](https://github.com/yuhongwei380/DevShel
 
 ## 本次变化
 
-- 新增：未连接服务器时本机提示符支持 `traceroute 主机`、`nslookup 主机`、`curl [-I] 网址`
-  - curl 仅支持 http/https、不跟随重定向；traceroute 调用系统工具，参数固定、目标严格校验，绝不执行用户 shell
+- 新增：未连接服务器时本机提示符支持 `traceroute 主机`、`nslookup 主机`、`dig 主机 [记录类型]`、`curl [-I] 网址`
+  - curl 不写协议时默认 http（与真实 curl 一致，如 `curl ip.sb`）；仅 http/https、不跟随重定向
+  - dig 支持 A / AAAA / CNAME / MX / TXT / NS，输出 dig 风格问答段
+  - traceroute 内置调用不再弹出 cmd 窗口，中文输出按 GBK 解码不再乱码
+  - nslookup 解析完成输出记录条数与用时，不再让人误以为仍在解析
 - 新增：标题栏明暗切换按钮左侧显示大版本号（如 v26.10.0，悬停可见完整版本）
 - 修复：链接栏点击已有会话的连接无任何响应
   - 现与服务器列表双击同语义，每次点击都新开标签建立独立会话
 - 修复：断开连接的会话里本机提示符 `ping` 输出逐行向右阶梯缩进
   - xterm 把裸换行按「只下移不回行首」处理，多行输出现统一转为 CRLF，持续探测同样修复
+- 修复：命令输入框引导提示与输入文字字号统一为 13px，首键不再突变缩小
+  - 引导提示单行显示、随输入框宽度自动缩小，宽度不足时省略号收尾，不再出现滚动条
 
 ## 升级说明
 
