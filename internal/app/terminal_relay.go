@@ -352,20 +352,33 @@ func (r *terminalRelay) run() {
 	}
 	integration := s.prepareTerminalIntegration()
 	defer s.cleanupTerminalIntegration(integration)
+	launchStage := "launch-exec"
 	if integration.command != "" {
 		err = sh.Start(integration.command)
 		// Restricted SSH services may allow shell but reject exec requests.
 		if err != nil && integration.inline && s.ctx.Err() == nil {
+			// Keep the failing request identifiable: a refused exec and a
+			// transport that dies under the request need different remedies.
+			s.noteTerminalStage(launchStage, err)
 			integration = terminalIntegration{}
+			launchStage = "shell-fallback"
 			err = sh.Shell()
+			if err != nil {
+				s.noteTerminalStage(launchStage, err)
+			}
+		}
+		if err != nil {
+			s.noteDisconnect("DS-212", "start-shell:"+launchStage+":"+sshDiagnosticErrorKind(err))
+			_ = status(active, "error", err.Error(), "")
+			return
 		}
 	} else {
 		err = sh.Shell()
-	}
-	if err != nil {
-		s.noteDisconnect("DS-212", "start-shell")
-		_ = status(active, "error", err.Error(), "")
-		return
+		if err != nil {
+			s.noteDisconnect("DS-212", "start-shell:plain-shell:"+sshDiagnosticErrorKind(err))
+			_ = status(active, "error", err.Error(), "")
+			return
+		}
 	}
 	ready := terminalIntegrationReady(integration)
 	if write(active, websocket.TextMessage, ready) != nil {
