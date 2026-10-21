@@ -1,8 +1,11 @@
 package app
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"embed"
+	"encoding/base64"
 	"encoding/json"
 	"path"
 	"strings"
@@ -193,10 +196,20 @@ case "$_deng_shell" in
 // The terminal request stages and starts the login shell in one remote exec.
 // Staging uses a subshell so umask, variables and traps cannot leak into the
 // user's shell. A failed optional bootstrap falls back to a normal login shell.
+//
+// The script carries three shells' bootstrap content, which is far larger than
+// what embedded SSH servers accept in a single request (dropbear answers "String
+// too long" and closes the connection), so it travels gzip plus base64 into a
+// staging file that a short runner then executes. The nonce name is
+// cryptographically random, so noclobber plus the non-empty test can only see
+// the file this request just created.
 func terminalLaunchScript(stagingRoot, initialStyle string) terminalIntegration {
 	integration, stage := terminalIntegrationStageScript(stagingRoot, initialStyle, false)
 	stylePath := integration.files[0]
 	var launch strings.Builder
+	// The runner execs this file, so no trap of the runner can clean it up:
+	// remove it from inside, where $0 is the staging path.
+	launch.WriteString(`rm -f -- "$0"` + "\n")
 	launch.WriteString("if (\n" + stage + ") 2>/dev/null; then\n")
 	// The successful staging subshell proved ownership. Keep cleanup armed until
 	// exec succeeds; never remove collision paths on the fallback branch.
@@ -208,10 +221,45 @@ func terminalLaunchScript(stagingRoot, initialStyle string) terminalIntegration 
 		launch.WriteString(shell + ") " + command + ";;\n")
 	}
 	launch.WriteString("esac\nfi\ncase \"$SHELL\" in /*) exec \"$SHELL\" -l;; *) exec /bin/sh -l;; esac\n")
-	integration.command = "exec " + posixShellCommand(launch.String())
+	encoded, ok := terminalEncodedScript(launch.String())
+	if !ok {
+		return terminalIntegration{}
+	}
+	launchPath := path.Join(stagingRoot, "dengshell-launch-"+integration.Nonce+".sh")
+	// A connection that dies between writing and running the runner must not
+	// leave the script behind, so it joins the cleanup plan.
+	integration.files = append(integration.files, launchPath)
+	runner := "( set -C; printf %s " + terminalQuote(encoded) + " | " + terminalScriptDecodePipeline + " > " + terminalQuote(launchPath) + " ) 2>/dev/null\n" +
+		"if [ -s " + terminalQuote(launchPath) + " ]; then exec /bin/sh " + terminalQuote(launchPath) + "; fi\n" +
+		"case \"$SHELL\" in /*) exec \"$SHELL\" -l;; *) exec /bin/sh -l;; esac\n"
+	integration.command = "exec " + posixShellCommand(runner)
 	integration.inline = true
 	return integration
 }
+
+// terminalEncodedScript packs the staging script so the exec request stays
+// inside the size limited servers accept: gzip, then standard base64 without
+// line breaks.
+func terminalEncodedScript(script string) (string, bool) {
+	var compressed bytes.Buffer
+	writer, err := gzip.NewWriterLevel(&compressed, gzip.BestCompression)
+	if err != nil {
+		return "", false
+	}
+	if _, err = writer.Write([]byte(script)); err != nil {
+		return "", false
+	}
+	if err = writer.Close(); err != nil {
+		return "", false
+	}
+	return base64.StdEncoding.EncodeToString(compressed.Bytes()), true
+}
+
+// GNU and BusyBox base64 decode with -d, FreeBSD and macOS with -D; gzip and
+// gunzip cover the same difference on the compression side. A pipeline that
+// finds neither tool leaves an empty file, and the runner falls back to a plain
+// login shell.
+const terminalScriptDecodePipeline = `(base64 -d 2>/dev/null || base64 --decode 2>/dev/null || base64 -D 2>/dev/null) | (gzip -dc 2>/dev/null || gunzip -c 2>/dev/null)`
 
 // No remote operation is needed before publishing a terminal-first session.
 func (s *Session) prepareTerminalLaunch() terminalIntegration {

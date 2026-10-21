@@ -1,9 +1,14 @@
 package app
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
+	"encoding/base64"
+	"io"
 	"os"
 	"path"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -151,5 +156,53 @@ func TestTerminalLaunchPlanDropsOversizedRequest(t *testing.T) {
 	oversized := terminalIntegration{Shell: "bash", inline: true, directory: "/tmp/dengshell-session-x", command: posixShellCommand(strings.Repeat("x", terminalLaunchRequestLimit+1))}
 	if kept, reason := terminalLaunchPlan(oversized); reason != "too-long" || kept.command != "" || kept.Shell != "" || kept.directory != "" {
 		t.Fatalf("oversized plan must fall back to a plain login shell: reason=%q plan=%+v", reason, kept)
+	}
+}
+
+func TestTerminalLaunchScriptTransportsCompressedBootstrap(t *testing.T) {
+	integration := terminalLaunchScript("/tmp", "\n\n")
+	if integration.command == "" || !integration.inline {
+		t.Fatal("inline launch plan missing")
+	}
+	if kept, reason := terminalLaunchPlan(integration); reason != "" || len(kept.command) > terminalLaunchRequestLimit {
+		t.Fatalf("the production launch request must stay inside the ceiling: reason=%q bytes=%d", reason, len(kept.command))
+	}
+	// Only the base64 alphabet sits between the quotes, so the payload can be
+	// read back without unwinding the shell quoting (the runner's own quoting
+	// turns each quote of the payload into the '\'' sequence).
+	match := regexp.MustCompile(`printf %s '\\''([A-Za-z0-9+/=]+)`).FindStringSubmatch(integration.command)
+	if match == nil {
+		t.Fatal("encoded bootstrap payload missing from the runner")
+	}
+	raw, err := base64.StdEncoding.DecodeString(match[1])
+	if err != nil {
+		t.Fatalf("payload is not standard base64: %v", err)
+	}
+	reader, err := gzip.NewReader(bytes.NewReader(raw))
+	if err != nil {
+		t.Fatalf("payload is not gzip: %v", err)
+	}
+	script, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(script)
+	for _, marker := range []string{`rm -f -- "$0"`, `case "${SHELL##*/}" in`, "bash)", "zsh)", "fish)", "__dengshell_prompt"} {
+		if !strings.Contains(text, marker) {
+			t.Fatalf("decoded bootstrap lost %q", marker)
+		}
+	}
+	if strings.Contains(integration.command, "__dengshell_prompt") {
+		t.Fatal("the plain request still carries bootstrap content")
+	}
+	launchFile := "/tmp/dengshell-launch-" + integration.Nonce + ".sh"
+	cleanup := false
+	for _, file := range integration.files {
+		if file == launchFile {
+			cleanup = true
+		}
+	}
+	if !cleanup {
+		t.Fatalf("runner script missing from the cleanup plan: %v", integration.files)
 	}
 }
