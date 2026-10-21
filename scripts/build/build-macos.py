@@ -15,7 +15,10 @@ import tempfile
 from datetime import datetime
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-MINIMUM_MACOS = "13.0"
+# Release support covers the recent macOS releases (15, 26, 27); older system
+# versions are out of scope. The value lands in MACOSX_DEPLOYMENT_TARGET,
+# -mmacosx-version-min, Info.plist LSMinimumSystemVersion and build-info.json.
+MINIMUM_MACOS = "15.0"
 
 
 def run(*args, **kwargs):
@@ -29,6 +32,12 @@ def build(args):
         if not shutil.which(tool):
             raise SystemExit(f"Missing build tool: {tool}. Install Go and run xcode-select --install.")
     sdk = run("xcrun", "--sdk", "macosx", "--show-sdk-path", capture_output=True, text=True).stdout.strip()
+    sdk_version = run("xcrun", "--sdk", "macosx", "--show-sdk-version", capture_output=True, text=True).stdout.strip()
+    # A deployment target newer than the SDK yields a bundle whose load commands
+    # disagree with the SDK used, so stop instead of shipping a mismatched pair.
+    sdk_numbers = [int(part) for part in re.findall(r"\d+", sdk_version)[:2]] or [0, 0]
+    if tuple(sdk_numbers + [0]) < tuple(int(part) for part in MINIMUM_MACOS.split(".")[:2]):
+        raise SystemExit(f"The macOS SDK {sdk_version or 'unknown'} is older than the supported minimum {MINIMUM_MACOS}; build on a newer macOS (CI runner macos-15 or later).")
     jobs = min(args.jobs, os.cpu_count() or 1)
     run("go", "mod", "verify", cwd=ROOT)
     for name in ["xterm.js", "xterm.css", "addon-fit.js", "addon-serialize.js"]:

@@ -2,7 +2,7 @@
 
 ## 安装
 
-支持 macOS 13 Ventura 或更高版本。Universal 通用应用同时包含 Apple 芯片 arm64 和 Intel x86_64 原生程序。
+支持 macOS 15 或更高版本；兼容与验证范围是最近的几个正式版（macOS 15、26、27），更早版本不再适配。Universal 通用应用同时包含 Apple 芯片 arm64 和 Intel x86_64 原生程序。
 
 打开 `DevShell-macos-universal.dmg`，把 `DevShell.app` 拖到 `Applications` 后启动；也可以解压 ZIP 后拖入应用程序文件夹。SSH 终端和文件管理无需另装 Go、Node.js、WebView2 或 GTK。
 
@@ -39,6 +39,8 @@ python3 scripts/tests/test-macos-app.py build/macos/DevShell.app
 构建默认最多使用 4 个并发任务，并按机器实际 CPU 数量收缩。macOS 不使用 Linux 的 `taskset`，因此该设置限制构建并发数，不保证绑定编号 0～3 的 CPU。
 
 脚本使用系统 SDK、Cocoa/WebKit、CGO 和 `lipo` 合并双架构程序，不需要额外安装 Wails CLI。Ubuntu 能测试共享后端和前端，但不能在缺少 Apple SDK 的情况下构建这个原生桌面应用。
+
+最低系统固定在 macOS 15.0：`MACOSX_DEPLOYMENT_TARGET`、`-mmacosx-version-min` 与 `Info.plist` 的 `LSMinimumSystemVersion` 同源，构建信息里记录为 `minimumMacOS`。脚本先检查所用 SDK 不低于该值，否则直接报错停止（GitHub Actions 因此使用 macOS 15 构建机；更旧的构建机会先失败，而不是产出加载命令与 SDK 不一致的包）。
 
 GitHub Actions 的 `.github/workflows/release.yml` 在推送 tag 时由 macOS 任务在 macOS 环境中构建通用包，产物连同校验清单发布到对应 Release；需要原生启动验证时，可在构建机上运行 `scripts/tests/test-macos-app.py` 验证 `.app`。
 

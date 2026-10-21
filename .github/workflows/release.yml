@@ -5,6 +5,9 @@ name: Release build
 # builds the universal (Apple Silicon + Intel) app bundle, ZIP and DMG with
 # scripts/build/build-macos.py; signing stays ad-hoc (no Developer ID secret
 # here), matching the "临时签名、未公证" note in the README download table.
+# Supported releases are macOS 15, 26 and 27 (bundle floor 15.0), so the job runs
+# on a macos-15 runner: its SDK is at least the deployment target, which
+# build-macos.py now verifies before compiling.
 
 on:
   push:
@@ -64,7 +67,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
   macos:
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
         with:

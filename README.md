@@ -59,7 +59,7 @@ DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VP
 | 平台与用途 | 下载文件 | 使用方式 |
 | --- | --- | --- |
 | Windows 10 / 11 x64 安装版 | `DevShell-Setup-x64.exe` | 运行安装器，从开始菜单或桌面启动，可通过控制面板卸载；此前 DengShell 安装版升级时自动沿用原安装目录与数据 |
-| macOS 13+，Apple 芯片与 Intel | `DevShell-macos-universal.dmg` / `.zip` | 通用应用，临时签名、未公证预览版 |
+| macOS 15+（兼容 15 / 26 / 27），Apple 芯片与 Intel | `DevShell-macos-universal.dmg` / `.zip` | 通用应用，临时签名、未公证预览版 |
 
 Windows 版本需要 Microsoft Edge WebView2，缺少时程序会提供安装指引。安装版默认安装到当前用户目录，卸载保留个人配置。
 
@@ -421,7 +421,7 @@ DevShell 应用代码采用 [MIT License](LICENSE)，可按许可使用、修改
 
 ## macOS 通用预览版
 
-提供 Apple 芯片与 Intel 通用 DMG/ZIP，最低 macOS 13。当前为临时签名、尚未公证，手动替换应用更新。安装与构建说明见 [macOS 说明](docs/MACOS.md)。
+提供 Apple 芯片与 Intel 通用 DMG/ZIP，最低 macOS 15（支持范围：macOS 15、26、27）。当前为临时签名、尚未公证，手动替换应用更新。安装与构建说明见 [macOS 说明](docs/MACOS.md)。
 
 ### 2026-09-28 连接与上传更新
 
