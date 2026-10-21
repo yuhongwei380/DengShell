@@ -1,5 +1,16 @@
 # DevShell 更新日志
 
+## 2026-10-21 traceroute 逐跳实时输出、Ctrl+C 中止与 DevShell 品牌收尾 · v26.10.0 构建 20261021137
+
+- 修复：macOS 本机提示符 `traceroute` 等 45 秒超时后才一次性显示：traceroute 的 stdout 接管道被 libc 全缓冲，进程退出前不产出。macOS/Linux CGO 构建用 `openpty(3)` 给子进程挂伪终端（`local_probe_tty_cgo.go`，无 CGO 回退 `local_probe_tty_other.go`），逐跳实时出现。
+- 新增：traceroute 端点支持 `X-DevShell-Probe-Stream` 请求头，按行 NDJSON 即时推送（行级 GBK 解码、256KiB 截断、done 帧收尾），Windows 的 tracert 同样增量流式显示。
+- 新增：所有本机命令（ping 单次与 `-t`、traceroute、nslookup、dig、curl）运行中按 Ctrl+C 中止：前端 AbortController 直连 fetch，后端 `r.Context()` 取消即终止本机进程/查询，界面显示 `^C 已停止`。
+- 新增：服务器管理新建／编辑连接的「在本机保存密码／口令」默认勾选，与快速连接保存、链接栏固定统一为默认记住凭据；取消勾选仍显式拒绝并清除已存凭据。
+- 新增：顶栏版本号悬停提示显示构建号；`/boot.js` 增加 `build` 字段。
+- 调整：macOS 安装包全面改用 DevShell——DMG/app/bundle id（`cloud.bitsflow.devshell`）、Info.plist、release 工件名与 DMG 使用说明；数据目录改为 `~/Library/Application Support/DevShell`，首次启动一次性改名迁移旧目录。
+- 调整：README 截图全部换为当前界面（移除旧 DengShell 截图）；根 LICENSE 与安装协议版权改为 DevShell contributors；新增 `LICENSES/` 集中保存上游 DengShell 与全部 Go/npm/字体/素材组件许可证（101 份 + 索引），发行包同步附带。
+- 验证：`go vet`/`go build`、`internal/app` 全量测试（含新增流式 NDJSON 单测）、`npm run check` 通过；fixture 无头浏览器端到端：traceroute 4 秒即见路由头部、Ctrl+C 后输出冻结且进程终止、ping 1.2 秒内中止、回环追踪正常完成；新建连接表单记住凭据默认勾选、版本悬停 title 含构建号均实测。
+
 ## 2026-10-20 本机探测命令扩展、ping 输出与链接栏修复 · v26.10.0 构建 20261018136
 
 - 新增：未连接任何服务器时（欢迎页与断开连接的会话内），本机提示符在 `ping` 之外支持 `traceroute 主机`、`nslookup 主机`、`dig 主机 [记录类型]`、`curl [-I] 网址`。nslookup/dig/curl 用 Go 标准库实现，traceroute 只调用系统 tracert/traceroute，参数固定、主机严格校验，绝不执行用户 shell；并发限 2、输出限 256KB、超时分级。
