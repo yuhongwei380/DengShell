@@ -134,3 +134,22 @@ func TestTerminalIntegrationTemporaryFilesAndRestrictedFallback(t *testing.T) {
 	_, _ = in.Write([]byte("HISTFILE=/dev/null; exit\r"))
 	_ = sh.Close()
 }
+
+func TestTerminalLaunchPlanDropsOversizedRequest(t *testing.T) {
+	// dropbear on OpenWrt 24.10 refused the 26195 byte bootstrap and closed the
+	// connection, so the ceiling has to stay below that measurement.
+	if terminalLaunchRequestLimit >= 26195 {
+		t.Fatalf("limit %d would still send the request dropbear refused", terminalLaunchRequestLimit)
+	}
+	small := terminalIntegration{Shell: "bash", inline: true, command: posixShellCommand("exec bash -i")}
+	if kept, reason := terminalLaunchPlan(small); reason != "" || kept.command == "" || kept.Shell != "bash" {
+		t.Fatalf("a fitting plan must be used as built: reason=%q plan=%+v", reason, kept)
+	}
+	if kept, reason := terminalLaunchPlan(terminalIntegration{}); reason != "" || kept.command != "" {
+		t.Fatalf("a plan without a command must stay unchanged: reason=%q plan=%+v", reason, kept)
+	}
+	oversized := terminalIntegration{Shell: "bash", inline: true, directory: "/tmp/dengshell-session-x", command: posixShellCommand(strings.Repeat("x", terminalLaunchRequestLimit+1))}
+	if kept, reason := terminalLaunchPlan(oversized); reason != "too-long" || kept.command != "" || kept.Shell != "" || kept.directory != "" {
+		t.Fatalf("oversized plan must fall back to a plain login shell: reason=%q plan=%+v", reason, kept)
+	}
+}

@@ -116,6 +116,24 @@ func (s *Session) prepareTerminalIntegrationFiles(ctx context.Context, stagingRo
 	return integration
 }
 
+// terminalLaunchRequestLimit bounds the single exec request that starts a
+// terminal. dropbear and other embedded SSH servers refuse oversized request
+// strings ("String too long" in their logs) and close the whole connection
+// while refusing it, so the plain-shell fallback below never gets a channel.
+// The bootstrap is optional: skipping it costs prompt integration, while the
+// terminal itself still opens.
+const terminalLaunchRequestLimit = 8192
+
+// terminalLaunchPlan returns the plan to start a terminal with, dropping the
+// optional bootstrap when its request would be too large to send. The second
+// result is "" when the plan is used as built.
+func terminalLaunchPlan(integration terminalIntegration) (terminalIntegration, string) {
+	if integration.command == "" || len(integration.command) <= terminalLaunchRequestLimit {
+		return integration, ""
+	}
+	return terminalIntegration{}, "too-long"
+}
+
 func terminalIntegrationScript(stagingRoot, initialStyle string) (terminalIntegration, string) {
 	return terminalIntegrationStageScript(stagingRoot, initialStyle, true)
 }

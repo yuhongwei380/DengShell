@@ -352,6 +352,13 @@ func (r *terminalRelay) run() {
 	}
 	integration := s.prepareTerminalIntegration()
 	defer s.cleanupTerminalIntegration(integration)
+	if plan, reason := terminalLaunchPlan(integration); reason != "" {
+		// Sending it would cost the connection on limited servers, so open a
+		// normal login shell instead and say what was given up.
+		s.noteTerminalStageKind("launch-exec", reason)
+		integration = plan
+		_ = status(active, "info", "已跳过提示符集成：终端启动脚本超过远端可接受的长度，终端本身不受影响。", "")
+	}
 	launchStage := "launch-exec"
 	if integration.command != "" {
 		err = sh.Start(integration.command)

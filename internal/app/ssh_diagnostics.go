@@ -226,8 +226,14 @@ func (s *Session) noteOperationCancellation(stage string, err error) {
 // noteTerminalStage records one failed terminal startup request. Only the stage
 // and the fixed error category are written: never the request text or its error.
 func (s *Session) noteTerminalStage(stage string, err error) {
+	s.noteTerminalStageKind(stage, sshDiagnosticErrorKind(err))
+}
+
+// noteTerminalStageKind records a terminal startup stage decision that had no
+// error of its own, such as refusing to send an oversized request.
+func (s *Session) noteTerminalStageKind(stage, kind string) {
 	if s.diagnosticLog != nil {
-		s.diagnosticLog.record(s.ID, s.diagnosticEvent("terminal-stage", "", stage+":"+sshDiagnosticErrorKind(err)))
+		s.diagnosticLog.record(s.ID, s.diagnosticEvent("terminal-stage", "", stage+":"+kind))
 	}
 }
 

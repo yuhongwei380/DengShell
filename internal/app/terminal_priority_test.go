@@ -205,8 +205,18 @@ func TestTerminalPriorityPromptAndInputPrecedeStalledSFTP(t *testing.T) {
 				time.Sleep(10 * time.Millisecond)
 			}
 			events := f.snapshot()
-			prefix := []string{"channel:1", "pty:1", "exec:1"}
-			if rejectExec {
+			prefix := []string{"channel:1", "pty:1"}
+			// Embedded servers such as dropbear refuse the oversized bootstrap
+			// request outright, so the terminal starts with a plain login shell
+			// whenever the plan does not fit the ceiling.
+			if _, reason := terminalLaunchPlan(terminalLaunchScript("/tmp", "\n\n")); reason == "" {
+				prefix = append(prefix, "exec:1")
+				if rejectExec {
+					prefix = append(prefix, "shell:1")
+				}
+			} else {
+				// The bootstrap is not sent at all, so the login shell request
+				// is the terminal's only startup request.
 				prefix = append(prefix, "shell:1")
 			}
 			prefix = append(prefix, "prompt:1")
