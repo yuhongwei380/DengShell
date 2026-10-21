@@ -21,12 +21,12 @@ def verify(bundle, output):
     if platform.system() != "Darwin":
         raise SystemExit("This native application test requires macOS.")
     bundle = bundle.resolve()
-    executable = bundle / "Contents/MacOS/DengShell"
+    executable = bundle / "Contents/MacOS/DevShell"
     info = plistlib.loads((bundle / "Contents/Info.plist").read_bytes())
     subprocess.run(["codesign", "--verify", "--deep", "--strict", str(bundle)], check=True)
     arch = "arm64" if platform.machine() == "arm64" else "amd64"
     before = tree_digest(bundle)
-    with tempfile.TemporaryDirectory(prefix="dengshell-macos-qa-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="devshell-macos-qa-") as temporary:
         root = Path(temporary)
         config = root / "isolated config"
         config.mkdir()
@@ -50,7 +50,7 @@ def verify(bundle, output):
                 if tree_digest(bundle) != before:
                     raise RuntimeError("Application wrote into its signed bundle")
                 report = {"nativeReady": True, "platform": platform.platform(), "architecture": arch,
-                          "build": info["DengShellBuild"], "bundleUnchanged": True,
+                          "build": info["DevShellBuild"], "bundleUnchanged": True,
                           "isolatedConfiguration": True, "macOS": platform.mac_ver()[0]}
                 output.parent.mkdir(parents=True, exist_ok=True)
                 output.write_text(json.dumps(report, indent=2) + "\n")

@@ -65,7 +65,16 @@ func portableDirectoryForExecutable(executable string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		return filepath.Join(root, "DengShell"), nil
+		current := filepath.Join(root, "DevShell")
+		legacy := filepath.Join(root, "DengShell")
+		if _, err := os.Stat(current); os.IsNotExist(err) {
+			if _, legacyErr := os.Stat(legacy); legacyErr == nil {
+				// One whole-directory rename carries the pre-rename configuration
+				// over; a concurrent startup that loses the race simply sees current.
+				_ = os.Rename(legacy, current)
+			}
+		}
+		return current, nil
 	}
 	return filepath.Join(filepath.Dir(absolute), "data"), nil
 }

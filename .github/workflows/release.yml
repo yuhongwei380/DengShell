@@ -88,8 +88,8 @@ jobs:
             gh release create "$tag" --title "DevShell $tag" --notes-file "$notes"
           fi
           gh release upload "$tag" \
-            build/macos-release/DengShell-macos-universal.dmg \
-            build/macos-release/DengShell-macos-universal.zip \
+            build/macos-release/DevShell-macos-universal.dmg \
+            build/macos-release/DevShell-macos-universal.zip \
             build/macos-release/SHA256SUMS.txt \
             build/macos-release/build-info.json \
             --clobber

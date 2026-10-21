@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build DengShell.app and ZIP/DMG packages on macOS using the system SDK."""
+"""Build DevShell.app and ZIP/DMG packages on macOS using the system SDK."""
 
 import argparse
 import hashlib
@@ -40,19 +40,19 @@ def build(args):
     archs = ["arm64", "amd64"] if args.arch == "universal" else [args.arch]
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
-    bundle = output / "DengShell.app"
+    bundle = output / "DevShell.app"
     if bundle.exists():
         raise SystemExit(f"Output already exists: {bundle}. Choose a new --output directory or move the old build.")
-    with tempfile.TemporaryDirectory(prefix="dengshell-macos-build-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="devshell-macos-build-") as temporary:
         stage = Path(temporary)
-        app = stage / "DengShell.app"
+        app = stage / "DevShell.app"
         macos = app / "Contents/MacOS"
         resources = app / "Contents/Resources"
         macos.mkdir(parents=True)
         resources.mkdir()
         binaries = []
         for arch in archs:
-            binary = stage / f"DengShell-{arch}"
+            binary = stage / f"DevShell-{arch}"
             env = dict(os.environ, GOOS="darwin", GOARCH=arch, CGO_ENABLED="1", SDKROOT=sdk,
                        MACOSX_DEPLOYMENT_TARGET=MINIMUM_MACOS, GOMAXPROCS=str(jobs))
             # A fixed minimum keeps the Intel and Apple Silicon slices consistent.
@@ -61,7 +61,7 @@ def build(args):
             run("go", "build", "-p", str(jobs), "-buildvcs=false", "-trimpath", "-tags", "desktop,production",
                 "-ldflags", "-s -w", "-o", binary, ".", cwd=ROOT, env=env)
             binaries.append(binary)
-        executable = macos / "DengShell"
+        executable = macos / "DevShell"
         if len(binaries) > 1:
             run("xcrun", "lipo", "-create", *binaries, "-output", executable)
         else:
@@ -69,25 +69,25 @@ def build(args):
         executable.chmod(0o755)
         run("xcrun", "lipo", executable, "-verify_arch", *["x86_64" if a == "amd64" else a for a in archs])
 
-        iconset = stage / "DengShell.iconset"
+        iconset = stage / "DevShell.iconset"
         iconset.mkdir()
         for size in [16, 32, 128, 256, 512]:
             for scale in [1, 2]:
                 suffix = "@2x" if scale == 2 else ""
                 run("sips", "-z", size * scale, size * scale, ROOT / "build/dengshell.png",
                     "--out", iconset / f"icon_{size}x{size}{suffix}.png", stdout=subprocess.DEVNULL)
-        run("iconutil", "-c", "icns", iconset, "-o", resources / "DengShell.icns")
+        run("iconutil", "-c", "icns", iconset, "-o", resources / "DevShell.icns")
         info = {
-            "CFBundleName": "DengShell", "CFBundleDisplayName": "DengShell",
-            "CFBundleIdentifier": "cloud.bitsflow.dengshell", "CFBundleExecutable": "DengShell",
+            "CFBundleName": "DevShell", "CFBundleDisplayName": "DevShell",
+            "CFBundleIdentifier": "cloud.bitsflow.devshell", "CFBundleExecutable": "DevShell",
             "CFBundlePackageType": "APPL", "CFBundleInfoDictionaryVersion": "6.0",
             "CFBundleShortVersionString": package_version,
             "CFBundleVersion": f"{(datetime.strptime(str(build_number)[:8], '%Y%m%d') - datetime(2020, 1, 1)).days}.{build_number % 1000 // 100}.{build_number % 100}",
-            "DengShellBuild": str(build_number), "CFBundleIconFile": "DengShell.icns",
+            "DevShellBuild": str(build_number), "CFBundleIconFile": "DevShell.icns",
             "LSMinimumSystemVersion": MINIMUM_MACOS, "NSHighResolutionCapable": True,
             "NSPrincipalClass": "NSApplication", "LSApplicationCategoryType": "public.app-category.developer-tools",
             "NSHumanReadableCopyright": "Copyright © 2026 DevShell contributors. MIT License.",
-            "NSLocalNetworkUsageDescription": "DengShell 使用 SSH、SFTP 和网络诊断连接你选择的局域网服务器。",
+            "NSLocalNetworkUsageDescription": "DevShell 使用 SSH、SFTP 和网络诊断连接你选择的局域网服务器。",
         }
         with (app / "Contents/Info.plist").open("wb") as stream:
             plistlib.dump(info, stream)
@@ -106,15 +106,15 @@ def build(args):
         run("codesign", "--force", "--sign", args.sign_identity, *sign_args, app)
         run("codesign", "--verify", "--deep", "--strict", "--verbose=2", app)
         shutil.copytree(app, bundle)
-        zip_path = output / f"DengShell-macos-{args.arch}.zip"
+        zip_path = output / f"DevShell-macos-{args.arch}.zip"
         run("ditto", "-c", "-k", "--sequesterRsrc", "--keepParent", bundle, zip_path)
         disk = stage / "disk"
         disk.mkdir()
         shutil.copytree(app, disk / app.name)
         (disk / "Applications").symlink_to("/Applications")
         shutil.copy2(ROOT / "docs/MACOS.md", disk / "使用说明.md")
-        dmg_path = output / f"DengShell-macos-{args.arch}.dmg"
-        run("hdiutil", "create", "-volname", "DengShell", "-srcfolder", disk, "-format", "UDZO", dmg_path)
+        dmg_path = output / f"DevShell-macos-{args.arch}.dmg"
+        run("hdiutil", "create", "-volname", "DevShell", "-srcfolder", disk, "-format", "UDZO", dmg_path)
         run("hdiutil", "verify", dmg_path)
         files = [zip_path, dmg_path]
         checksums = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
