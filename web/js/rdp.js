@@ -125,7 +125,7 @@
     let secret = credentials.get(profileID) || '';
     if (!secret && !profile.hasSecret) {
       dialog().close();
-      secret = await ask({title:`远程桌面密码 · ${profile.name}`,description:'密码仅用于本次连接。首次连接时还需要确认服务器证书。',input:true,secret:true,confirm:'连接'});
+      secret = await ask({title:`远程桌面密码 · ${profile.name}`,description:'首次连接时还需要确认服务器证书。' + (declinedCredentials.has(profileID) ? '' : '输入成功后会加密保存到该连接，之后自动连接。'),input:true,secret:true,confirm:'连接'});
       if (secret === null) return null;
       if (!secret) throw new Error('请输入远程桌面密码');
     }
@@ -134,6 +134,10 @@
       const info = await native().RDPConnect(profileID,secret);
       items.set(info.id,info); setDrawer(false);
       if (!background || (!activeID && !active)) activateRDP(info.id); else renderTabs();
+      // Same rule as SSH: a credential typed for a connection that stores none
+      // is persisted once the session is really up, so the next open is silent.
+      if (secret) credentials.set(profileID, secret);
+      if (secret && !profile.hasSecret) { try { if (await persistRunCredential(profile, secret)) toast(`🔑  「${profile.name}」凭据已加密保存到本机，下次直接连接`); } catch { /* 保存失败不改变已建立的会话 */ } }
       renderList(); return {...info,protocol:'rdp'};
     } finally { connecting.delete(profileID); renderConnections(); }
   }

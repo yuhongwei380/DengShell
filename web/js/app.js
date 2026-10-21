@@ -116,6 +116,10 @@ function ask({ title, description = '', input = false, value = '', secret = fals
 
 let profiles = [], groups = [], activeID = null, ascending = true, fileSortKey = 'name';
 const sessions = new Map(), connecting = new Set(), credentials = new Map(), localTasks = new Map();
+// Connections whose credential storage the user explicitly declined in this run
+// (edit form unchecked). The connect-time write-back must not undo that choice;
+// saving with "remember" checked lifts it again.
+const declinedCredentials = new Set();
 const temporaryProfiles = new Map();
 const connectionRequests = new Map();
 const connectionAttempts = new Map();
@@ -175,6 +179,21 @@ async function connect(profileID, force = false, options = {}) {
   connectionRequests.set(requestKey, request);
   try { return await request; } finally { if (connectionRequests.get(requestKey) === request) connectionRequests.delete(requestKey); }
 }
+// A credential typed this run for a saved connection that stores none: write it
+// back so the next start, a pinned chip or a double click reconnects silently.
+// replaceStored additionally permits overwriting a stored credential the server
+// has just rejected. Temporary quick-connect profiles have no stored row yet
+// (their own save dialogs own the credential), and agent/managed-key auth has no
+// profile secret to write: a library key's passphrase belongs to the key
+// manager, not to the connection, and is never rewritten from here.
+async function persistRunCredential(profile, secret, { replaceStored = false } = {}) {
+  if (!secret || !profile || (profile.hasSecret && !replaceStored) || temporaryProfiles.has(profile.id) || declinedCredentials.has(profile.id)) return false;
+  if (profile.auth === 'agent' || (profile.auth === 'key' && profile.keyId)) return false;
+  const saved = await post('/api/profiles', { ...profile, secret, clearSecret: false });
+  const index = profiles.findIndex(entry => entry.id === saved.id);
+  if (index >= 0) profiles[index] = saved; else profiles.push(saved);
+  return saved.hasSecret === true;
+}
 async function connectProfile(profileID, { background = false, refreshHistory = true, previous = null, requestKey } = {}) {
   const profile = connectionProfile(profileID); if (!profile) return;
   if (profile.auth === 'key' && !profile.keyId && !profile.keyPath) {
@@ -204,12 +223,16 @@ async function connectProfile(profileID, { background = false, refreshHistory = 
     await restoreReconnectTerminal(state);
     if (!alive()) return null;
     showConnectionProgress(state, '🔗  连接主机...');
-    let secret = credentials.get(profileID) || '';
+    let secret = credentials.get(profileID) || '', credentialRetried = false;
     // Managed key credentials are resolved by Go first. Another window may
     // have saved its passphrase since this window last loaded the key list.
     if (!secret && !profile.hasSecret && (profile.auth === 'password' || (profile.auth === 'key' && !profile.keyId))) {
       showConnectionProgress(state, '🔑  等待输入凭据...');
-      secret = await ask({ title: profile.auth === 'key' ? `私钥口令 · ${profile.name}` : `连接 ${profile.name}`, description: profile.auth === 'key' ? '如果私钥没有加密，可直接确定。' : `${profile.user}@${profile.host}:${profile.port}`, input: true, secret: true, confirm: '连接', signal: state.connectionAbort.signal });
+      // These are exactly the auth modes persistRunCredential can write back, so
+      // say up front that a successful connection stores the credential (a
+      // not-yet-saved quick connection has no row to write into).
+      const promptNote = (profile.auth === 'key' ? '如果私钥没有加密，可直接确定。' : `${profile.user}@${profile.host}:${profile.port}`) + (temporaryProfiles.has(profileID) || declinedCredentials.has(profileID) ? '' : '\n连接成功后凭据会加密保存到该连接，之后自动连接。');
+      secret = await ask({ title: profile.auth === 'key' ? `私钥口令 · ${profile.name}` : `连接 ${profile.name}`, description: promptNote, input: true, secret: true, confirm: '连接', signal: state.connectionAbort.signal });
       if (!alive()) return null;
       if (secret === null) { showConnectionProgress(state, '🚫  已取消连接', true); return null; }
       if (profile.auth === 'password' && !secret) throw new Error('请输入 SSH 密码');
@@ -240,7 +263,12 @@ async function connectProfile(profileID, { background = false, refreshHistory = 
       const needsKeyPassphrase = profile.auth === 'key' && ['ssh_key_passphrase_required', 'ssh_key_passphrase_invalid'].includes(error.code);
       if (!needsKeyPassphrase && !(profile.auth === 'password' && error.code === 'ssh_authentication_failed')) throw error;
       showConnectionProgress(state, '🔑  等待重新输入凭据...');
-      secret = await ask({ title: `${needsKeyPassphrase ? (error.code === 'ssh_key_passphrase_required' ? '私钥口令' : '重新输入私钥口令') : '重新输入 SSH 密码'} · ${profile.name}`, description: error.message + '\n本次输入会替代缓存凭据，仅保存在本次运行中。', input: true, secret: true, confirm: '连接', signal: state.connectionAbort.signal });
+      // The stored credential was just rejected by the server, so a credential
+      // that connects now replaces it instead of staying run-only. Managed-key
+      // passphrases stay owned by the key manager and are never overwritten here.
+      const replacesStored = profile.auth !== 'key' || !profile.keyId;
+      credentialRetried = replacesStored;
+      secret = await ask({ title: `${needsKeyPassphrase ? (error.code === 'ssh_key_passphrase_required' ? '私钥口令' : '重新输入私钥口令') : '重新输入 SSH 密码'} · ${profile.name}`, description: error.message + `\n本次输入会替代缓存凭据${replacesStored ? '；连接成功后同时替换该连接已保存的旧凭据。' : '，不会修改密钥管理器中保存的口令。'}`, input: true, secret: true, confirm: '连接', signal: state.connectionAbort.signal });
       if (!alive()) return null;
       if (secret === null) { showConnectionProgress(state, '🚫  已取消连接', true); return null; }
       if (profile.auth === 'password' && !secret) throw new Error('请输入 SSH 密码');
@@ -259,6 +287,14 @@ async function connectProfile(profileID, { background = false, refreshHistory = 
     // Each tab becomes usable independently, preserving order and the user's current focus.
     if (selected) activate(state.id); else renderTabs();
     if (secret) credentials.set(profileID, secret);
+    // A credential typed for a saved connection used to live only in this run's
+    // memory, so the same connection asked again after every restart. Persist it
+    // once the connection actually succeeded; failure only means asking again.
+    if (secret && (!profile.hasSecret || credentialRetried)) {
+      try {
+        if (await persistRunCredential(profile, secret, { replaceStored: credentialRetried })) toast(credentialRetried ? `🔑  「${profile.name}」已用本次验证通过的凭据替换保存的旧凭据` : `🔑  「${profile.name}」凭据已加密保存到本机，下次直接连接`);
+      } catch { /* 保存失败不改变已建立的会话 */ }
+    }
     window.DengCommandHistory?.refresh(profileID).catch(error => toast('⚠️  命令历史刷新失败：' + error.message));
     if (current() === state && state.ready) { pollStats(); pollLatency(); }
     // A slow or failed SFTP listing must not block any other SSH connection.
@@ -950,6 +986,9 @@ $('#connection-form').onsubmit = safe(async event => {
   const saved = await post('/api/profiles', { ...values, rdpClipboard: form.elements.rdpClipboard.checked, port: serial ? 0 : Number(values.port), baudRate: Number(values.baudRate) || 0, dataBits: Number(values.dataBits) || 0, stopBits: Number(values.stopBits) || 0, secret: remember ? secret : '', clearSecret: !remember, proxy });
   credentials.delete(saved.id);
   if (secret) credentials.set(saved.id, secret); else if (!remember) credentials.delete(saved.id);
+  // Remembering is a stored choice for this connection: unchecking forbids the
+  // connect-time write-back, checking it again lifts the refusal.
+  if (needsSecret) { if (remember) declinedCredentials.delete(saved.id); else declinedCredentials.add(saved.id); }
   $('#connection-dialog').close(); await loadProfiles(); if (isNew) await connect(saved.id); else { renderSessionInfo(); toast('连接配置已保存，下次连接时生效'); }
 });
 $('#reset-host-key').onclick = safe(async () => { const id = $('#connection-form').elements.id.value; if (!id || !await ask({ title: '重置主机指纹？', description: '仅在确认服务器重装或主机密钥正常更换后操作。清除后，下次连接仍需核实并确认新指纹。', confirm: '重置指纹' })) return; await post(`/api/profiles/${id}/reset-key`, {}); toast('已清除记录，下次连接需要确认指纹'); });

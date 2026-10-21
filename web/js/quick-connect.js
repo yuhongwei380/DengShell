@@ -35,6 +35,9 @@ window.DengQuickConnect = (() => {
     // when the connection is saved; the checkbox stays visible to opt out.
     const canRemember = profile.auth !== 'agent' && credentials.has(savingID);
     f.elements.remember.checked = canRemember; f.elements.remember.closest('label').hidden = !canRemember;
+    // When nothing can be carried the checkbox disappears, which otherwise reads
+    // like a saved credential; state plainly what the saved row will contain.
+    $('#quick-save-note').textContent = profile.auth === 'agent' ? 'SSH Agent 认证无需保存凭据，之后由 Agent 提供。' : canRemember ? '勾选即把本次输入的凭据加密保存到本机，取消勾选则不保存。' : '本次没有可记住的凭据（这个窗口没有输入过密码），保存后下次连接仍需手动输入。';
     $('#quick-save-target').textContent = `${profile.user}@${profile.host}:${profile.port}`;
     $('#quick-save-error').textContent = ''; saveDialog.showModal(); f.elements.name.focus();
   }
@@ -60,7 +63,7 @@ window.DengQuickConnect = (() => {
     const welcome = node('button', '', '快速连接'); welcome.id = 'welcome-quick-connect'; welcome.onclick = () => open(); $('#welcome-connect').before(welcome);
     const b = node('button','terminal-popout'); b.id = 'save-quick-connection'; b.hidden = true; b.append(icon('plus'),node('span','','保存连接')); b.title = '保存此临时连接'; b.onclick = saveCurrent; $('#toggle-sftp').before(b);
     saveDialog = node('dialog'); saveDialog.id = 'quick-save-dialog'; saveDialog.setAttribute('aria-labelledby','quick-save-title');
-    saveDialog.innerHTML = `<form><div class="dialog-heading"><h2 id="quick-save-title">保存连接</h2><button type="button" class="icon-button" aria-label="取消保存" data-close><svg><use href="#i-close"/></svg></button></div><p id="quick-save-target"></p><label>名称<input name="name" required maxlength="100"></label><label>分组<input name="group" maxlength="100" value="快速连接"></label><label>备注（可选）<textarea name="notes" rows="3" aria-describedby="quick-save-notes-hint" placeholder="续费网址、到期时间、用途等"></textarea><small id="quick-save-notes-hint" class="notes-input-hint" aria-live="polite">正文最多 3 行，每行最多 20 个中文或 40 个英文字符</small></label><label class="checkbox-label"><input name="remember" type="checkbox">记住本次登录凭据</label><p id="quick-save-error" role="alert"></p><button type="submit" class="primary-button">保存连接</button></form>`;
+    saveDialog.innerHTML = `<form><div class="dialog-heading"><h2 id="quick-save-title">保存连接</h2><button type="button" class="icon-button" aria-label="取消保存" data-close><svg><use href="#i-close"/></svg></button></div><p id="quick-save-target"></p><label>名称<input name="name" required maxlength="100"></label><label>分组<input name="group" maxlength="100" value="快速连接"></label><label>备注（可选）<textarea name="notes" rows="3" aria-describedby="quick-save-notes-hint" placeholder="续费网址、到期时间、用途等"></textarea><small id="quick-save-notes-hint" class="notes-input-hint" aria-live="polite">正文最多 3 行，每行最多 20 个中文或 40 个英文字符</small></label><label class="checkbox-label"><input name="remember" type="checkbox">记住本次登录凭据</label><p id="quick-save-note" role="status" class="notes-input-hint"></p><p id="quick-save-error" role="alert"></p><button type="submit" class="primary-button">保存连接</button></form>`;
     document.body.append(saveDialog); saveDialog.querySelector('[data-close]').onclick = () => saveDialog.close();
     saveDialog.querySelector('form').onsubmit = async e => {
       e.preventDefault(); const f = e.currentTarget, b = f.querySelector('[type=submit]'), generation = saveGeneration; if (b.disabled || !window.DengProfileNotes.validate(f.elements.notes)) return; b.disabled = true;

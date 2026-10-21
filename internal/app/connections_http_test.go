@@ -72,6 +72,81 @@ func TestConnectionManagementHTTPContract(t *testing.T) {
 	request("DELETE", "/api/trash/"+profile.ID, nil)
 	request("DELETE", "/api/group-nodes/"+group.ID, nil)
 }
+// The UI promotes a credential typed at connect time by re-posting the public
+// profile view together with the secret. That round trip has to persist the
+// secret while keeping the inline proxy password the public view never reveals.
+func TestCredentialWriteBackRoundTripThroughPublicProfile(t *testing.T) {
+	a, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	handler := a.Handler(fstest.MapFS{"index.html": {Data: []byte("fixture")}})
+	request := func(method, path string, input any) *httptest.ResponseRecorder {
+		t.Helper()
+		body, _ := json.Marshal(input)
+		req := httptest.NewRequest(method, "http://wails.localhost"+path, bytes.NewReader(body))
+		req.Header.Set("X-CloudShell-Token", a.Token())
+		response := httptest.NewRecorder()
+		handler.ServeHTTP(response, req)
+		if response.Code != 200 {
+			t.Fatalf("%s %s: %d %s", method, path, response.Code, response.Body)
+		}
+		return response
+	}
+	created := request("POST", "/api/profiles", Profile{Name: "写回凭据", Host: "203.0.113.9", User: "root", Auth: "password", Proxy: ProxyConfig{Type: "socks5", Host: "127.0.0.1", Port: 1080, User: "proxy-user", Password: "inline-proxy-password"}})
+	var public map[string]any
+	if err := json.Unmarshal(created.Body.Bytes(), &public); err != nil {
+		t.Fatal(err)
+	}
+	if _, found := public["secret"]; found {
+		t.Fatal("created profile disclosed a secret field")
+	}
+	if proxy, _ := public["proxy"].(map[string]any); proxy["hasPassword"] != true {
+		t.Fatal("created profile lost the proxy password indicator")
+	}
+	// Exactly what the frontend spreads back: the public object plus the typed
+	// credential and an explicit "do not clear".
+	public["secret"] = "typed-at-connect"
+	public["clearSecret"] = false
+	response := request("POST", "/api/profiles", public)
+	var saved Profile
+	if err := json.Unmarshal(response.Body.Bytes(), &saved); err != nil {
+		t.Fatal(err)
+	}
+	if !saved.HasSecret || saved.Secret != "" {
+		t.Fatalf("write-back response lost the credential indicator: %+v", saved)
+	}
+	if bytes.Contains(response.Body.Bytes(), []byte("typed-at-connect")) || bytes.Contains(response.Body.Bytes(), []byte("inline-proxy-password")) {
+		t.Fatal("save response disclosed credentials")
+	}
+	stored, err := a.store.Get(saved.ID)
+	if err != nil || stored.Secret != "typed-at-connect" || stored.Proxy.Password != "inline-proxy-password" {
+		t.Fatalf("write-back lost the credential or the stored proxy password: %+v err=%v", stored, err)
+	}
+	// The retry path replaces a stored credential the server rejected, again by
+	// re-posting nothing but the public view plus the credential that worked.
+	var retry map[string]any
+	if err := json.Unmarshal(response.Body.Bytes(), &retry); err != nil {
+		t.Fatal(err)
+	}
+	retry["secret"] = "replacement-after-rejection"
+	retry["clearSecret"] = false
+	response = request("POST", "/api/profiles", retry)
+	if bytes.Contains(response.Body.Bytes(), []byte("replacement-after-rejection")) || bytes.Contains(response.Body.Bytes(), []byte("inline-proxy-password")) {
+		t.Fatal("replacement response disclosed credentials")
+	}
+	if stored, err = a.store.Get(saved.ID); err != nil || stored.Secret != "replacement-after-rejection" || stored.Proxy.Password != "inline-proxy-password" {
+		t.Fatalf("replacing a rejected credential did not persist: %+v err=%v", stored, err)
+	}
+	reopened, err := OpenStore(a.store.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p, err := reopened.Get(saved.ID); err != nil || p.Secret != "replacement-after-rejection" || p.Proxy.Password != "inline-proxy-password" {
+		t.Fatalf("write-back did not survive restart: %+v err=%v", p, err)
+	}
+}
 func TestConfigMigrationRefusesToProceedWithoutBackup(t *testing.T) {
 	if runtime.GOOS == "windows" || os.Geteuid() == 0 {
 		t.Skip("requires nonroot POSIX directory permissions")

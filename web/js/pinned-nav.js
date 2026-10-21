@@ -119,10 +119,14 @@ window.DengPinnedNav = (() => {
     const state = current(), profile = profileFor(state);
     if (!state || !profile) return;
     if (isPinned(profile.id)) { await unpin(profile.id); return; }
+    let note = '已固定到链接栏';
     if (temporaryProfiles.has(profile.id)) {
       // Pinning a quick-connect session persists it first, like "保存连接",
       // carrying the credentials used this run so the pin reconnects silently.
-      const saved = await post(`/api/quick-connect/${profile.id}/save`, { name: profile.name, group: '快速连接', notes: '', remember: credentials.has(profile.id), secret: credentials.get(profile.id) || '' });
+      // The credential lives in this window's memory only, so say out loud when
+      // there was nothing to carry instead of saving a silently password-less row.
+      const remembered = profile.auth !== 'agent' && credentials.has(profile.id);
+      const saved = await post(`/api/quick-connect/${profile.id}/save`, { name: profile.name, group: '快速连接', notes: '', remember: remembered, secret: credentials.get(profile.id) || '' });
       temporaryProfiles.delete(profile.id);
       profiles = profiles.filter(p => p.id !== saved.id);
       profiles.push(saved);
@@ -130,9 +134,10 @@ window.DengPinnedNav = (() => {
       // The session is no longer temporary even if pinning below fails, so
       // refresh the "保存连接" button instead of leaving it visibly dead.
       window.DengQuickConnect?.reflect();
+      if (!saved.hasSecret) note = '已固定到链接栏；这个连接没有保存凭据（本窗口未输入过密码），下次连接仍需输入';
     }
     await pin(profile.id);
-    toast('已固定到链接栏');
+    toast(note);
   }
   function reflect() {
     if (!pinButton) return;
