@@ -897,9 +897,11 @@ function showConnectionForm(profile = null, groupID = '') {
   form.elements.proxyPassword.placeholder = profile?.proxy?.hasPassword ? '已保存，留空保留' : '代理密码（可选）';
   $('#proxy-settings').open = !!profile?.needsProxy; updateProxyFields();
   chooseConnectionGroup(profile, groupID);
-  // A profile connected this run with a typed password has it cached in memory;
-  // offer to remember it even when nothing was persisted yet.
-  form.elements.remember.checked = !!profile?.hasSecret || (!!profile && credentials.has(profile.id)); $('#saved-secret-note').hidden = !profile?.hasSecret; $('#reset-host-key').hidden = !profile;
+  // Credentials are remembered by default in every save path (this form,
+  // quick-connect save, link-bar pin); unchecking is the explicit opt-out and
+  // also clears a previously stored secret. A profile connected this run with
+  // a typed password keeps it cached in memory either way.
+  form.elements.remember.checked = true; $('#saved-secret-note').hidden = !profile?.hasSecret; $('#reset-host-key').hidden = !profile;
   $('#connection-form-title').textContent = profile?.needsProxy ? '编辑连接 · 请补充代理或确认直连' : profile ? '编辑连接' : '新建连接'; $('#save-connection').textContent = profile ? '保存更改' : '保存并连接'; updateAuthFields(); if (profile?.protocol === 'serial') void window.DengSerial.loadPorts(); $('#connection-dialog').showModal(); $('#connection-form .connection-form-body').scrollTop = 0;
 }
 function updateAuthFields() {
