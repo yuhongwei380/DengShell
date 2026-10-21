@@ -67,5 +67,21 @@ try {
   return {shown:ta.matches(':placeholder-shown'),whiteSpace:cs.whiteSpace,scrollable:ta.scrollHeight>ta.clientHeight+1};
  });
  assert(placeholder.shown&&placeholder.whiteSpace==='nowrap'&&!placeholder.scrollable,'placeholder must stay single-line without a scrollbar: '+JSON.stringify(placeholder));
- fs.writeFileSync(stage+'/local-prompt-terminal.json',JSON.stringify({passed:true,noStaircase:true,nslookupRouted:true,nslookupCompletion:true,digRouted:true,curlSchemeLess:true,placeholderNoScroll:true}));console.log('PASS local prompt CRLF, nslookup completion hint, dig, scheme-less curl, placeholder no-scroll');
+ // Single-line typed input must sit exactly where the placeholder sat: same
+ // font size and same vertical padding, so the first keystroke neither jumps
+ // to the top nor reads as a smaller font. Only real multi-line editing
+ // (Shift + Enter or wrapping) top-aligns with tighter padding.
+ const align=await page.evaluate(()=>{
+  const ta=document.querySelector('#command-input');const bar=ta.closest('.terminal-command-bar');
+  const empty={font:getComputedStyle(ta).fontSize,padTop:getComputedStyle(ta).paddingTop};
+  ta.value='d';ta.dispatchEvent(new Event('input',{bubbles:true}));
+  const typed={font:getComputedStyle(ta).fontSize,padTop:getComputedStyle(ta).paddingTop,multiline:bar.classList.contains('multiline')};
+  ta.value='d\ne';ta.dispatchEvent(new Event('input',{bubbles:true}));
+  const multi={multiline:bar.classList.contains('multiline'),padTop:getComputedStyle(ta).paddingTop};
+  ta.value='';ta.dispatchEvent(new Event('input',{bubbles:true}));
+  return {empty,typed,multi};
+ });
+ assert(align.typed.font==='13px'&&align.typed.padTop===align.empty.padTop&&!align.typed.multiline,'single-line typed input must keep the 13px base size and the placeholder vertical center: '+JSON.stringify(align));
+ assert(align.multi.multiline&&align.multi.padTop==='5px','multi-line editing must top-align: '+JSON.stringify(align));
+ fs.writeFileSync(stage+'/local-prompt-terminal.json',JSON.stringify({passed:true,noStaircase:true,nslookupRouted:true,nslookupCompletion:true,digRouted:true,curlSchemeLess:true,placeholderNoScroll:true,inputStaysCentered:true}));console.log('PASS local prompt CRLF, nslookup completion hint, dig, scheme-less curl, placeholder no-scroll, input stays centered');
 }finally{await browser.close()}

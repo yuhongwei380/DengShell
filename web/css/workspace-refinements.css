@@ -68,15 +68,19 @@
 [data-narrow="true"] .diagnostics-footer { flex-wrap:wrap; }
 [data-short="true"] .disk-readout { padding:6px 7px; gap:4px; }
 [data-short="true"] .disk-io { margin-top:8px; }
-.terminal-command-bar textarea { resize:none; width:100%; min-width:0; min-height:46px; max-height:140px; border:0; background:transparent; color:#dae7ee; font:13px/20px var(--terminal-family,monospace); padding:5px 0; scrollbar-width:thin; }
+.terminal-command-bar textarea { resize:none; width:100%; min-width:0; min-height:46px; max-height:140px; border:0; background:transparent; color:#dae7ee; font:13px/20px var(--terminal-family,monospace); padding:13px 0; scrollbar-width:thin; }
 .terminal-command-bar textarea::placeholder { color:#809aa9; }
-/* Empty box: the guidance placeholder sits vertically centered in the tall
-   bar. Typed text keeps the same 13px size (no shrink on first keystroke),
-   just top-aligned for multi-line editing. The placeholder never wraps or
-   scrolls: it stays on one line and shrinks with the bar width (container
-   queries), ellipsizing only in extreme cases. */
-.terminal-command-bar textarea:placeholder-shown { padding-top:13px; padding-bottom:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.terminal-command-bar:has(textarea:placeholder-shown) > svg { margin-top:15px; }
+/* Single-line input — empty or typed — sits vertically centered in the tall
+   bar at the same 13px size and position as the guidance placeholder, so the
+   first keystroke neither jumps nor looks smaller. Only real multi-line
+   editing (Shift + Enter or wrapping) top-aligns with tighter padding;
+   resizeCommandInput toggles .multiline from the measured scrollHeight. The
+   placeholder never wraps or scrolls: it stays on one line and shrinks with
+   the bar width (container queries), ellipsizing only in extreme cases. */
+.terminal-command-bar textarea:placeholder-shown { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.terminal-command-bar > svg { margin-top:15px; }
+.terminal-command-bar.multiline textarea { padding:5px 0; }
+.terminal-command-bar.multiline > svg { margin-top:7px; }
 .terminal-command-bar form { container-type:inline-size; }
 @container (max-width:410px) { .terminal-command-bar textarea:placeholder-shown { font-size:12px; } }
 @container (max-width:370px) { .terminal-command-bar textarea:placeholder-shown { font-size:11px; } }

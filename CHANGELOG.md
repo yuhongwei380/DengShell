@@ -11,7 +11,8 @@
 - 修复：断开连接的会话里用本机提示符执行 `ping 主机`，多行结果（含 `-t` 持续探测）在终端中逐行向右阶梯缩进：xterm 把裸 `\n` 按「只下移一行、保持列位」处理；`local-prompt.js` 的 `termSink` 现将正文内部换行统一转为 `\r\n` 再写入 xterm，无会话时的 `<pre>` 草稿板路径不受影响。
 - 修复：链接栏点击已有会话的连接无任何响应（旧逻辑只激活既有会话，已激活时看似失效）；现每次点击都新开标签建立独立会话，与服务器列表双击同语义。
 - 修复：命令输入框引导提示与输入文字字号统一为 13px，首键不再突变缩小；引导提示单行显示、随输入框宽度自动缩小（容器查询），宽度不足时省略号收尾，不再出现滚动条。
-- 验证：`TestLocalProbe*`（含 dig、scheme-less curl 默认 http）、`test-local-prompt-terminal-browser`（无阶梯 + nslookup 完成提示 + dig + scheme-less curl + 占位不滚动）、`test-pinned-nav` 浏览器回归全部通过；`go build`、`go vet`、`npm run check` 通过；占位缩小无头 Edge 多宽度截图确认。
+- 修复：命令输入框单行输入文字（含光标）在框内垂直居中，与引导提示同一位置，首键不再上跳、观感不再显小；仅真正多行编辑（Shift + Enter 或自动换行）才顶部对齐，左侧图标随文字同步。
+- 验证：`TestLocalProbe*`（含 dig、scheme-less curl 默认 http）、`test-local-prompt-terminal-browser`（无阶梯 + nslookup 完成提示 + dig + scheme-less curl + 占位不滚动 + 单行输入保持 13px 与占位同位、多行顶对齐）、`test-pinned-nav` 浏览器回归全部通过；`go build`、`go vet`、`npm run check` 通过；占位缩小无头 Edge 多宽度截图确认。
 
 ## 2026-10-20 命令输入框引导提示居中 · v26.10.0 构建 20261018134
 
