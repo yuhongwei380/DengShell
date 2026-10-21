@@ -96,7 +96,7 @@ def package(args):
     sourcefiles=[]
     for pattern in ['.gitattributes','*.go','go.mod','go.sum','package.json','package-lock.json','*.sh','*.ps1','*.syso','README.md','CHANGELOG.md','LICENSE','.gitignore']:
         sourcefiles += list(ROOT.glob(pattern))
-    for folder in ['web','internal','scripts','cmd','native-rdp']:
+    for folder in ['web','internal','scripts','cmd','native-rdp','LICENSES']:
         if not (ROOT/folder).is_dir(): continue
         sourcefiles += [p for p in (ROOT/folder).rglob('*') if p.is_file() and not any(part in ('__pycache__', '.cache', 'node_modules') for part in p.relative_to(ROOT/folder).parts)]
     sourcefiles += [p for p in (ROOT/'docs').rglob('*') if p.is_file()]

@@ -86,7 +86,7 @@ def build(args):
             "DengShellBuild": str(build_number), "CFBundleIconFile": "DengShell.icns",
             "LSMinimumSystemVersion": MINIMUM_MACOS, "NSHighResolutionCapable": True,
             "NSPrincipalClass": "NSApplication", "LSApplicationCategoryType": "public.app-category.developer-tools",
-            "NSHumanReadableCopyright": "Copyright © 2026 DengShell contributors. MIT License.",
+            "NSHumanReadableCopyright": "Copyright © 2026 DevShell contributors. MIT License.",
             "NSLocalNetworkUsageDescription": "DengShell 使用 SSH、SFTP 和网络诊断连接你选择的局域网服务器。",
         }
         with (app / "Contents/Info.plist").open("wb") as stream:
