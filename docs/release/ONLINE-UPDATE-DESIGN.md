@@ -7,8 +7,12 @@
 | 平台 | 签名描述 | 安装文件 | 签名中的 platform |
 | --- | --- | --- | --- |
 | Windows x64 | `/up.exe.json` | `/up.exe` | `windows-amd64` |
+| macOS（Apple 芯片） | `/up-macos-arm64.json` | `/DevShell-macos-universal.zip` | `darwin-arm64` |
+| macOS（Intel） | `/up-macos-amd64.json` | `/DevShell-macos-universal.zip` | `darwin-amd64` |
 | Debian / Ubuntu AMD64 | `/up.deb.json` | `/up.deb` | `linux-amd64` |
 | Arch / ID_LIKE=arch x86-64 | `/up.pkg.tar.zst.json` | `/up.pkg.tar.zst` | `linux-amd64-pacman` |
+
+macOS 自构建 20261022140 起支持，两个平台身份共用同一个通用应用包（`app-zip`，即 `ditto -c -k --keepParent` 产出的 `.app` 压缩包，`sha256` 为压缩包哈希、`executableSHA256` 为包内 `Contents/MacOS/DevShell` 哈希），清单由 `scripts/build/build-macos.py` 的 `write_update_manifests` 生成。安装助手解压到应用包同卷的临时目录，校验后目录级 rename 替换，失败回滚 `<bundle>.update-old`。
 
 Arch 从 R28 开始支持；旧版须先手动安装一次 R28 或更新版。不添加 pacman 仓库，系统的 `pacman -Syu` 不会从官网获取此软件。RPM 和通用 Linux 包继续手动升级。
 
@@ -20,11 +24,13 @@ JSON 使用 schema 2，最大 64 KiB。身份包含 product、platform、version
 
 每次启动检查描述，整体检查期限为 3 秒；超时、缺失、签名不可信或描述过期均跳过，不阻止主界面。下载仅在确认后开始，支持进度与取消，最长 15 分钟。HTTPS 跳转只能留在固定域名。描述不能提供任意下载地址或安装命令。
 
-R21 起强制验证内置公钥的 Ed25519 签名、有效期、文件大小、SHA-256 和更高版本构建。R20 会忽略新增签名字段，首次迁移仍须信任旧渠道。暂存文件位于原配置目录的私有 `.update-*` 子目录；安装助手启动前及父进程退出后再次核对文件和收据。
+描述可以不携带签名：本分支把信任锚放在 GitHub Releases 的 HTTPS 来源与文件哈希上，强制校验文件大小、SHA-256 和更高构建号。描述一旦携带 `signingKeyID` / `issuedAt` / `expiresAt` / `signature` 中任一项，就必须通过内置公钥的 Ed25519 与有效期验证（签名流程与密钥管理见 [SIGNED-UPDATES.md](SIGNED-UPDATES.md)）。R20 会忽略新增签名字段，首次迁移仍须信任旧渠道。暂存文件位于原配置目录的私有 `.update-*` 子目录；安装助手启动前及父进程退出后再次核对文件和收据。
 
 ## 安装与重启
 
 Windows 验证 AMD64 PE，通过独立助手等待旧进程退出，在原程序目录原子替换 EXE，并保留已验证的备份。失败时尝试恢复并启动旧程序。原程序目录必须可写；这不等于 Authenticode 签名或绕过 SmartScreen。
+
+macOS 要求压缩包根目录就是 `DevShell.app`，拒绝绝对路径、`..` 穿越，并跳过 `__MACOSX`、`.DS_Store`、`._*` 元数据条目；解压到应用包同卷的临时目录，校验 `Contents/Info.plist`、可执行位和 `Contents/MacOS/DevShell` 的 `executableSHA256`，再做目录级 rename 换上，旧包留在 `<bundle>.update-old`，替换或新版本启动失败即回滚。安装位置必须可写：仍从只读 DMG 卷运行、或应用归 root 所有时，在旧进程退出前就报错拒绝，不申请提权。替换后按新包自身的签名启动，本分支仍是 ad-hoc 临时签名、未公证。
 
 Debian/Ubuntu 验证包名 `dengshell`、架构 `amd64`，固定执行 `pkexec <dpkg路径> --install <已校验文件>`。Arch 只将 `.PKGINFO` 读到有大小和时间限制的缓冲区，校验包名 `dengshell`、架构 `x86_64` 和与构建号一致的 pkgrel，然后固定执行 `pkexec <pacman路径> --upgrade --noconfirm --needed <已校验文件>`。参数通过独立 argv 传递，不经 Shell。root 直接调用包管理器。Arch 包声明 pacman、libarchive 和 polkit 依赖；普通桌面需有正常工作的系统授权代理。
 

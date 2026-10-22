@@ -34,7 +34,7 @@ python3 scripts/build/build-macos.py --arch universal --jobs 4
 python3 scripts/tests/test-macos-app.py build/macos/DevShell.app
 ```
 
-输出位于 `build/macos/`，包括 `.app`、DMG、ZIP、校验清单和构建信息。已有应用不会被覆盖，可通过 `--output 新目录` 保存下一次构建。
+输出位于 `build/macos/`，包括 `.app`、DMG、ZIP、两份更新清单（`up-macos-arm64.json` / `up-macos-amd64.json`，仅 universal 构建产出，供内置更新使用）、校验清单和构建信息。已有应用不会被覆盖，可通过 `--output 新目录` 保存下一次构建。
 
 构建默认最多使用 4 个并发任务，并按机器实际 CPU 数量收缩。macOS 不使用 Linux 的 `taskset`，因此该设置限制构建并发数，不保证绑定编号 0～3 的 CPU。
 
