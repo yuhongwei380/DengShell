@@ -1,5 +1,17 @@
 # DevShell 更新日志
 
+## 2026-10-22 rz / sz 桥接 SFTP、文件命令收进右键菜单、本机历史 · v26.10.0 构建 20261022141
+
+- 修复：终端里输入 `rz` 立刻报错并刷出 `**B0100000023be50e…` 乱码——lrzsz 用 ZModem（CR + 退格覆盖打印握手广告）等待本机对端，本程序没有 ZModem 实现（全仓检索无 zmodem／lrzsz 代码），无人应答导致覆盖残留与超时。
+- 新增：`rz` / `sz` 桥接到 SFTP（`web/js/zmodem-bridge.js`）：以 Shell 确认的 OSC 777 `command` 识别命令（绝对路径、引号、`--` 与选项过滤，`.`／`..` 跳过），再在 PTY 输出流里匹配 ZMODEM 广告（`**` + 12~24 位十六进制并换行，或 `\b\bB0…` 覆盖式，跨输出帧保留 120 字节尾部缓冲）。命中后先向 PTY 发 CAN CAN 中止握手；Shell 已回到提示符时不注入任何字节。
+- 新增：`rz` 走 `chooseUploads(state, directory)` 上传到 Shell 报告的当前目录（跟随终端），`sz 文件名…` 逐个走 SFTP 下载；无法确认命令来源（无 Shell 集成、脚本或 TUI 内部调用）时只中止握手并提示改用文件面板／scp；同一连接的 lrzsz 重试在 8 秒窗口内只处理一次，新的 Shell 确认命令重置该窗口。
+- 新增：未连接（无会话或会话已结束）时命令条 ↑ / ↓ 调出本机最近 50 条输入，不占按钮，随加密配置保存并跨重启（`internal/app/local_command_history.go`、`config.localHistory`、`GET/POST /api/local-history`：操作 ID 幂等重放、写入失败回滚、单条 64 KiB 上限、并发安全）；已连接时仍只用该服务器的历史命令；本机历史不进入全局 2000 条历史列表，也不被「清空历史列表」清掉。
+- 调整：SFTP 文件区底部移除 下载／重命名／删除 按钮，状态栏只留项目计数与 SFTP 标识；文件命令全部在右键菜单，单个文件补 **下载**（原样下载、不打包），目录只有 **打包并下载**，多选为删除所选／打包并下载 N 项／复制所选路径；键盘 Delete 仍删除所选。
+- 修复：本机 traceroute 被固定 45 秒 `context.WithTimeout` 截断——20 跳全被过滤的路径（macOS 20×3×2s、Windows 20×3×1s）在正常完成前就被终止；截止时间改由传给工具的同一组常量推导（跳数 × 每跳探针 × 每探针等待 + 20 秒余量：macOS／Linux 140 秒、Windows 80 秒），停止提示按实际秒数生成，流式与非流式共用同一个 note。
+- 文档：README 的 SFTP 段落改写（命令全在右键菜单、下载与打包并下载的区别）并新增「终端里的 rz / sz（lrzsz）」小节；应用内帮助「远程文件与上传」「命令历史」条目同步；README／macOS 说明／更新契约跟到构建 20261022140 的 macOS 内置更新与凭据回写。
+- 验证：新增 `scripts/tests/test-zmodem-bridge.mjs`（vm 内跑真实模块与 app.js 的 `normalizePath`）、`internal/app/file_menu_browser_test.go` + `scripts/tests/test-file-menu-browser.mjs`（真实页面加载桥接并调到真实 `chooseUploads`／`sendInput`／`downloadFile`，Windows／Edge 实测通过）、`internal/app/local_command_history_test.go`（上限与顺序、连续去重、非法操作、重放幂等、重启持久化、公共快照别名、不泄漏到全局历史、30 并发窗口）与 `scripts/tests/test-local-history.mjs`；`TestTracerouteDeadlineCoversTheToolHopBudget`、`TestTracerouteStreamNoteMatchesItsDeadline`；`test-file-selection.mjs` 改为经右键菜单驱动并新增单文件真实下载断言（依赖 POSIX SFTP 夹具，Windows 上 SKIP）；`npm run check`、`go vet`、`GOOS=darwin GOARCH=arm64` 交叉构建通过，`internal/...` 全量测试只剩本机既有的两处 prompt-style 失败。
+- 升级说明：Windows 与 macOS 均走各自更新通道；macOS 自 20261022140 起可直接「检查更新」自升级，仍从 DMG 卷运行会被拒绝替换。
+
 ## 2026-10-22 macOS 内置更新上线 · v26.10.0 构建 20261022140
 
 - 修复：macOS 点「检查更新」只提示「检查更新失败：未知错误」——`updateAddress` 只映射 `windows-amd64`／`linux-amd64`／`linux-amd64-pacman`，darwin 得到空 artifact 后直接返回 `reason=platform-unavailable` 且不发任何请求；前端 reason 文案表缺该键，落到「未知错误」兜底。
