@@ -55,10 +55,10 @@ try {
     DengFileTools.downloadFile = async (_state, path) => { (calls.downloads ||= []).push(path); };
     try {
       window.DengZmodemBridge.noteCommand(state, 'sz -a b.txt');
-      window.DengZmodemBridge.observe(state, new TextEncoder().encode('\r\n**0800000021bf71c\r\n'));
+      window.DengZmodemBridge.observe(state, new TextEncoder().encode('rz\r**\x18B00000000000000\r\x8a\x11'));
       await new Promise(resolve => setTimeout(resolve, 80));
       window.DengZmodemBridge.noteCommand(state, 'rz');
-      window.DengZmodemBridge.observe(state, new TextEncoder().encode('\r\x08\x08B0800000021bf71c'));
+      window.DengZmodemBridge.observe(state, new TextEncoder().encode('rz waiting to receive.**\x18B0100000023be50\r\x8a\x11'));
       await new Promise(resolve => setTimeout(resolve, 80));
       return { typeofBridge: typeof window.DengZmodemBridge.observe, typeofChooser: typeof chooseUploads, calls, notes: window.qaNotes || [] };
     } finally { DengFileTools.downloadFile = realDownload; }

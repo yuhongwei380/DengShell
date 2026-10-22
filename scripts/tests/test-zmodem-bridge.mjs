@@ -94,6 +94,40 @@ const overstrike = '\r\x08\x08B0800000021bf71c';
   assert.match(harness.lines[0], /不支持该协议/);
 }
 
+// Byte-for-byte captures from lrzsz 0.12.20 (/usr/bin/rz, /usr/bin/sz) on a pty.
+// `**` is followed by a CAN byte, so an advertisement-only match used to miss
+// the whole thing and let the terminal fill with `**B0100000023be50`.
+const realRz = 'rz waiting to receive.**\x18B0100000023be50\r\x8a\x11**\x18B0100000023be50\r\x8a\x11';
+const realSz = 'rz\r**\x18B00000000000000\r\x8a\x11';
+
+// Without shell integration there is no command report, yet lrzsz's own text
+// names the direction: rz still becomes an SFTP upload.
+{
+  const harness = fixture();
+  harness.state.shellIntegration = undefined;
+  harness.feed(realRz);
+  await harness.settle();
+  assert.deepEqual(harness.sent, ['\x18\x18'], 'the repeated advertisement is cancelled once');
+  assert.deepEqual(harness.uploads, [['qa-session', '/srv/logs']]);
+  assert.match(harness.lines[0], /SFTP 上传/);
+}
+
+// sz's advertisement with a shell-confirmed command downloads the named files.
+{
+  const harness = fixture();
+  harness.bridge.noteCommand(harness.state, 'sz -a probe.txt');
+  harness.feed(realSz);
+  await harness.settle();
+  assert.deepEqual(harness.downloads, ['/srv/logs/probe.txt']);
+  assert.deepEqual(harness.sent, ['\x18\x18']);
+  // sz alone, without a command report, cannot invent names but still cancels.
+  const blind = fixture();
+  blind.feed(realSz);
+  await blind.settle();
+  assert.deepEqual(blind.downloads, []);
+  assert.deepEqual(blind.sent, ['\x18\x18']);
+}
+
 // Ordinary output that merely looks hex-ish is ignored.
 {
   for (const text of ['**hello**', '**0800', 'BB08123456', '\x08\x08B0zzzzzz']) {

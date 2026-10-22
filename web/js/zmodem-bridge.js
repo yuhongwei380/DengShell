@@ -6,13 +6,16 @@
 //   sz <files>  -> download exactly those files through SFTP
 // The half-open handshake is cancelled so lrzsz exits at once.
 window.DengZmodemBridge = (() => {
- // ZMLINK / ZRINIT advertisement: plain `**` + hex, or the CR + backspace
- // overstrike form. The overstrike (or a line-terminated advertisement) is
- // unambiguous on its own; a bare `**`+hex run only counts when the shell just
- // confirmed an `rz` / `sz` command.
- const overstrike = /\x08\x08B0[0-9a-fA-F]{6,}/;
- const announced = /\*\*[0-9a-fA-F]{12,24}[\r\n]/;
- const bare = /\*\*[0-9a-fA-F]{12,24}/;
+ // Signatures taken from lrzsz 0.12.20 itself (captured from /usr/bin/rz and
+ // /usr/bin/sz on a pty): the startup header is `**` + a CAN byte + 15 hex + CR,
+ // sent twice, e.g. `**\x18B0100000023be50\r\x8a\x11`. `rz` first prints
+ // "rz waiting to receive.", which names the direction on its own; other builds
+ // overstrike the header with backspaces. A `**` + hex run with no CR only counts
+ // when the shell just confirmed an `rz` / `sz` command.
+ const header = /\*\*[\x00-\x20]{0,4}[0-9a-fA-F]{12,24}\r/;
+ const overstrike = /\x08{2,}\*{0,2}[0-9a-fA-F]{12,24}/;
+ const bare = /\*\*[\x00-\x20]{0,4}[0-9a-fA-F]{12,24}/;
+ const receiving = /rz waiting to receive\./;
  const repeatWindow = 8000, intentTTL = 60000;
  const decoder = new TextDecoder('latin1');
  const intents = new Map(), streams = new Map();
@@ -83,11 +86,11 @@ window.DengZmodemBridge = (() => {
   // Keep a tail so a handshake split across output frames is still matched.
   streams.set(state.id, text.slice(-120));
   const now = Date.now(); sweep(now);
-  const intent = intents.get(state.id);
-  if (!(overstrike.test(text) || announced.test(text) || (intent && bare.test(text)))) return;
+  const intent = intents.get(state.id) || (receiving.test(text) ? { kind: 'rz', files: [], at: now } : null);
+  if (!(overstrike.test(text) || header.test(text) || (intent && bare.test(text)))) return;
   if (now - (state.zmodemBridgeAt || 0) < repeatWindow) return;
   state.zmodemBridgeAt = now;
-  if (intent) intents.delete(state.id);
+  intents.delete(state.id);
   act(state, intent).catch(error => toast(`传输失败：${error?.message || error}`));
  }
 
