@@ -44,9 +44,14 @@ const ApplicationBuild uint64 = 20261022139
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,
-// up.deb / up.deb.json, up.pkg.tar.zst / up.pkg.tar.zst.json.
+// up.deb / up.deb.json, up.pkg.tar.zst / up.pkg.tar.zst.json,
+// DevShell-macos-universal.zip with up-macos-arm64.json / up-macos-amd64.json.
 const updateReleaseDownload = "https://github.com/yuhongwei380/DevShell/releases/latest/download/"
 const UpdateManifestURL = updateReleaseDownload + "up.deb.json"
+
+// macOSBundleAsset is the universal application bundle archive built by
+// scripts/build/build-macos.py; both architecture descriptors point at it.
+const macOSBundleAsset = "DevShell-macos-universal.zip"
 const updateTimeout = 3 * time.Second
 
 // Manual checks wait on the network in front of the user, unlike the
@@ -116,6 +121,14 @@ func updateAddress(platform string) (string, string) {
 	}
 	if platform == "linux-amd64" {
 		return UpdateManifestURL, updateReleaseDownload + "up.deb"
+	}
+	// macOS ships one universal bundle archive; the per-architecture descriptor
+	// only differs in the platform field it must match.
+	if platform == DarwinArmUpdatePlatform {
+		return updateReleaseDownload + "up-macos-arm64.json", updateReleaseDownload + macOSBundleAsset
+	}
+	if platform == DarwinAmdUpdatePlatform {
+		return updateReleaseDownload + "up-macos-amd64.json", updateReleaseDownload + macOSBundleAsset
 	}
 	return "", ""
 }

@@ -25,6 +25,33 @@ def run(*args, **kwargs):
     return subprocess.run([str(arg) for arg in args], check=True, **kwargs)
 
 
+def write_update_manifests(output: Path, zip_path: Path, bundle: Path, archs, build_number: int, app_version: str) -> list:
+    """Write one update descriptor per architecture for the built bundle ZIP.
+
+    The built-in updater reads up-macos-<arch>.json and installs the same
+    universal archive, so an Apple Silicon client never accepts the Intel
+    descriptor and vice versa. Field names must match UpdateDescriptor in
+    internal/app/updates.go.
+    """
+    notes_file = ROOT / "docs/release" / f"RELEASE-{app_version}.md"
+    notes = notes_file.read_text(encoding="utf-8").strip() if notes_file.is_file() else f"{app_version} 更新：详情见 GitHub Releases。"
+    if len(notes) > 16000:
+        raise SystemExit(f"Release notes are {len(notes)} characters; the update descriptor accepts at most 16000.")
+    zip_digest = hashlib.sha256(zip_path.read_bytes()).hexdigest()
+    executable_digest = hashlib.sha256((bundle / "Contents/MacOS/DevShell").read_bytes()).hexdigest()
+    manifests = []
+    for machine in archs:
+        manifest = output / f"up-macos-{machine}.json"
+        manifest.write_text(json.dumps({
+            "schemaVersion": 2, "build": build_number, "product": "DevShell",
+            "platform": f"darwin-{machine}", "version": app_version, "notes": notes,
+            "sha256": zip_digest, "size": zip_path.stat().st_size,
+            "executableSHA256": executable_digest,
+        }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+        manifests.append(manifest)
+    return manifests
+
+
 def build(args):
     if platform.system() != "Darwin":
         raise SystemExit("macOS + Xcode Command Line Tools are required. Run this script on a Mac or the macOS CI workflow.")
@@ -46,6 +73,7 @@ def build(args):
     source = (ROOT / "internal/app/updates.go").read_text()
     build_number = int(re.search(r"const ApplicationBuild uint64 = (\d+)", source)[1])
     package_version = re.search(r'const ApplicationPackageVersion = "([^"]+)"', source)[1]
+    app_version = re.search(r'const ApplicationVersion = "([^"]+)"', source)[1]
     archs = ["arm64", "amd64"] if args.arch == "universal" else [args.arch]
     output = args.output.resolve()
     output.mkdir(parents=True, exist_ok=True)
@@ -125,10 +153,11 @@ def build(args):
         dmg_path = output / f"DevShell-macos-{args.arch}.dmg"
         run("hdiutil", "create", "-volname", "DevShell", "-srcfolder", disk, "-format", "UDZO", dmg_path)
         run("hdiutil", "verify", dmg_path)
-        files = [zip_path, dmg_path]
+        manifests = write_update_manifests(output, zip_path, bundle, archs, build_number, app_version) if args.arch == "universal" else []
+        files = [zip_path, dmg_path] + manifests
         checksums = {path.name: hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
         (output / "SHA256SUMS.txt").write_text("".join(f"{digest}  {name}\n" for name, digest in checksums.items()))
-        metadata = {"build": build_number, "version": re.search(r'const ApplicationVersion = "([^"]+)"', source)[1], "architectures": archs,
+        metadata = {"build": build_number, "version": app_version, "architectures": archs,
                     "minimumMacOS": MINIMUM_MACOS, "signature": "ad-hoc" if args.sign_identity == "-" else "Developer ID",
                     "notarized": False, "parallelJobs": jobs,
                     "go": run("go", "version", capture_output=True, text=True).stdout.strip(),

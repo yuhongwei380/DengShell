@@ -9,6 +9,13 @@ import (
 
 const ArchUpdatePlatform = "linux-amd64-pacman"
 
+// macOS publishes one universal application bundle archive but a descriptor per
+// architecture, so each client validates the descriptor naming its own platform.
+const (
+	DarwinArmUpdatePlatform = "darwin-arm64"
+	DarwinAmdUpdatePlatform = "darwin-amd64"
+)
+
 // The package family is authenticated through the descriptor's platform field.
 // Keep the original Debian platform unchanged for deployed clients/signatures.
 func updatePackageFormat(platform string) string {
@@ -19,6 +26,8 @@ func updatePackageFormat(platform string) string {
 		return "deb"
 	case ArchUpdatePlatform:
 		return "pacman"
+	case DarwinArmUpdatePlatform, DarwinAmdUpdatePlatform:
+		return "app-zip"
 	}
 	return ""
 }
@@ -83,7 +92,10 @@ func debianPackageHost(release string, toolsPresent bool) bool {
 
 func NativePackageUpdateSupported() bool {
 	if runtime.GOOS != "linux" {
-		return runtime.GOOS == "windows"
+		// macOS replaces the application bundle itself; no external installer is
+		// needed, so writability of the installation location is the only
+		// condition and the update helper checks it before the app quits.
+		return runtime.GOOS == "windows" || runtime.GOOS == "darwin"
 	}
 	var required []string
 	switch NativePackageFormat() {

@@ -18,7 +18,7 @@
 - 独立窗口支持通过“合并到窗口”菜单合并；跨窗口鼠标定位暂不支持。
 - 本机 IPv4/IPv6 延迟检测使用系统 ping/ping6。Linux 远端监控仍通过 SSH 执行。
 - 本机 MTR 是可选功能：在 Mac 终端中执行 `brew install mtr`，再按 Homebrew 提示配置 `mtr-packet` 权限。Finder 启动也能查找标准 Homebrew 安装位置；DevShell 不自动提权。远端 MTR 继续使用远端 Linux 安装流程。
-- 此 macOS 预览版尚未接入自动更新；新版本退出应用后替换 `.app`，配置保留。
+- 内置更新使用 GitHub Releases：「检查更新」读取 `up-macos-arm64.json` / `up-macos-amd64.json`，下载通用应用包 `DevShell-macos-universal.zip`，校验 SHA-256 与构建号后退出应用、原子替换 `.app` 并自动启动新版本。替换要求当前 `.app` 所在位置可写，因此请先拖入「应用程序」再使用，不要直接从 DMG 卷运行；配置目录 `~/Library/Application Support/DevShell/` 保持不变。
 - 第三方编辑器可以选择 `.app`；通过 macOS `open -a` 打开文件。
 
 ## 从源码构建

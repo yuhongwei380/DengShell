@@ -93,6 +93,8 @@ jobs:
           gh release upload "$tag" \
             build/macos-release/DevShell-macos-universal.dmg \
             build/macos-release/DevShell-macos-universal.zip \
+            build/macos-release/up-macos-arm64.json \
+            build/macos-release/up-macos-amd64.json \
             build/macos-release/SHA256SUMS.txt \
             build/macos-release/build-info.json \
             --clobber
