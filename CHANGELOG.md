@@ -1,5 +1,15 @@
 # DevShell 更新日志
 
+## 2026-10-22 OpenWrt 终端连不上修复与引导脚本压缩 · v26.10.0 构建 20261022139
+
+- 修复：连接 OpenWrt／dropbear 类服务器稳定报「无法创建或启动远端终端」（DS-212，detail `start-shell`），随后 transport 立即 EOF：终端内联启动脚本的 exec 命令字符串实测 26195 字节，路由器日志 `Exit (root) … String too long` 表明 dropbear 直接拒绝该请求并在拒绝时结束整条连接，普通 shell 回退没有机会执行；cmd 与 PowerShell 的 `ssh` 都能正常进入 ash，问题只在我们的请求尺寸。
+- 调整：终端引导脚本（staging、bash/zsh/fish 三支、清理 trap）整段 gzip + 标准 base64 下发，包装层只保留解码、落盘、exec 与登录 shell 回退：26195 → 7060 字节（gzip 4740、base64 6320），嵌入式与 OpenSSH 都保留提示符集成。
+- 新增：解码后脚本写入随机命名的 `/tmp/dengshell-launch-<nonce>.sh`（crypto/rand 24 字节 nonce、`set -C` noclobber、非空才执行，不会撞上预置或符号链接文件），脚本首行 `rm -f -- "$0"` 自删并把该路径纳入清理计划，连接中途断开也不留残。
+- 新增：解码工具差异回退链 `base64 -d / --decode / -D` 与 `gzip -dc / gunzip -c`；缺任一工具只得到空文件，随即回退普通登录 shell，不会挂住终端。
+- 新增：请求仍超过 8 KiB 上限（`terminalLaunchRequestLimit`）时不再发送，直接以普通登录 shell 打开终端，并在终端里提示「已跳过提示符集成」；测试断言生产请求必须留在上限内，日后引导内容变大会直接失败而不是静默降级。
+- 新增：DS-212 诊断细分——detail 改为 `start-shell:<阶段>:<错误类别>`（`launch-exec`／`shell-fallback`／`plain-shell`），并新增 `terminal-stage` 事件分别记录 exec 失败、回退失败与 `launch-exec:too-long`；仍只记录固定枚举，不落请求原文与原始错误。
+- 验证：新增 `TestTerminalLaunchPlanDropsOversizedRequest` 与 `TestTerminalLaunchScriptTransportsCompressedBootstrap`（断言上限关系、payload 能解回原文、三支与 `__dengshell_prompt` 标记齐全、明文不含 rc 内容、清理计划含 runner 文件）；Git Bash 真机驱动生成的命令：`SHELL` 为 bash 时打出 `DengShell;ready/cwd/prompt` 集成标记，`SHELL` 不存在时退出 127 且无残留，`SHELL` 为 sh 时走登录 shell 回退，伪造损坏 payload 时文件为空即回退；`terminal_priority` 按 `channel→pty→shell→prompt` 断言。`go vet`、`go build`、`npm run check` 通过，`internal/...` 全量测试只剩本机既有（stash 确认）的两处 prompt-style 失败。
+
 ## 2026-10-21 连接凭据自动回写与 macOS 支持范围收敛 · v26.10.0 构建 20261021138
 
 - 新增：已保存但没有凭据的连接，手动输入凭据并连接成功后自动加密写回该连接（`persistRunCredential`，`web/js/app.js`）；重启、双击服务器列表或点链接栏固定项都不再重复索要密码。临时快速连接、SSH Agent 和密钥库内私钥不参与写回。
