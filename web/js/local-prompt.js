@@ -286,5 +286,6 @@ window.DengLocalPrompt = (() => {
     $('#welcome-state').hidden = false;
     return true;
   }
-  return { run, reflect, handleClear, termSink, commands };
+  function reset() { generation++; view?.remove(); view = null; }
+  return { run, reflect, handleClear, termSink, commands, reset };
 })();

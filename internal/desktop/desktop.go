@@ -389,7 +389,7 @@ func (d *Desktop) Download(sessionID, remote string) (string, error) {
 	}
 
 	destination, err := d.openDialog("download", func(directory string) (string, error) {
-		return runtime.SaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "下载文件", DefaultFilename: path.Base(remote), DefaultDirectory: directory})
+		return platformSaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "下载文件", DefaultFilename: path.Base(remote), DefaultDirectory: directory})
 	})
 	if err != nil || destination == "" {
 		return "", err

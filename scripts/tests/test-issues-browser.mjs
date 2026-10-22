@@ -28,7 +28,7 @@ try {
  });
  await new Promise(r=>setTimeout(r,150));
  const widths=await page.$$eval('.session-tab',es=>es.map(e=>e.getBoundingClientRect().width));assert(widths[1]>widths[2]+60,JSON.stringify(widths));
- const rowCounts=await page.$$eval('.session-tab',es=>Object.values(es.reduce((r,e)=>(r[e.offsetTop]=(r[e.offsetTop]||0)+1,r),{})));assert(rowCounts.every(n=>n<=6));checks.push('Tab width follows label length and rows never exceed six');
+ const rowCounts=await page.$$eval('.session-tab',es=>Object.values(es.reduce((r,e)=>(r[e.offsetTop]=(r[e.offsetTop]||0)+1,r),{})));assert.equal(rowCounts.length,1);checks.push('Tab width follows label length and tabs stay in one scrolling row');
  await page.evaluate(()=>{window.sent=[];pasteTerminalText=(s,text,opts)=>sent.push({id:s.id,text,...opts});DengCommandComposer.run({id:'qa-param',name:'日志',body:'echo [p#1 文件] [p#2 行数]',appendCR:true});});
  assert(await page.$eval('#command-composer',e=>e.classList.contains('command-composer-compact')));
  assert.equal(await page.$eval('#composer-body',e=>e.getClientRects().length),0);assert.equal(await page.$eval('#composer-preview',e=>e.getClientRects().length),0);

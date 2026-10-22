@@ -15,6 +15,7 @@ const can = '\x18\x18';
 
 function fixture(options = {}) {
   const sent = [], lines = [], notices = [], downloads = [], uploads = [];
+  const timers = new Map(); let timerID = 0;
   const state = {
     id: 'qa-session', connected: true, ready: true, closed: false, serial: false, localOnly: false,
     cwd: '/srv/app', terminalDirectory: '/srv/logs', sftpAvailable: options.sftpAvailable ?? true,
@@ -22,7 +23,9 @@ function fixture(options = {}) {
     shellIntegration: { atPrompt: options.atPrompt ?? false },
   };
   const context = vm.createContext({
-    window: {}, console, TextDecoder, TextEncoder, setTimeout, clearTimeout,
+    window: {}, console, TextDecoder, TextEncoder,
+    setTimeout: (fn, delay) => { const id = ++timerID; timers.set(id, { fn, delay }); return id; },
+    clearTimeout: id => timers.delete(id),
     normalizePath: new Function(`return (${normalizePathSource})`)(),
     sendInput: (_state, data) => sent.push(data),
     toast: message => notices.push(message),
@@ -33,9 +36,17 @@ function fixture(options = {}) {
   vm.runInContext(bridgeSource, context);
   const bridge = context.window.DengZmodemBridge;
   const feed = text => bridge.observe(state, new TextEncoder().encode(text));
-  // The cancel sequence is paced out before the transfer starts, so waiting has
-  // to outlast it.
-  const settle = (ms = 1200) => new Promise(resolve => setTimeout(resolve, ms));
+  // Flush promises independently of timers so a transfer accidentally waiting
+  // behind the CAN retries fails the immediate-opening regression below.
+  const flush = async () => { for (let i = 0; i < 8; i++) await Promise.resolve(); };
+  const settle = async (runTimers = true) => {
+    await flush();
+    if (!runTimers) return;
+    for (const [id, { fn }] of [...timers].sort((a, b) => a[1].delay - b[1].delay)) {
+      if (!timers.delete(id)) continue;
+      fn(); await flush();
+    }
+  };
   return { state, bridge, feed, settle, sent, lines, notices, downloads, uploads };
 }
 
@@ -62,7 +73,7 @@ const overstrike = '\r\x08\x08B0800000021bf71c';
   await harness.settle();
   assert.deepEqual(harness.downloads, ['/srv/logs/b.txt', '/srv/logs/log one.txt']);
   assert.ok(harness.sent.every(value => value === can), '只发送中止字节');
-  assert.equal(harness.sent.length, cancelRounds, '握手在开始传输前被反复中止');
+  assert.equal(harness.sent.length, cancelRounds, '后台补发中止序列');
   assert.equal(harness.lines.length, 1);
   assert.match(harness.lines[0], /SFTP 下载/);
   // lrzsz repeats the advertisement until it dies: a repeat may only poke the
@@ -116,7 +127,7 @@ const realSz = 'rz\r**\x18B00000000000000\r\x8a\x11';
   harness.state.shellIntegration = undefined;
   harness.feed(realRz);
   await harness.settle();
-  assert.equal(harness.sent.length, cancelRounds, '中止序列在打开选择框前就发出');
+  assert.equal(harness.sent.length, cancelRounds, '中止序列补发完成');
   assert.deepEqual(harness.uploads, [['qa-session', '/srv/logs']]);
   assert.match(harness.lines[0], /SFTP 上传/);
   // The retries lrzsz keeps sending while it waits: still one transfer, one note.
@@ -212,4 +223,31 @@ const realSz = 'rz\r**\x18B00000000000000\r\x8a\x11';
   assert.deepEqual(cleared.downloads, []);
 }
 
-console.log('PASS: rz / sz 桥接到 SFTP 上传与下载，一次尝试只走一次传输，重试的广告只补发中止序列。');
+// Pickers must start before the retry timers run. A prompt or fresh command
+// cancels those timers so delayed CAN bytes cannot land in the next program.
+for (const command of ['sz b.txt', 'rz']) {
+  const harness = fixture();
+  harness.bridge.noteCommand(harness.state, command);
+  harness.feed(zmlink);
+  await harness.settle(false);
+  assert.equal(harness.sent.length, 1, '首轮 CAN 立即发出，未等待补发定时器');
+  assert.equal(harness.downloads.length + harness.uploads.length, 1, '弹窗立即触发');
+  harness.bridge.clear(harness.state);
+  harness.state.shellIntegration.atPrompt = false;
+  harness.bridge.noteCommand(harness.state, 'vim next.txt');
+  await harness.settle();
+  assert.equal(harness.sent.length, 1, '进入下一条命令后不得补发旧 CAN');
+}
+for (const change of ['closed', 'connected', 'prompt', 'command']) {
+  const harness = fixture();
+  harness.bridge.noteCommand(harness.state, 'sz b.txt');
+  harness.feed(zmlink);
+  if (change === 'closed') harness.state.closed = true;
+  if (change === 'connected') harness.state.connected = false;
+  if (change === 'prompt') harness.state.shellIntegration.atPrompt = true;
+  if (change === 'command') harness.bridge.noteCommand(harness.state, 'vim next.txt');
+  await harness.settle();
+  assert.equal(harness.sent.length, 1, `中止补发应停止：${change}`);
+}
+
+console.log('PASS: rz / sz 立即桥接到 SFTP，重试不重复弹窗，旧中止定时器不影响后续命令。');

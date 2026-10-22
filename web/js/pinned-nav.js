@@ -6,7 +6,7 @@
 // backend layout validator (validSavedLayoutKey in preferences.go).
 window.DengPinnedNav = (() => {
   const LAYOUT_KEY = 'dengshell.pinned.v1';
-  let bar, pinButton, pinned = [];
+  let bar, pinButton, pinned = [], overflowControl, layoutChips = () => {};
   function readPinned() {
     const raw = appearance.layout?.[LAYOUT_KEY];
     pinned = Array.isArray(raw) ? raw.filter(id => typeof id === 'string') : [];
@@ -15,7 +15,6 @@ window.DengPinnedNav = (() => {
   async function writePinned() {
     await persistAppearance({ layout: { [LAYOUT_KEY]: pinned } });
   }
-  const MAX_CHIPS = 7;
   const profileSubtitle = profile => profile.protocol === 'serial' ? window.DengSerial.label(profile) : `${profile.user}@${profile.host}:${profile.port}`;
   function openConnection(profile) {
     // Same semantics as double-clicking in the server list: every click opens a
@@ -68,39 +67,52 @@ window.DengPinnedNav = (() => {
     chip.title = chipTitle(profile);
     return chip;
   }
-  function moreFor(overflow) {
+  function moreFor() {
     const wrap = node('span', 'pinned-more-wrap');
     const btn = node('button', 'pinned-more');
     btn.type = 'button';
-    btn.title = `还有 ${overflow.length} 个固定连接`;
-    btn.setAttribute('aria-label', `展开其余 ${overflow.length} 个固定连接`);
-    btn.append(icon('chevron'));
+    btn.textContent = '︙';
+    btn.setAttribute('aria-haspopup', 'true');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', 'pinned-more-menu');
     const menu = node('div', 'pinned-more-menu');
+    menu.id = 'pinned-more-menu';
     menu.hidden = true;
-    overflow.forEach(profile => {
-      const item = node('span', 'pinned-more-item');
-      const open = node('button', 'pinned-more-item-open');
-      open.type = 'button';
-      open.append(icon('server'), node('span', '', profile.name));
-      open.onclick = () => { menu.hidden = true; openConnection(profile); };
-      item.oncontextmenu = event => { event.preventDefault(); safe(() => renameProfile(profile))(); };
-      item.append(open, removeButtonFor(profile));
-      item.title = chipTitle(profile);
-      menu.append(item);
-    });
+    const close = () => { menu.hidden = true; btn.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
+    const update = overflow => {
+      close();
+      btn.title = `还有 ${overflow.length} 个固定连接`;
+      btn.setAttribute('aria-label', `展开其余 ${overflow.length} 个固定连接`);
+      menu.replaceChildren();
+      overflow.forEach(profile => {
+        const item = node('span', 'pinned-more-item');
+        const open = node('button', 'pinned-more-item-open');
+        open.type = 'button';
+        open.append(icon('server'), node('span', '', profile.name));
+        open.onclick = () => { close(); openConnection(profile); };
+        item.oncontextmenu = event => { event.preventDefault(); safe(() => renameProfile(profile))(); };
+        item.append(open, removeButtonFor(profile));
+        item.title = chipTitle(profile);
+        menu.append(item);
+      });
+    };
     btn.onclick = event => {
       event.stopPropagation();
       if (menu.hidden) {
         const r = btn.getBoundingClientRect();
-        menu.style.left = Math.max(8, Math.min(r.left, innerWidth - 210)) + 'px';
-        menu.style.top = (r.bottom + 7) + 'px';
+        menu.hidden = false;
+        const top = r.bottom / effectiveScale + 7;
+        menu.style.left = Math.max(8, Math.min(r.left / effectiveScale, logicalWidth() - menu.offsetWidth - 8)) + 'px';
+        menu.style.top = top + 'px';
+        menu.style.maxHeight = Math.min(320, Math.max(0, logicalHeight() - top - 8)) + 'px';
+        btn.classList.add('open');
+        btn.setAttribute('aria-expanded', 'true');
+      } else {
+        close();
       }
-      menu.hidden = !menu.hidden;
-      btn.classList.toggle('open', !menu.hidden);
     };
-    document.addEventListener('click', event => { if (!menu.hidden && !wrap.contains(event.target)) { menu.hidden = true; btn.classList.remove('open'); } });
     wrap.append(btn, menu);
-    return wrap;
+    return { wrap, btn, menu, close, update };
   }
   function render() {
     if (!bar) return;
@@ -109,9 +121,43 @@ window.DengPinnedNav = (() => {
     bar.hidden = false;
     const label = node('span', 'pinned-label');
     label.append(icon('bookmark'), node('span', '', '链接栏'));
-    const visible = items.slice(0, MAX_CHIPS);
-    const overflow = items.slice(MAX_CHIPS);
-    bar.replaceChildren(label, ...visible.map(chipFor), ...(overflow.length ? [moreFor(overflow)] : []));
+    const row = node('div', 'pinned-links'), chips = items.map(chipFor);
+    overflowControl?.close();
+    const more = moreFor();
+    overflowControl = more;
+    row.append(label, ...chips, more.wrap);
+    bar.replaceChildren(row);
+    let previousCount = -1;
+    layoutChips = () => {
+      more.close();
+      label.hidden = false;
+      more.wrap.hidden = false;
+      chips.forEach(chip => { chip.hidden = false; });
+      // The outer grid item always spans its available track; the highlighted
+      // row remains compact. Measuring the shrinking row itself would prevent
+      // chips from returning when the window or sidebar grows again.
+      const style = getComputedStyle(row), gap = parseFloat(style.columnGap) || 0;
+      const available = bar.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+        - parseFloat(style.borderLeftWidth) - parseFloat(style.borderRightWidth);
+      const width = element => element.getBoundingClientRect().width / effectiveScale;
+      const labelWidth = width(label), moreWidth = width(more.wrap);
+      const widths = chips.map(width);
+      let used = labelWidth, count = 0;
+      const allWidth = widths.reduce((total, value) => total + gap + value, labelWidth);
+      if (allWidth <= available - 1) count = chips.length;
+      else {
+        if (labelWidth + gap + moreWidth > available) { label.hidden = true; used = -gap; }
+        for (const chipWidth of widths) {
+          if (used + gap + chipWidth + gap + moreWidth > available - 1) break;
+          used += gap + chipWidth;
+          count++;
+        }
+      }
+      chips.forEach((chip, index) => { chip.hidden = index >= count; });
+      more.wrap.hidden = count === items.length;
+      if (count !== previousCount) { more.update(items.slice(count)); previousCount = count; }
+    };
+    layoutChips();
   }
   async function pin(id) { pinned = [...pinned, id]; await writePinned(); render(); reflect(); }
   async function unpin(id) { pinned = pinned.filter(x => x !== id); await writePinned(); render(); reflect(); toast('已从链接栏取消固定'); }
@@ -158,6 +204,23 @@ window.DengPinnedNav = (() => {
     pinButton.onclick = () => safe(toggleCurrent)();
     $('#toggle-sftp').before(pinButton);
     render(); reflect();
+    let frame;
+    const scheduleLayout = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => layoutChips());
+    };
+    new ResizeObserver(scheduleLayout).observe(bar);
+    window.addEventListener('resize', scheduleLayout);
+    document.fonts.ready.then(scheduleLayout);
+    document.fonts.addEventListener('loadingdone', scheduleLayout);
+    document.addEventListener('click', event => {
+      if (overflowControl && !overflowControl.wrap.contains(event.target)) overflowControl.close();
+    }, true);
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && overflowControl && !overflowControl.menu.hidden) {
+        overflowControl.close(); overflowControl.btn.focus();
+      }
+    });
   }, { once: true });
   return { render, reflect };
 })();

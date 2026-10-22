@@ -15,10 +15,7 @@ import (
 func TestPromptStyleShellHooksColorAndRestoreOriginal(t *testing.T) {
 	for _, shell := range []string{"bash", "zsh"} {
 		t.Run(shell, func(t *testing.T) {
-			executable, err := exec.LookPath(shell)
-			if err != nil {
-				t.Skip("shell unavailable")
-			}
+			executable, args := testLoginShell(t, shell)
 			dir := t.TempDir()
 			style := filepath.Join(dir, "style")
 			hook := filepath.Join(dir, "hook")
@@ -38,7 +35,7 @@ func TestPromptStyleShellHooksColorAndRestoreOriginal(t *testing.T) {
 				original = "custom %n@%m:%~%# "
 			}
 			script := "PS1=" + terminalQuote(original) + "; original=$PS1; . " + terminalQuote(hook) + "; __dengshell_apply_prompt_style; printf 'COLORED=%s\\n' \"$PS1\"; printf '\\n\\n' > " + terminalQuote(style) + "; __dengshell_apply_prompt_style; [ \"$PS1\" = \"$original\" ] || exit 47; printf 'RESET=%s\\n' \"$PS1\""
-			output, err := exec.Command(executable, "-f", "-c", script).CombinedOutput()
+			output, err := exec.Command(executable, append(args, "-c", script)...).CombinedOutput()
 			if err != nil {
 				t.Fatal(err, string(output))
 			}
@@ -93,10 +90,7 @@ func TestPromptStylePreservesHiddenTitlesAndLiteralEscapes(t *testing.T) {
 }
 
 func TestPromptStyleValidationNeverExecutesFileContent(t *testing.T) {
-	shell, err := exec.LookPath("bash")
-	if err != nil {
-		t.Skip("bash unavailable")
-	}
+	shell, args := testLoginShell(t, "bash")
 	dir := t.TempDir()
 	style := filepath.Join(dir, "style")
 	marker := filepath.Join(dir, "must-not-exist")
@@ -112,7 +106,7 @@ func TestPromptStyleValidationNeverExecutesFileContent(t *testing.T) {
 	if err := os.WriteFile(hook, body, 0600); err != nil {
 		t.Fatal(err)
 	}
-	output, err := exec.Command(shell, "-c", "PS1='unchanged'; . "+terminalQuote(hook)+"; __dengshell_apply_prompt_style; [ \"$PS1\" = unchanged ]").CombinedOutput()
+	output, err := exec.Command(shell, append(args, "-c", "PS1='unchanged'; . "+terminalQuote(hook)+"; __dengshell_apply_prompt_style; [ \"$PS1\" = unchanged ]")...).CombinedOutput()
 	if err != nil {
 		t.Fatal(err, string(output))
 	}

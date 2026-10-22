@@ -39,12 +39,24 @@
 
 /* Defined outlines with a restrained selected fill, without a heavy bottom edge. */
 .session-tabs{gap:8px;padding:1px 0}
-/* Six tabs per row at most; narrower windows use fewer columns. */
+/* A single scrolling row reserves space for navigation and new tabs. */
 .titlebar { height:auto; flex-shrink:0; align-items:start; }
 .titlebar .session-bar { height:auto; min-height:42px; align-items:flex-start; padding:4px 0; }
 .session-bar > :is(.connection-button,.add-session,#toggle-monitor) { margin-top:2px; }
 .titlebar .window-controls { margin-top:1px; }
-.session-tabs { flex:1; display:flex; flex-wrap:wrap; align-items:flex-start; height:auto; min-height:35px; max-height:max(35px,min(197px,calc(var(--view-height,100vh) * .3))); overflow-x:hidden; overflow-y:auto; align-content:start; scrollbar-width:thin; }
+.session-tabs { flex:1; display:flex; flex-wrap:nowrap; align-items:center; height:35px; min-height:35px; max-height:35px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+.session-tab-tools { display:flex; align-items:center; gap:2px; flex:none; }
+.session-tab-tools > .icon-button { flex:none; width:26px; height:30px; }
+.session-tab-tools > .icon-button svg { width:15px; height:15px; }
+#session-tabs-previous svg { transform:rotate(180deg); }
+#session-tabs-list svg { transform:rotate(90deg); }
+.session-tabs-menu { position:fixed; z-index:100000; display:flex; flex-direction:column; gap:2px; min-width:min(200px,calc(var(--view-width,100vw) - 16px)); max-width:min(360px,calc(var(--view-width,100vw) - 16px)); overflow:auto; padding:5px; border:1px solid var(--border); border-radius:11px; background:var(--surface,#fff); color:var(--text,#43576b); box-shadow:0 10px 26px #12253426; --wails-draggable:no-drag; }
+.session-tabs-menu button { display:flex; align-items:center; gap:8px; flex:none; padding:8px; border-radius:7px; text-align:left; font-size:12px; }
+.session-tabs-menu button:hover,.session-tabs-menu button:focus-visible { background:var(--surface-hover,#7899ac20); }
+.session-tabs-menu button[aria-current="page"] { color:var(--accent); }
+.session-tabs-menu svg { width:14px; height:14px; }
+.start-tab .status-dot { background:var(--muted); opacity:.55; }
+.session-tabs-menu span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .session-tabs .session-tab { min-width:0; max-width:min(240px,100%); width:max-content; height:33px; gap:5px; padding-left:9px; }
 .session-tabs .session-tab.current-session { max-width:min(300px,100%); }
 .drawer-backdrop { top:var(--titlebar-height,42px); }

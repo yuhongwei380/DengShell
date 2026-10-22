@@ -8,7 +8,7 @@
  function flushTabsRender(){if(tabsRenderPending){tabsRenderPending=false;queueMicrotask(()=>renderTabs());}}
  function reflect(){
   const state=current(),button=document.getElementById('detach-terminal');if(!button)return;
-  button.hidden=sessions.size<2;
+  button.hidden=!state||sessions.size<2;
   button.disabled=!state?.ready||!!state.detaching||!!state.ownershipUncertain||!!state.serial;
   button.setAttribute('aria-busy',String(!!state?.detaching));
   button.querySelector('span').textContent=state?.detaching?'正在拆分…':'独立窗口';

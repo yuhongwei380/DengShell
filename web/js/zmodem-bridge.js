@@ -22,8 +22,7 @@ window.DengZmodemBridge = (() => {
  // dialogs on one window snap the folder view back and hide the pointer.
  const intentTTL = 60000, attemptWindow = 30000, cancelGap = 250, cancelRounds = 3;
  const decoder = new TextDecoder('latin1');
- const intents = new Map(), streams = new Map();
- const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+ const intents = new Map(), streams = new Map(), cancellations = new Map();
 
  // Only the command the shell confirmed counts; a program merely printing
  // "sz" on screen never triggers this.
@@ -57,36 +56,45 @@ window.DengZmodemBridge = (() => {
 
  function noteCommand(state, command) {
   if (!state || state.serial) return;
+  stopCancellation(state);
   const intent = parse(command);
   // A freshly confirmed rz / sz is a new attempt: neither the previous attempt's
   // window nor its half-read stream may carry over into it.
   if (intent) { intents.set(state.id, intent); state.zmodemBridgeUntil = 0; streams.delete(state.id); }
   else { intents.delete(state.id); streams.delete(state.id); }
  }
- function clear(state) { if (state) { intents.delete(state.id); streams.delete(state.id); } }
+ function stopCancellation(state) {
+  for (const timer of cancellations.get(state.id) || []) clearTimeout(timer);
+  cancellations.delete(state.id);
+ }
+ function clear(state) { if (state) { stopCancellation(state); intents.delete(state.id); streams.delete(state.id); } }
 
  function sweep(now) { for (const [id, intent] of intents) if (now - intent.at > intentTTL) intents.delete(id); }
 
  // Cancel the half-open handshake the same way a receiving peer does. A shell
  // already sitting at a prompt means lrzsz is gone: never inject bytes then.
- // It is repeated because the bytes travel through the desktop bridge, which a
- // native dialog can hold back, and lrzsz retries the advertisement meanwhile.
+ // The first pair goes out at once — it is what actually stops lrzsz — and the
+ // rest is paced on timers so the transfer never waits behind them; every later
+ // advertisement pokes it again.
  function cancel(state) {
-  if (state.closed || state.serial || state.shellIntegration?.atPrompt === true) return false;
+  if (state.closed || !state.connected || state.serial || state.shellIntegration?.atPrompt === true) return false;
   sendInput(state, '\x18\x18');
   return true;
  }
- async function cancelHandshake(state) {
-  for (let round = 0; round < cancelRounds; round++) {
-   if (!cancel(state)) return;
-   await sleep(cancelGap);
-   if (state.closed || state.shellIntegration?.atPrompt === true) return;
-  }
+ function cancelHandshake(state) {
+  stopCancellation(state);
+  if (!cancel(state)) return;
+  const timers = [];
+  cancellations.set(state.id, timers);
+  for (let round = 1; round < cancelRounds; round++) timers.push(setTimeout(() => {
+   cancel(state);
+   if (round === cancelRounds - 1) cancellations.delete(state.id);
+  }, round * cancelGap));
  }
 
  async function act(state, intent) {
   const note = text => state.term.writeln(`\r\n\x1b[38;5;245mℹ️  ${text}\x1b[0m`);
-  await cancelHandshake(state);
+  cancelHandshake(state);
   if (state.localOnly || state.serial) { note('DevShell 不支持 ZModem（lrzsz）传输，请使用 scp / sftp 传输文件。'); return; }
   if (state.sftpAvailable === false || !state.connected) { note('DevShell 不支持 ZModem（lrzsz）传输，而此连接的 SFTP 也不可用，请改用 scp / sftp。'); return; }
   const directory = state.terminalDirectory || state.cwd;

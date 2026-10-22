@@ -205,7 +205,8 @@ async function connectProfile(profileID, { background = false, refreshHistory = 
   // its explicitly captured source, never another tab with the same profile.
   const existing = previous;
   if (existing?.detaching || existing?.handoffProvisional || existing?.ownershipUncertain) { toast('⏳  此 SSH 正在交接窗口，请稍后再试'); return null; }
-  const tabOrder = existing?.tabOrder ?? nextSessionOrder++;
+  const startPage = !background && !existing ? window.DengStartTabs?.take() : null;
+  const tabOrder = existing?.tabOrder ?? startPage?.tabOrder ?? nextSessionOrder++;
   const state = makeSessionState({ id: `pending:${profileID}:${crypto.randomUUID()}`, profileId: profileID, home: '/' });
   Object.assign(state, { connectionRequestKey: requestKey, tabOrder, connected: false, localOnly: true, pendingConnection: true, announceConnectionReady: true, connectionAbort: new AbortController() });
   const alive = () => !state.closed && sessions.get(state.id) === state;
@@ -215,7 +216,7 @@ async function connectProfile(profileID, { background = false, refreshHistory = 
   sessions.set(state.id, state);
   try {
     createTerminal(state);
-    if (!background || !current()) activate(state.id); else renderTabs();
+    if (!background || (!activeID && !window.DengRDP?.active())) activate(state.id); else renderTabs();
     if (!background) setDrawer(false);
     renderConnections();
     await previousClose;
@@ -413,7 +414,15 @@ function createTerminal(state) {
     if (state.closed || !state.connected || sessions.get(state.id) !== state) return;
     if (event.data instanceof ArrayBuffer) {
       const firstOutput = !state.terminalOutputStarted; state.terminalOutputStarted = true;
-      const bytes = new Uint8Array(event.data); window.DengZmodemBridge?.observe(state, bytes); terminal.write(bytes, () => { sendMessage(state, { type: 'ack' }); if (firstOutput && current() === state && state.connected) { pollStats(); pollLatency(); } });
+      const bytes = new Uint8Array(event.data);
+      terminal.write(bytes, () => {
+        // OSC command/cwd reports can share this frame with the first ZModem
+        // header. Parse them before consulting the bridge, or sz has no intent
+        // until lrzsz retries its header several seconds later.
+        window.DengZmodemBridge?.observe(state, bytes);
+        sendMessage(state, { type: 'ack' });
+        if (firstOutput && current() === state && state.connected) { pollStats(); pollLatency(); }
+      });
       return;
     }
     const message = JSON.parse(event.data);
@@ -538,11 +547,12 @@ function dropSessionView(id, expected = null) {
   }
   window.DengProcessView?.drop(id);
   state.navAbort?.abort(); state.ws?.close(); state.term?.dispose(); state.host?.remove(); sessions.delete(id);
-  if (activeID === id) activeID = sessions.keys().next().value || null;
+  if (activeID === id) activeID = sessions.keys().next().value || window.DengStartTabs?.first() || null;
   window.dispatchEvent(new CustomEvent('dengshell:session-context-change'));
   if (activeID) activate(activeID, window.DengProcessView?.active() === activeID ? 'processes' : 'terminal'); else { renderTabs(); renderSessionInfo(); renderFiles(); }
 }
 async function closeSession(id) {
+  if (window.DengStartTabs?.has(id)) return window.DengStartTabs.close(id);
   if (window.DengRDP?.has(id)) return window.DengRDP.close(id);
   if (window.DengSerial?.has(id)) return window.DengSerial.close(id);
   const state = sessions.get(id); if (!state || state.detaching || state.handoffProvisional) return;
@@ -566,9 +576,10 @@ function renderTabs() {
     button.setAttribute('aria-busy', String(!!state.pendingConnection));
     if (state.localOnly) button.title += ` · ${state.connectionMessage}`;
     const close = node('button', 'tab-close'); close.append(icon('close')); close.title = state.pendingConnection ? '取消连接' : '关闭连接'; close.setAttribute('aria-label', `${state.pendingConnection ? '取消' : '关闭'} ${profile?.name || '会话'}`); close.onclick = safe(() => closeSession(state.id)); close.disabled = !!(state.detaching || state.handoffProvisional); tab.dataset.detaching = String(!!state.detaching); tab.append(button, close); window.DengSessionWindows.bindTab(tab, state); return [tab, ...(window.DengProcessView?.tabs(state) || [])];
-  })); window.DengRDP?.appendTabs($('#session-tabs')); window.DengTabOrder.apply($('#session-tabs')); updateStatus(); window.DengTextEditors?.reflect(); window.DengCommandComposer?.reflect(); window.DengPinnedNav?.render();
+  })); window.DengStartTabs?.appendTabs($('#session-tabs')); window.DengRDP?.appendTabs($('#session-tabs')); window.DengTabOrder.apply($('#session-tabs')); updateStatus(); window.DengTextEditors?.reflect(); window.DengCommandComposer?.reflect(); window.DengPinnedNav?.render();
 }
 function activate(id, view = 'terminal') {
+  if (window.DengStartTabs?.has(id)) return window.DengStartTabs.activate(id);
   if (!sessions.has(id)) return;
   window.DengRDP?.deactivate();
   activeID = id; $('#file-filter').value = '';
@@ -904,7 +915,8 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) { po
 // Connection groups and credentials are persisted by Go, never in browser storage.
 let drawerTrigger;
 function setDrawer(open) { if (open) drawerTrigger = document.activeElement; $('#connections-drawer').hidden = !open; $('#drawer-backdrop').hidden = !open; if (open) { renderConnections(); $('#connection-search').focus(); safe(refreshServerManagerHistory)(); } else { closeServerGroupMenu(); drawerTrigger?.focus(); } }
-for (const id of ['connection-button', 'add-session', 'welcome-connect']) $(`#${id}`).onclick = () => setDrawer(true);
+for (const id of ['connection-button', 'welcome-connect']) $(`#${id}`).onclick = () => setDrawer(true);
+$('#add-session').onclick = () => window.DengStartTabs.create();
 $('#close-connections').onclick = () => setDrawer(false); $('#drawer-backdrop').onclick = () => setDrawer(false);
 $('#connection-search').oninput = renderConnections;
 function renderConnections() { renderServerManager(); }

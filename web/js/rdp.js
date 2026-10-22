@@ -63,7 +63,7 @@
     if (active === id) {
       const next = [...items.keys()].find(key => !dismissed.has(key));
       if (next) activateRDP(next);
-      else { deactivate(); const ssh = sessions.has(lastSSH) ? lastSSH : sessions.keys().next().value; if (ssh) activate(ssh); else { renderSessionInfo(); renderTabs(); } }
+      else { deactivate(); const ssh = sessions.has(lastSSH) || window.DengStartTabs?.has(lastSSH) ? lastSSH : sessions.keys().next().value || window.DengStartTabs?.first(); if (ssh) activate(ssh); else { renderSessionInfo(); renderTabs(); } }
     } else renderTabs();
     rendered = ''; renderList(); queueLayout();
   }
@@ -130,8 +130,10 @@
       if (!secret) throw new Error('请输入远程桌面密码');
     }
     connecting.add(profileID); renderConnections();
+    const startID = !background && window.DengStartTabs?.has(activeID) ? activeID : null;
     try {
       const info = await native().RDPConnect(profileID,secret);
+      if (startID) window.DengStartTabs.take(startID, `rdp:${info.id}`);
       items.set(info.id,info); setDrawer(false);
       if (!background || (!activeID && !active)) activateRDP(info.id); else renderTabs();
       // Same rule as SSH: a credential typed for a connection that stores none

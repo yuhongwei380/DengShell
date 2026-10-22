@@ -11,12 +11,13 @@ const server=createServer(async(req,res)=>{try{if(req.url==='/'){res.setHeader('
 await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
 const directory=await mkdtemp(join(process.env.TMPDIR||tmpdir(),'dengshell-vt-snapshot-'));
 const child=spawn(process.env.CHROME_BINARY||'google-chrome',['--headless=new','--no-sandbox','--disable-dev-shm-usage','--disable-background-networking','--disable-gpu','--remote-debugging-address=127.0.0.1','--remote-debugging-port=0','--user-data-dir='+directory,'http://127.0.0.1:'+server.address().port],{stdio:'ignore'});
-const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));let ws;
+const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));let ws,closeBrowser;
 try{
  let port;for(let i=0;i<100;i++){try{port=(await readFile(join(directory,'DevToolsActivePort'),'utf8')).split('\n')[0];break}catch{}await pause(50)}if(!port)throw Error('Chromium did not start');
  const targets=await(await fetch('http://127.0.0.1:'+port+'/json/list')).json();ws=new WebSocket(targets.find(t=>t.type==='page').webSocketDebuggerUrl);await new Promise((resolve,reject)=>{ws.onopen=resolve;ws.onerror=reject});
  let counter=0;const jobs=new Map();ws.onmessage=e=>{const m=JSON.parse(e.data);if(m.id&&jobs.has(m.id)){const p=jobs.get(m.id);jobs.delete(m.id);m.error?p.reject(m.error):p.resolve(m.result)}};
  const cdp=(method,params={})=>new Promise((resolve,reject)=>{const id=++counter;jobs.set(id,{resolve,reject});ws.send(JSON.stringify({id,method,params}))});
+ closeBrowser=()=>cdp('Browser.close').catch(()=>{});
  const evaluate=async expression=>{const r=await cdp('Runtime.evaluate',{expression,awaitPromise:true,returnByValue:true});if(r.exceptionDetails)throw Error(JSON.stringify(r.exceptionDetails));return r.result.value};
  for(let i=0;i<100;i++){if(await evaluate('!!window.DengTerminalSnapshot && !!window.SerializeAddon && typeof installTerminalScrollback==="function"'))break;await pause(50)}
  const result=await evaluate(`(async()=>{
@@ -83,4 +84,10 @@ try{
  return results;
 })()`);
  for(const name of result)console.log('PASS:',name);
-}catch(error){console.error(error);process.exitCode=1}finally{ws?.close();const exited=new Promise(resolve=>{if(child.exitCode!==null||child.signalCode!==null)resolve();else child.once('exit',resolve)});child.kill('SIGTERM');await exited;server.close();await rm(directory,{recursive:true,force:true,maxRetries:5,retryDelay:150})}
+}catch(error){console.error(error);process.exitCode=1}finally{
+ // Edge's launcher may hand off to another process and exit immediately.
+ // Closing that launcher alone leaves the browser holding its profile files.
+ if(closeBrowser&&ws?.readyState===WebSocket.OPEN)await Promise.race([closeBrowser(),pause(2000)]);
+ ws?.close();const exited=new Promise(resolve=>{if(child.exitCode!==null||child.signalCode!==null)resolve();else child.once('exit',resolve)});child.kill('SIGTERM');await exited;
+ server.close();await rm(directory,{recursive:true,force:true,maxRetries:10,retryDelay:150});
+}

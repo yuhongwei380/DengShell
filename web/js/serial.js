@@ -37,7 +37,8 @@
     const profile = connectionProfile(profileID); if (!profile) return null;
     const previous = previousID ? sessions.get(previousID) : null;
     if (previous?.detaching || previous?.handoffProvisional) { toast('⏳  此终端正在交接窗口，请稍后再试'); return null; }
-    const tabOrder = previous?.tabOrder ?? nextSessionOrder++;
+    const startPage = !background && !previous ? window.DengStartTabs?.take() : null;
+    const tabOrder = previous?.tabOrder ?? startPage?.tabOrder ?? nextSessionOrder++;
     const state = makeSessionState({ id: `pending:${profileID}:${crypto.randomUUID()}`, profileId: profileID, home: '/', serial: true, sftpAvailable: false });
     Object.assign(state, { tabOrder, connected: false, localOnly: true, pendingConnection: true, announceConnectionReady: true, connectionAbort: new AbortController() });
     const alive = () => !state.closed && sessions.get(state.id) === state;
@@ -48,7 +49,7 @@
     sessions.set(state.id, state);
     try {
       createTerminal(state);
-      if (!background || !current()) activate(state.id); else renderTabs();
+      if (!background || (!activeID && !window.DengRDP?.active())) activate(state.id); else renderTabs();
       if (!background) setDrawer(false);
       renderConnections();
       await previousClose;

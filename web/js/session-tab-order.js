@@ -10,6 +10,7 @@
     return stateKeys.get(state);
   }
   function identify(tab) {
+    if (tab.dataset.startTabId) return `start:${tab.dataset.startTabId}`;
     if (tab.classList.contains('rdp-tab')) return `rdp:${tab.dataset.sessionId}`;
     const id = tab.dataset.processSessionId || tab.dataset.sessionId;
     const state = sessions.get(id);
@@ -18,6 +19,8 @@
   }
   function apply(host) {
     const tabs = [...host.children];
+    const position = tab => Number(tab.dataset.tabOrder ?? sessions.get(tab.dataset.sessionId || tab.dataset.processSessionId)?.tabOrder ?? Number.MAX_SAFE_INTEGER);
+    tabs.sort((a, b) => position(a) - position(b));
     const seen = new Set();
     // Reconnect can briefly retain both the old view (while draining output)
     // and its replacement. The replacement owns the existing sort position.
@@ -68,5 +71,6 @@
     order = [...host.children].map(key).filter(Boolean);
     if (tab.contains(focused)) focused.focus({ preventScroll: true });
   }
-  window.DengTabOrder = { apply, location, commit };
+  function replace(previous, next) { order = order.map(id => id === previous ? next : id); }
+  window.DengTabOrder = { apply, location, commit, replace };
 })();

@@ -3,7 +3,9 @@ const [url, module] = process.argv.slice(2);
 // Windows absolute paths are not valid ESM specifiers; only this test runs on
 // both hosts, so normalize the puppeteer-core entry to a file URL.
 const { default: puppeteer } = await import(/^[a-zA-Z]:[\\/]/.test(module) ? new URL('file:///' + module.replace(/\\/g, '/')) : module);
-const browser = await puppeteer.launch({executablePath:process.env.CHROME_BIN || '/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
+const browser = process.env.DENGSHELL_BROWSER_WS
+  ? await puppeteer.connect({browserWSEndpoint:process.env.DENGSHELL_BROWSER_WS})
+  : await puppeteer.launch({executablePath:process.env.CHROME_BIN || '/usr/bin/google-chrome',headless:true,args:['--no-sandbox','--disable-dev-shm-usage']});
 let page;
 try {
   page = await browser.newPage();
@@ -49,6 +51,7 @@ try {
       term: { writeln: line => { window.qaNotes = (window.qaNotes || []).concat(line); } } };
     sessions.set(state.id, state); activeID = state.id;
     const calls = {};
+    const realUploads = window.chooseUploads, realInput = window.sendInput;
     window.chooseUploads = async (target, directory) => { (calls.uploads ||= []).push([target.id, directory]); };
     window.sendInput = (_state, data) => { (calls.sent ||= []).push(data); };
     const realDownload = DengFileTools.downloadFile;
@@ -63,7 +66,7 @@ try {
       window.DengZmodemBridge.observe(state, new TextEncoder().encode('rz waiting to receive.**\x18B0100000023be50\r\x8a\x11'));
       await new Promise(resolve => setTimeout(resolve, 1200));
       return { typeofBridge: typeof window.DengZmodemBridge.observe, typeofChooser: typeof chooseUploads, calls, notes: window.qaNotes || [] };
-    } finally { DengFileTools.downloadFile = realDownload; }
+    } finally { DengFileTools.downloadFile = realDownload; window.chooseUploads = realUploads; window.sendInput = realInput; }
   });
   assert.equal(bridge.typeofBridge, 'function'); assert.equal(bridge.typeofChooser, 'function');
   assert.deepEqual(bridge.calls.downloads, ['/srv/logs/b.txt'], 'sz 通过 SFTP 下载终端目录里的同名文件（重试的广告不重复下载）');
@@ -72,6 +75,48 @@ try {
   assert.ok(bridge.calls.sent.every(value => value === '\x18\x18'), '只发送中止字节');
   assert.equal(bridge.notes.length, 2, '一次尝试只提示一次');
   assert.match(bridge.notes.join('\n'), /SFTP 下载[\s\S]*SFTP 上传/);
+  // Real socket handler + real xterm OSC parser: a single SSH output frame can
+  // contain command/cwd reports and the first sz header. No retry is sent here;
+  // the first frame must download the right file immediately.
+  const coalesced = await page.evaluate(async () => {
+    const originalSocket = window.WebSocket, realDownload = DengFileTools.downloadFile;
+    const inputs = [], downloads = [];
+    window.WebSocket = class {
+      static OPEN = 1;
+      readyState = 1;
+      send(value) { inputs.push(JSON.parse(value)); }
+      close() {}
+    };
+    const state = makeSessionState({ id: 'coalesced-sz', profileId: 'coalesced-profile', home: '/old-directory', sftpAvailable: true });
+    sessions.set(state.id, state);
+    try {
+      createTerminal(state);
+      state.ready = true;
+      const nonce = 'a'.repeat(48);
+      acceptShellIntegration(state, { nonce, shell: 'bash' });
+      let started;
+      const downloadStarted = new Promise(resolve => { started = resolve; });
+      DengFileTools.downloadFile = async (_state, path) => { downloads.push(path); started(); };
+      const osc = (kind, value) => `\x1b]777;DengShell;${kind};${nonce}${value === undefined ? '' : ';' + btoa(value)}\x07`;
+      const frame = osc('busy') + osc('command', 'sz test.yml') + osc('cwd', '/srv/logs') + 'rz\r**\x18B00000000000000\r\x8a\x11';
+      const start = performance.now();
+      state.ws.onmessage({ data: new TextEncoder().encode(frame).buffer });
+      await Promise.race([downloadStarted, new Promise((_, reject) => setTimeout(() => reject(new Error('首帧未触发 sz 下载：' + JSON.stringify({integration:state.shellIntegration,directory:state.terminalDirectory,inputs,lines:state.term.buffer.active.getLine(0)?.translateToString()}))), 2000))]);
+      const elapsed = performance.now() - start;
+      // A real prompt followed by another command invalidates the old CAN timers.
+      state.ws.onmessage({ data: new TextEncoder().encode(osc('prompt') + osc('busy') + osc('command', 'vim next.txt')).buffer });
+      await new Promise(resolve => setTimeout(resolve, 600));
+      return { downloads, elapsed, cancellations: inputs.filter(value => value.type === 'input').map(value => value.data) };
+    } finally {
+      state.closed = true;
+      DengZmodemBridge.clear(state);
+      state.term?.dispose(); state.host?.remove(); sessions.delete(state.id);
+      window.WebSocket = originalSocket; DengFileTools.downloadFile = realDownload;
+    }
+  });
+  assert.deepEqual(coalesced.downloads, ['/srv/logs/test.yml'], '同帧内的命令和目录先于握手生效');
+  assert.ok(coalesced.elapsed < 500, `弹窗不应等待 750ms 的中止序列：${coalesced.elapsed}ms`);
+  assert.deepEqual(coalesced.cancellations, ['\x18\x18'], '收到提示符后不再向下一条命令补发 CAN');
   assert.deepEqual(errors,[]);
-  console.log('PASS: 文件命令全部在右键菜单内（下载与打包并下载分开、目录只打包、多选批量），状态栏无操作按钮；rz / sz 在页面里桥接到 SFTP 上传与下载。');
+  console.log(`PASS: 文件右键下载与打包、rz / sz 桥接；同帧 OSC + sz 首次触发 ${coalesced.elapsed.toFixed(1)}ms，无重试等待和残留 CAN。`);
 } finally { await browser.close(); }

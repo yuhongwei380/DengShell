@@ -7,6 +7,11 @@ import { spawnSync } from 'node:child_process';
 import xterm from '@xterm/xterm';
 const { Terminal } = xterm;
 
+if (process.platform === 'win32') {
+  console.log('SKIP: 提示符渲染需要 POSIX Shell 夹具；Windows 的 WSL Bash 不能直接读取 Windows 临时路径。');
+  process.exit(0);
+}
+
 // Expand actual Bash/Zsh prompts and feed their bytes into the application's
 // xterm parser. No user shell startup files, SSH servers or GUI are involved.
 const fixtures = [

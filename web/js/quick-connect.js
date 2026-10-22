@@ -59,7 +59,7 @@ window.DengQuickConnect = (() => {
       catch (error) { output.textContent = error.message; }
       finally { button.disabled = false; }
     };
-    $('#add-session').onclick = () => open();
+    $('#add-session').onclick = () => window.DengStartTabs.create();
     const welcome = node('button', '', '快速连接'); welcome.id = 'welcome-quick-connect'; welcome.onclick = () => open(); $('#welcome-connect').before(welcome);
     const b = node('button','terminal-popout'); b.id = 'save-quick-connection'; b.hidden = true; b.append(icon('plus'),node('span','','保存连接')); b.title = '保存此临时连接'; b.onclick = saveCurrent; $('#toggle-sftp').before(b);
     saveDialog = node('dialog'); saveDialog.id = 'quick-save-dialog'; saveDialog.setAttribute('aria-labelledby','quick-save-title');

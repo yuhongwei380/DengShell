@@ -67,7 +67,7 @@ func (d *Desktop) DownloadArchive(sessionID, remote string) (string, error) {
 		name = "root"
 	}
 	destination, e := d.openDialog("download", func(directory string) (string, error) {
-		return runtime.SaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "打包并下载", DefaultFilename: name + ".tar.gz", DefaultDirectory: directory})
+		return platformSaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "打包并下载", DefaultFilename: name + ".tar.gz", DefaultDirectory: directory})
 	})
 	if e != nil || destination == "" {
 		return "", e
@@ -94,7 +94,7 @@ func (d *Desktop) DownloadSelectionArchive(sessionID string, paths []string) (st
 		name = path.Base(paths[0]) + ".tar.gz"
 	}
 	destination, err := d.openDialog("download", func(directory string) (string, error) {
-		return runtime.SaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "打包并下载所选项目", DefaultFilename: name, DefaultDirectory: directory})
+		return platformSaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "打包并下载所选项目", DefaultFilename: name, DefaultDirectory: directory})
 	})
 	if err != nil || destination == "" {
 		return "", err

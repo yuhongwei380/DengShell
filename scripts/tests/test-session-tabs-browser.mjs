@@ -18,7 +18,7 @@ try {
    await chooseAppearance({onboardingCompleted:true,uiScale:1});
    document.documentElement.classList.add('frameless');document.querySelector('#window-controls').hidden=false;
  });
- assert.deepEqual(await page.$$eval('.brand button',bs=>bs.map(b=>b.id)),['settings-button','theme-toggle','security-lock-button','connection-button']);
+ assert.deepEqual(await page.$$eval('.brand button',bs=>bs.map(b=>b.id)),['settings-button','theme-toggle','security-lock-button']);
  assert.equal(await page.$('.session-bar #settings-button'),null);
  const initialTheme=await page.evaluate(()=>document.documentElement.dataset.theme);
  await page.waitForFunction(()=>!document.documentElement.dataset.lightSwitch);await page.click('#theme-toggle');await page.waitForFunction(t=>document.documentElement.dataset.theme!==t&&!document.documentElement.dataset.lightSwitch,{},initialTheme);
@@ -63,10 +63,8 @@ try {
      const rows=[...new Set(positions.map(p=>p.top))].map(top=>positions.filter(p=>p.top===top));
      return {counts:rows.map(r=>r.length),overlap:rows.some(row=>row.slice(1).some((p,i)=>p.left<row[i].right)),header:document.querySelector('.titlebar').offsetHeight,terminal:document.querySelector('.terminal-panel').offsetHeight};
    });
-   assert(rows.counts.every(n=>n<=6)&&!rows.overlap,JSON.stringify(rows));
-   if(count===6)assert.deepEqual(rows.counts,[6]);
-   if(count===7)assert.deepEqual(rows.counts,[6,1]);
-   if(count===13)assert.deepEqual(rows.counts,[6,6,1]);
+   assert(!rows.overlap,JSON.stringify(rows));
+   assert.deepEqual(rows.counts,count?[count]:[],'Tabs stay in one horizontal scrolling row');
    if(count===0||count===1)assert(rows.header<=44);
    assert(rows.terminal>200);
  }
@@ -87,8 +85,8 @@ try {
    assert(!metrics.overflow,JSON.stringify(metrics));assert(metrics.menu.left>=0&&metrics.menu.right<=width+1&&metrics.menu.bottom<=height+1,JSON.stringify(metrics));
    assert(metrics.brand.right<=metrics.bar.left+1 || metrics.brand.bottom<=metrics.bar.top+1,JSON.stringify(metrics));assert(metrics.tabs.width>40,JSON.stringify(metrics));assert(metrics.controls.right<=width+1,JSON.stringify(metrics));
    await page.keyboard.press('Escape');
-   assert(await page.$eval('#session-tabs',e=>e.scrollWidth<=e.clientWidth+1));
-   await page.$eval('#session-tabs',e=>e.scrollTop=e.scrollHeight);
+   assert(await page.$eval('#session-tabs',e=>e.scrollHeight<=e.clientHeight+1));
+   await page.$eval('#session-tabs',e=>e.scrollLeft=e.scrollWidth);
    const gap=await page.evaluate(()=>document.querySelector('#theme-toggle').getBoundingClientRect().left-document.querySelector('#settings-button').getBoundingClientRect().right);assert(gap>=13*metrics.scale,JSON.stringify({gap,metrics}));matrix.push(metrics);
  }
  await page.setViewport({width:1440,height:1000});await page.evaluate(()=>chooseAppearance({uiScale:1}));
