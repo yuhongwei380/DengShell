@@ -19,7 +19,7 @@ const context = vm.createContext({
   window: { DengUploadConfirmation: { prepare: async (_state, selection) => { checks.push(selection); return { overwriteTargets: [], skipTargets: [] }; }, skipped: () => false } },
   document: { addEventListener() {} }, AbortController,
   $: element, localTasks: tasks, crypto: { randomUUID: () => `task-${++taskID}` },
-  renderTransfers() {}, pumpUploads() {}, toast() {}, updateFileActions() {}, reflectFileSelection() {},
+  renderTransfers() {}, pumpUploads() {}, toast() {}, reflectFileSelection() {},
   fileSelection: () => ({ names: new Set(['~']) }), DengFileBrowser: { invalidate() {} },
   renderFiles() { element('#path-input').value = state.cwd; element('#file-status-count').textContent = 'loaded'; },
   post: async (url, body) => { posts.push({ url, body }); }, ask: async options => { prompts.push(options); return true; },
@@ -29,7 +29,7 @@ vm.runInContext([
   between('function normalizePath(', '\nconst parentPath'),
   between('function filesUsable(', '\n// The status request'),
   between('async function navigate(', '\nfunction renderFiles('),
-  between('function selectedFileTargets(', '\nfunction selectedEntry('),
+  between('function selectedFileTargets(', '\nfunction selectFileRow('),
   between('async function queueFiles(', '\nfunction pumpUploads('),
 ].join('\n'), context);
 vm.runInContext(fs.readFileSync(new URL('../../web/js/file-tools.js', import.meta.url), 'utf8'), context);

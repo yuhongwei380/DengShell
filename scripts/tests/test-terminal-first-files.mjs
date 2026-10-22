@@ -11,7 +11,7 @@ function sourceBetween(start, end) {
   assert.ok(first >= 0 && last > first, `missing production functions: ${start}`);
   return appSource.slice(first, last);
 }
-const filesSource = sourceBetween('function filesUsable(', '\nfunction selectedEntry(');
+const filesSource = sourceBetween('function filesUsable(', '\nfunction selectFileRow(');
 function deferred() {
   let resolve, reject;
   const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
@@ -34,7 +34,7 @@ function fixture() {
     Uint8Array, TextDecoder, atob, AbortController,
     $: element, window: {}, fileSortKey: 'name', ascending: true,
     compareFileEntries: () => 0, normalizePath: path => path,
-    DengFileBrowser: { invalidate() {} }, renderTree() {}, updateFileActions() {}, reflectFileSelection() {},
+    DengFileBrowser: { invalidate() {} }, renderTree() {}, reflectFileSelection() {},
     renderSessionInfo() { renders++; },
     toast: message => notices.push(message), recordCommand() {}, sendInput: (_state, text) => inputs.push(text),
     setTimeout: (callback, delay) => { timers.push({ callback, delay }); return timers.length; },

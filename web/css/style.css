@@ -399,9 +399,6 @@ svg use { pointer-events: none; }
 .follow-label { display: flex; align-items: center; gap: 6px; margin-left: 10px; font-size: 11px; color: #98aab8; white-space: nowrap; cursor: pointer; }
 .follow-label input { accent-color: #7f9fb5; margin: 0; width: 13px; height: 13px; flex-shrink: 0; }
 .file-status { min-height: 28px; height: 28px; }
-#file-actions { display: flex; gap: 8px; }
-#file-actions button { border-radius: 5px; padding: 4px; }
-#file-actions button:hover { background: #edf4f8; }
 .connection-entry { margin-bottom: 5px; }
 .connection-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 9px; }
 .connection-actions button, .group-tool { font-size: 9px; color: #8fa4b4; padding: 3px 5px; border-radius: 5px; }

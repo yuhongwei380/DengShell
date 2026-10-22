@@ -707,7 +707,6 @@ function selectedEntries(state = current()) {
 function selectedFileTargets(state = current()) {
   return selectedEntries(state).map(entry => ({ path: normalizePath(entry.name, state.cwd), isDirectory: entry.kind === 'folder' }));
 }
-function selectedEntry() { const entries = selectedEntries(); return entries.length === 1 ? entries[0] : null; }
 function selectFileRow(state, name, event = {}) {
   if (state !== current() || !filesUsable(state)) return;
   const selection = fileSelection(state), additive = event.ctrlKey || event.metaKey;
@@ -730,15 +729,7 @@ function reflectFileSelection() {
     row.classList.toggle('selected', selected); row.setAttribute('aria-selected', String(selected));
   }
   if (filesUsable(state)) $('#file-status-count').textContent = `${$('#file-list').rows.length} 个项目${$('#file-filter').value ? ' · 已筛选' : ''}${selection.names.size ? ` · 已选 ${selection.names.size} 项` : ''}`;
-  updateFileActions();
-}
-function updateFileActions() {
-  const state = current(), entries = selectedEntries(state), usable = filesUsable(state) && !state.fileDeletePending;
-  $('#download-file').disabled = !usable || !entries.length;
-  $('#download-file').textContent = entries.length > 1 || entries[0]?.kind === 'folder' ? '打包下载' : '下载';
-  $('#rename-file').disabled = !usable || entries.length !== 1;
-  $('#rename-file').title = entries.length > 1 ? '重命名需要只选择一个项目' : '重命名';
-  $('#delete-file').disabled = !usable || !entries.length;
+
 }
 function deleteSelectedFiles() { const state = current(); return DengFileTools.removeFiles(state, selectedFileTargets(state)); }
 $('#file-list').addEventListener('keydown', event => {
@@ -802,10 +793,6 @@ async function renameRemoteFile(state, path) {
   DengFileBrowser.invalidate(state, path.slice(0, path.lastIndexOf('/')) || '/');
   await navigate(state.cwd, state);
 }
-$('#rename-file').onclick = safe(() => { const state = current(), entry = selectedEntry(); if (entry) return renameRemoteFile(state, normalizePath(entry.name, state.cwd)); });
-$('#delete-file').onclick = safe(deleteSelectedFiles);
-async function downloadSelected() { const state = current(), entries = selectedEntries(state), entry = entries[0]; if (!filesUsable(state) || !entry) return; if (entries.length > 1 || entry.kind === 'folder') return DengFileTools.archiveFiles(state, selectedFileTargets(state).map(item => item.path)); const path = normalizePath(entry.name, state.cwd); if (native()) { toast('正在下载…'); const target = await native().Download(state.id, path); if (target) toast('下载完成：' + target); } else { const link = node('a'); link.href = endpoint(`/api/sessions/${state.id}/download?path=${encodeURIComponent(path)}&token=${encodeURIComponent(boot.token)}`); link.download = entry.name; link.click(); } }
-$('#download-file').onclick = safe(downloadSelected);
 
 // The backend samples every connected SSH independently. The visible tab only
 // reads its cached history; one slow view request cannot block another tab.

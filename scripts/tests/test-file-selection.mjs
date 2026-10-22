@@ -27,7 +27,14 @@ try {
  async function choose(names){await click(names[0]);for(const name of names.slice(1))await click(name,'Control');assert.deepEqual(await selected(),[...names].sort());}
  const dialog=()=>page.waitForSelector('#action-dialog[open]');
  async function finish(confirm=true){await page.click(confirm?'#action-confirm':'#action-cancel');await page.waitForFunction(()=>!qaState.fileDeletePending);}
- await choose(['a.txt','c.txt']);assert.match(await page.$eval('#file-status-count',e=>e.textContent),/已选 2 项/);assert(await page.$eval('#rename-file',e=>e.disabled));assert.equal(await page.$eval('#download-file',e=>e.textContent),'打包下载');
+  // The status bar no longer carries action buttons: every file command comes
+  // from the right-click menu of the row under the cursor.
+  assert.equal(await page.$$eval('.file-status button',rows=>rows.length),0);
+  const openMenu=async name=>{await page.click(row(name),{button:'right'});await page.waitForSelector('.file-context-menu');};
+  const menuLabels=()=>page.$$eval('.file-context-menu > button',buttons=>buttons.map(b=>b.textContent.trim()));
+  async function menuClick(name,label){await openMenu(name);await page.evaluate(l=>[...document.querySelectorAll('.file-context-menu > button')].find(b=>b.textContent.trim()===l).click(),label);}
+  async function menuClickPrefix(name,prefix){await openMenu(name);await page.evaluate(p=>[...document.querySelectorAll('.file-context-menu > button')].find(b=>b.textContent.trim().startsWith(p)).click(),prefix);}
+ await choose(['a.txt','c.txt']);assert.match(await page.$eval('#file-status-count',e=>e.textContent),/已选 2 项/);assert.equal((await page.$eval('.file-status',e=>[...e.children].map(child=>child.id).join(','))),'file-status-count,file-owner-info','the status bar keeps only the count and SFTP label');
  await click('a.txt','Control');assert.deepEqual(await selected(),['c.txt']);await click('b.txt','Meta');assert.deepEqual(await selected(),['b.txt','c.txt']);
  await click('a.txt');await click('d.txt','Shift');assert.deepEqual(await selected(),['a.txt','b.txt','c.txt','d.txt']);
  await page.keyboard.down('Control');await page.keyboard.press('a');await page.keyboard.up('Control');assert.equal((await selected()).length,8);assert.equal(await page.evaluate(()=>getSelection().toString()),'');
@@ -38,19 +45,30 @@ try {
  await page.click('#refresh-files');await page.waitForFunction(()=>!document.querySelector('#file-status-count').textContent.includes('读取目录'));assert.deepEqual(await selected(),['a.txt']);
  // One dialog; cancelling keeps all data. Right click preserves the whole batch.
  await choose(['a.txt','b.txt']);await page.click(row('a.txt'),{button:'right'});
- assert.deepEqual(await selected(),['a.txt','b.txt']);assert.match(await page.$eval('.file-context-menu',e=>e.textContent),/删除选中的 2 项/);assert.doesNotMatch(await page.$eval('.file-context-menu',e=>e.textContent),/重命名/);
+ assert.deepEqual(await selected(),['a.txt','b.txt']);assert.match(await page.$eval('.file-context-menu',e=>e.textContent),/删除选中的 2 项/);assert.doesNotMatch(await page.$eval('.file-context-menu',e=>e.textContent),/重命名/);assert.deepEqual(await menuLabels(),['删除选中的 2 项','打包并下载 2 项','复制所选路径'],'a multi-selection archives, it never downloads one file directly');
  await page.click('.file-context-danger');await dialog();assert.equal(await page.$$eval('dialog:modal',rows=>rows.length),1);assert.match(await page.$eval('#action-description',e=>e.textContent),/a.txt/);assert.match(await page.$eval('#action-description',e=>e.textContent),/b.txt/);assert.equal(deletes.length,0);await finish(false);assert(fs.existsSync(path.join(remote,'a.txt')));
  await page.evaluate(()=>{window.qaCopied='';navigator.clipboard.writeText=async text=>{qaCopied=text}});
  await page.click(row('b.txt'),{button:'right'});await page.evaluate(()=>[...document.querySelectorAll('.file-context-menu button')].find(b=>b.textContent==='复制所选路径').click());assert.deepEqual((await page.evaluate(()=>qaCopied)).split('\n').sort(),['a.txt','b.txt'].map(name=>path.join(remote,name)));
  await page.click(row('c.txt'),{button:'right'});assert.deepEqual(await selected(),['c.txt']);await page.keyboard.press('Escape');
+  // A single file offers the direct download next to 打包并下载; a folder gets
+  // only the archive, and directories have no direct download at all.
+  await choose(['a.txt']);
+  await openMenu('a.txt');assert.deepEqual(await menuLabels(),['打开','重命名','删除','快速删除','下载','打包并下载','复制路径','文件权限']);await page.keyboard.press('Escape');
+  await openMenu('folder');assert.ok((await menuLabels()).includes('打包并下载')&&!(await menuLabels()).includes('下载'));await page.keyboard.press('Escape');
  // Selected entries archive into one actual download; no unselected files.
  await choose(['a.txt','folder']);
  const cdp=await page.createCDPSession();await cdp.send('Page.setDownloadBehavior',{behavior:'allow',downloadPath:local});
- await page.click('#download-file');
+ await menuClickPrefix('a.txt','打包并下载');
  await new Promise((resolve,reject)=>{const end=Date.now()+10000;const timer=setInterval(()=>{if(fs.existsSync(path.join(local,'DevShell-files.tar.gz'))){clearInterval(timer);resolve()}else if(Date.now()>end){clearInterval(timer);reject(new Error('archive download timeout'))}},50)});
  const {execFileSync}=await import('node:child_process');const archive=execFileSync('tar',['-tzf',path.join(local,'DevShell-files.tar.gz')],{encoding:'utf8'});assert.match(archive,/a.txt/);assert.match(archive,/folder\/child.txt/);assert.doesNotMatch(archive,/b.txt|keep.txt|other/);
+  // 下载 in the menu really downloads that one file, without packing it.
+  await choose(['a.txt']);await menuClick('a.txt','下载');
+  await new Promise((resolve,reject)=>{const end=Date.now()+10000;const timer=setInterval(()=>{if(fs.existsSync(path.join(local,'a.txt'))){clearInterval(timer);resolve()}else if(Date.now()>end){clearInterval(timer);reject(new Error('direct download timeout'))}},50)});
+  assert.equal(fs.readFileSync(path.join(local,'a.txt'),'utf8'),'fixture');
+  assert(fs.existsSync(path.join(remote,'a.txt')),'a download must not remove the remote file');
  // The desktop bridge receives the whole selection once, including folders.
- await page.evaluate(async()=>{window.qaArchives=[];window.go={desktop:{Desktop:{DownloadSelectionArchive:async(id,paths)=>{qaArchives.push({id,paths});return '/fixture/output.tar.gz'}}}};try{await downloadSelected()}finally{delete window.go}});
+ await choose(['a.txt','folder']);
+  await page.evaluate(async()=>{window.qaArchives=[];window.go={desktop:{Desktop:{DownloadSelectionArchive:async(id,paths)=>{qaArchives.push({id,paths});return '/fixture/output.tar.gz'}}}};try{await DengFileTools.archiveFiles(current(),selectedFileTargets(current()).map(item=>item.path))}finally{delete window.go}});
  const nativeArchive=await page.evaluate(()=>qaArchives);assert.equal(nativeArchive.length,1);assert.equal(nativeArchive[0].id,sessionID);assert.deepEqual(nativeArchive[0].paths.sort(),['a.txt','folder'].map(name=>path.join(remote,name)));
  // Appearance and modal bounds in both themes. Delete key uses the same batch.
  await choose(['a.txt','b.txt']);await page.keyboard.press('Delete');await dialog();
@@ -69,19 +87,19 @@ try {
  // if still on disk. Inject permission denial without altering host permissions.
  write('denied.txt');write('success.txt');await page.evaluate(()=>navigate(qaState.cwd,qaState));
  await page.evaluate(()=>{window.qaAPI=api;api=(p,options={})=>p.endsWith('/file-action')&&JSON.parse(options.body||'{}').path?.endsWith('/denied.txt')?Promise.reject(new Error('permission denied')):qaAPI(p,options)});
- await choose(['denied.txt','success.txt']);await page.click('#delete-file');await dialog();await finish();assert(fs.existsSync(path.join(remote,'denied.txt')));assert(!fs.existsSync(path.join(remote,'success.txt')));assert.match(await page.$eval('#toast',e=>e.textContent),/已删除 1 项，1 项未完成/);assert.deepEqual(await selected(),['denied.txt']);await page.evaluate(()=>{api=qaAPI});
+ await choose(['denied.txt','success.txt']);await menuClickPrefix('denied.txt','删除');await dialog();await finish();assert(fs.existsSync(path.join(remote,'denied.txt')));assert(!fs.existsSync(path.join(remote,'success.txt')));assert.match(await page.$eval('#toast',e=>e.textContent),/已删除 1 项，1 项未完成/);assert.deepEqual(await selected(),['denied.txt']);await page.evaluate(()=>{api=qaAPI});
  // Captured targets survive directory change while waiting for confirmation.
- await choose(['c.txt','d.txt']);await page.click('#delete-file');await dialog();await page.evaluate(()=>navigate(qaState.cwd+'/other',qaState));await finish();assert(!fs.existsSync(path.join(remote,'c.txt')));assert(fs.existsSync(path.join(remote,'other/a.txt')));assert.deepEqual(await selected(),[]);
+ await choose(['c.txt','d.txt']);await menuClickPrefix('c.txt','删除');await dialog();await page.evaluate(()=>navigate(qaState.cwd+'/other',qaState));await finish();assert(!fs.existsSync(path.join(remote,'c.txt')));assert(fs.existsSync(path.join(remote,'other/a.txt')));assert.deepEqual(await selected(),[]);
  await page.evaluate(remote=>navigate(remote,qaState),remote);
  // Session switches keep their own selection, and stale/reconnected identities abort.
  await choose(['denied.txt','link.txt']);await page.evaluate(()=>{window.qaOther={...qaState,id:'other-session',fileSelection:null};sessions.set(qaOther.id,qaOther);activeID=qaOther.id;renderFiles()});assert.deepEqual(await selected(),[]);await click('keep.txt');await page.evaluate(()=>{activeID=qaState.id;renderFiles()});assert.deepEqual(await selected(),['denied.txt','link.txt']);
- await page.click('#delete-file');await dialog();const beforeDisconnect=deletes.length;await page.evaluate(()=>{qaState.connected=false});await finish();assert.equal(deletes.length,beforeDisconnect);assert(fs.existsSync(path.join(remote,'denied.txt')));await page.evaluate(()=>{qaState.connected=true;renderFiles()});
- await page.click('#delete-file');await dialog();await page.evaluate(()=>{sessions.set(qaState.id,{...qaState})});await finish();assert.equal(deletes.length,beforeDisconnect);await page.evaluate(()=>{sessions.set(qaState.id,qaState);renderFiles()});
+ await menuClickPrefix('denied.txt','删除');await dialog();const beforeDisconnect=deletes.length;await page.evaluate(()=>{qaState.connected=false});await finish();assert.equal(deletes.length,beforeDisconnect);assert(fs.existsSync(path.join(remote,'denied.txt')));await page.evaluate(()=>{qaState.connected=true;renderFiles()});
+ await menuClickPrefix('denied.txt','删除');await dialog();await page.evaluate(()=>{sessions.set(qaState.id,{...qaState})});await finish();assert.equal(deletes.length,beforeDisconnect);await page.evaluate(()=>{sessions.set(qaState.id,qaState);renderFiles()});
  // A confirmed operation stays on the original session even if a different tab becomes active.
- await page.click('#delete-file');await dialog();await page.evaluate(()=>{activeID=qaOther.id;renderFiles()});await finish();assert(!fs.existsSync(path.join(remote,'denied.txt')));assert(fs.existsSync(path.join(remote,'keep.txt')));assert.deepEqual(await selected(),['keep.txt']);await page.evaluate(()=>{activeID=qaState.id;renderFiles()});
+ await menuClickPrefix('denied.txt','删除');await dialog();await page.evaluate(()=>{activeID=qaOther.id;renderFiles()});await finish();assert(!fs.existsSync(path.join(remote,'denied.txt')));assert(fs.existsSync(path.join(remote,'keep.txt')));assert.deepEqual(await selected(),['keep.txt']);await page.evaluate(()=>{activeID=qaState.id;renderFiles()});
  fs.symlinkSync(path.join(remote,'keep.txt'),path.join(remote,'link.txt'));await page.evaluate(()=>navigate(qaState.cwd,qaState));
  // Recursive batch delete removes a link itself, never its unselected target.
- await choose(['folder','link.txt']);await page.click('#delete-file');await dialog();await finish();assert(!fs.existsSync(path.join(remote,'folder')));assert(!fs.existsSync(path.join(remote,'link.txt')));assert.equal(fs.readFileSync(path.join(remote,'keep.txt'),'utf8'),'fixture');
+ await choose(['folder','link.txt']);await menuClickPrefix('folder','删除');await dialog();await finish();assert(!fs.existsSync(path.join(remote,'folder')));assert(!fs.existsSync(path.join(remote,'link.txt')));assert.equal(fs.readFileSync(path.join(remote,'keep.txt'),'utf8'),'fixture');
  // A literal tilde name must remain under cwd for open, rename, upload and
  // recursive delete. A separate home sentinel proves no home data is touched.
  const contents=name=>fs.readFileSync(path.join(remote,name),'utf8');
@@ -89,7 +107,7 @@ try {
  await page.evaluate(async remote=>{qaState.home=remote+'/protected-home';await navigate(remote,qaState)},remote);
  await page.click(row('~'),{count:2});await page.waitForFunction(()=>[...document.querySelectorAll('.text-editor-area')].some(e=>e.value==='tilde file'));
  await page.evaluate(()=>document.querySelectorAll('dialog[open]').forEach(d=>d.close()));
- await choose(['~']);await page.click('#rename-file');await dialog();
+ await choose(['~']);await menuClick('~','重命名');await dialog();
  await page.$eval('#action-input',e=>{e.value='renamed-tilde.txt'});await page.click('#action-confirm');
  await page.waitForSelector(row('renamed-tilde.txt'));
  assert.equal(contents('renamed-tilde.txt'),'tilde file');assert(fs.existsSync(path.join(remote,'protected-home/sentinel.txt')));
@@ -100,10 +118,10 @@ try {
   await page.evaluate(()=>navigate(qaState.cwd,qaState));
  }
  await uploadTilde('~','uploaded tilde');assert.equal(contents('~'),'uploaded tilde');
- await choose(['~']);await page.click('#delete-file');await dialog();assert((await page.$eval('#action-description',e=>e.textContent)).includes(path.join(remote,'~')));await finish();
+ await choose(['~']);await menuClick('~','删除');await dialog();assert((await page.$eval('#action-description',e=>e.textContent)).includes(path.join(remote,'~')));await finish();
  assert(!fs.existsSync(path.join(remote,'~')));assert.equal(contents('protected-home/sentinel.txt'),'keep home');
  await uploadTilde('~/nested.txt','tilde directory upload');assert.equal(contents('~/nested.txt'),'tilde directory upload');
- await choose(['~']);await page.click('#delete-file');await dialog();await finish();
+ await choose(['~']);await menuClick('~','删除');await dialog();await finish();
  assert(!fs.existsSync(path.join(remote,'~')));assert.equal(contents('protected-home/sentinel.txt'),'keep home');
- assert.deepEqual(errors,[]);console.log('PASS: actual SFTP Ctrl/Cmd/Shift selection, select all, no text selection, filter/sort/refresh, right-click batch, single confirmation/cancel, batch archive, double-click navigation, delete/partial error, session/directory isolation, stale session rejection, symlink-safe recursion, literal tilde open/rename/upload/delete with home preserved, light/dark.');
+ assert.deepEqual(errors,[]);console.log('PASS: actual SFTP Ctrl/Cmd/Shift selection, select all, no text selection, filter/sort/refresh, menu-only file actions (no status-bar buttons, direct 下载 plus 打包并下载), right-click batch, single confirmation/cancel, batch archive, double-click navigation, delete/partial error, session/directory isolation, stale session rejection, symlink-safe recursion, literal tilde open/rename/upload/delete with home preserved, light/dark.');
 }catch(error){if(page&&process.env.DENGSHELL_UI_ARTIFACTS)await page.screenshot({path:process.env.DENGSHELL_UI_ARTIFACTS+'/file-multiselect-failure.png'});console.error({errors,deletes});throw error}finally{await browser.close()}
