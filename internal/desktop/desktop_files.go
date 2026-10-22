@@ -18,7 +18,9 @@ func (d *Desktop) ChooseExternalEditor() (string, error) {
 		return "", err
 	}
 
-	return runtime.OpenFileDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择本地文本编辑器可执行文件"})
+	return d.openDialog("external-editor", func(directory string) (string, error) {
+		return runtime.OpenFileDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择本地文本编辑器可执行文件", DefaultDirectory: directory})
+	})
 }
 func (d *Desktop) OpenRemoteFile(sessionID, remote string) (string, error) {
 	if err := d.app.RequireUnlocked(); err != nil {
@@ -64,7 +66,9 @@ func (d *Desktop) DownloadArchive(sessionID, remote string) (string, error) {
 	if name == "/" {
 		name = "root"
 	}
-	destination, e := runtime.SaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "打包并下载", DefaultFilename: name + ".tar.gz"})
+	destination, e := d.openDialog("download", func(directory string) (string, error) {
+		return runtime.SaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "打包并下载", DefaultFilename: name + ".tar.gz", DefaultDirectory: directory})
+	})
 	if e != nil || destination == "" {
 		return "", e
 	}
@@ -89,7 +93,9 @@ func (d *Desktop) DownloadSelectionArchive(sessionID string, paths []string) (st
 	if len(paths) == 1 {
 		name = path.Base(paths[0]) + ".tar.gz"
 	}
-	destination, err := runtime.SaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "打包并下载所选项目", DefaultFilename: name})
+	destination, err := d.openDialog("download", func(directory string) (string, error) {
+		return runtime.SaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "打包并下载所选项目", DefaultFilename: name, DefaultDirectory: directory})
+	})
 	if err != nil || destination == "" {
 		return "", err
 	}

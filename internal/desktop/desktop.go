@@ -49,6 +49,8 @@ type Desktop struct {
 	detachedNonce    string
 	children         map[string]*exec.Cmd
 	pendingWindows   map[string]bool
+	pickerBusy       bool
+	lastDirs         map[string]string
 	windowClosed     bool
 }
 
@@ -324,21 +326,27 @@ func (d *Desktop) ChooseUploads() ([]string, error) {
 		return nil, err
 	}
 
-	return runtime.OpenMultipleFilesDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择上传文件"})
+	return d.openDialogMulti("upload", func(directory string) ([]string, error) {
+		return runtime.OpenMultipleFilesDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择上传文件", DefaultDirectory: directory})
+	})
 }
 func (d *Desktop) ChooseFolder() (string, error) {
 	if err := d.app.RequireUnlocked(); err != nil {
 		return "", err
 	}
 
-	return runtime.OpenDirectoryDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择上传文件夹"})
+	return d.openFolderDialog("upload-folder", func(directory string) (string, error) {
+		return runtime.OpenDirectoryDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择上传文件夹", DefaultDirectory: directory})
+	})
 }
 func (d *Desktop) ChooseKey() (string, error) {
 	if err := d.app.RequireUnlocked(); err != nil {
 		return "", err
 	}
 
-	return runtime.OpenFileDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择 SSH 私钥", ShowHiddenFiles: true})
+	return d.openDialog("key", func(directory string) (string, error) {
+		return runtime.OpenFileDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择 SSH 私钥", ShowHiddenFiles: true, DefaultDirectory: directory})
+	})
 }
 func (d *Desktop) ChooseAsset(kind string) (*app.ManagedAsset, error) {
 	if err := d.app.RequireUnlocked(); err != nil {
@@ -356,9 +364,12 @@ func (d *Desktop) ChooseAsset(kind string) (*app.ManagedAsset, error) {
 	default:
 		return nil, errors.New("未知资源类型")
 	}
-	filename, err := runtime.OpenFileDialog(d.ctx, runtime.OpenDialogOptions{
-		Title:   title,
-		Filters: []runtime.FileFilter{{DisplayName: label, Pattern: pattern}},
+	filename, err := d.openDialog("asset-"+kind, func(directory string) (string, error) {
+		return runtime.OpenFileDialog(d.ctx, runtime.OpenDialogOptions{
+			Title:            title,
+			Filters:          []runtime.FileFilter{{DisplayName: label, Pattern: pattern}},
+			DefaultDirectory: directory,
+		})
 	})
 	if err != nil || filename == "" {
 		return nil, err
@@ -377,7 +388,9 @@ func (d *Desktop) Download(sessionID, remote string) (string, error) {
 		return "", err
 	}
 
-	destination, err := runtime.SaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "下载文件", DefaultFilename: path.Base(remote)})
+	destination, err := d.openDialog("download", func(directory string) (string, error) {
+		return runtime.SaveFileDialog(d.ctx, runtime.SaveDialogOptions{Title: "下载文件", DefaultFilename: path.Base(remote), DefaultDirectory: directory})
+	})
 	if err != nil || destination == "" {
 		return "", err
 	}
@@ -410,7 +423,7 @@ func runDesktopBackend(application desktopBackend, assets fs.FS, configDir, deta
 	log.Printf("DengShell initial window: %dx%d logical pixels, position %d,%d", initial.Width, initial.Height, initial.X, initial.Y)
 	previouslyReady := runtimePreviouslyReady(configDir)
 	var readyOnce, windowOnce sync.Once
-	desktop := &Desktop{app: application, terminals: map[string]*nativeTerminal{}, detachedNonce: detachedNonce, children: map[string]*exec.Cmd{}}
+	desktop := &Desktop{app: application, terminals: map[string]*nativeTerminal{}, detachedNonce: detachedNonce, children: map[string]*exec.Cmd{}, lastDirs: map[string]string{}}
 	if primary, ok := application.(*app.App); ok {
 		primary.SetWindowLauncher(desktop.launchDetached)
 		defer primary.SetWindowLauncher(nil)
