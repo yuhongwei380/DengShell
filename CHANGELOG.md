@@ -1,5 +1,16 @@
 # DevShell 更新日志
 
+## 2026-10-22 macOS 内置更新上线 · v26.10.0 构建 20261022140
+
+- 修复：macOS 点「检查更新」只提示「检查更新失败：未知错误」——`updateAddress` 只映射 `windows-amd64`／`linux-amd64`／`linux-amd64-pacman`，darwin 得到空 artifact 后直接返回 `reason=platform-unavailable` 且不发任何请求；前端 reason 文案表缺该键，落到「未知错误」兜底。
+- 新增：macOS 更新清单 `up-macos-arm64.json` / `up-macos-amd64.json`，两份都指向同一个 `DevShell-macos-universal.zip`；跨架构清单互不认（Intel 客户端不接受 Apple Silicon 清单，反之亦然）。
+- 新增：应用包替换安装器（`update_helper_darwin.go` 与平台无关的 `update_helper_bundle.go`）：助手等旧进程退出后在 `.app` 同卷临时目录解压，跳过 `__MACOSX` 与 `.DS_Store`，拒绝绝对路径、`..` 穿越与错误根目录，校验 `Info.plist`、可执行位与包内程序 SHA-256，再做目录级 rename 原子替换；旧包留在 `<bundle>.update-old`，替换或启动失败即回滚。
+- 新增：DMG 卷或不可写安装位置在应用退出前就报「无法写入安装位置」，全程不提权，`~/Library/Application Support/DevShell/` 不变。
+- 新增：`scripts/build/build-macos.py` 抽出 `write_update_manifests`，按架构写清单（notes 取 release note，按客户端 16000 字符上限校验），清单与 zip 一并进 `SHA256SUMS.txt`；`release.yml` 的 macos 任务上传两份清单。
+- 新增：前端 reason 文案补 `platform-unavailable`，遇到没有内置更新通道的平台会说明去 Releases 取安装包并保留数据目录。
+- 验证：新增 `update_helper_bundle_test.go`（解压与模式保留、元数据条目跳过、恶意路径与错误根目录拒绝、替换后无残留、回滚恢复、bundle 布局判定、压缩包魔数与目录可写探测）与 `update_platform_test.go` 的 macOS 报价断言（含跨架构清单必须被拒）；用 `write_update_manifests` 真函数生成清单再喂进 `checkUpdateTrusted` 走完整校验：notes 1596 字节通过，同构建且可执行哈希一致返回 `current`，换哈希返回 `build-rollback`，Intel 清单送到 arm64 返回 `invalid`；`GOOS=darwin GOARCH=arm64` 的 `go build`／`go vet` 通过，`go vet ./...`、`npm run check`、`python -m py_compile` 通过。
+- 升级说明：此前安装的 macOS 构建没有更新通道，需要手动用 DMG／ZIP 覆盖 `/Applications/DevShell.app` 一次；此后即可用「检查更新」自升级。
+
 ## 2026-10-22 OpenWrt 终端连不上修复与引导脚本压缩 · v26.10.0 构建 20261022139
 
 - 修复：连接 OpenWrt／dropbear 类服务器稳定报「无法创建或启动远端终端」（DS-212，detail `start-shell`），随后 transport 立即 EOF：终端内联启动脚本的 exec 命令字符串实测 26195 字节，路由器日志 `Exit (root) … String too long` 表明 dropbear 直接拒绝该请求并在拒绝时结束整条连接，普通 shell 回退没有机会执行；cmd 与 PowerShell 的 `ssh` 都能正常进入 ash，问题只在我们的请求尺寸。
