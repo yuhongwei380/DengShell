@@ -52,6 +52,7 @@ type Config struct {
 	Trash              []Profile                  `json:"trash,omitempty"`
 	ConnectionHistory  []ConnectionHistory        `json:"connectionHistory"`
 	CommandHistory     *GlobalCommandHistory      `json:"commandHistory,omitempty"`
+	LocalHistory       *GlobalCommandHistory      `json:"localHistory,omitempty"`
 	PathHistory        []PathHistoryEntry         `json:"pathHistory,omitempty"`
 	DirectoryFavorites []DirectoryFavorite        `json:"directoryFavorites,omitempty"`
 	Extra              map[string]json.RawMessage `json:"-"`
@@ -75,6 +76,7 @@ type Store struct {
 	hasDisk                 bool
 	historyState            map[string]*commandHistoryState
 	globalHistoryOperations []string
+	localHistoryOperations  []string
 }
 
 func randomID() string {
@@ -90,6 +92,7 @@ func (s *Store) List() Config {
 	defer s.mu.Unlock()
 	result := Config{SchemaVersion: s.config.SchemaVersion, Servers: []Profile{}, Trash: []Profile{}, Groups: append([]string{}, s.config.Groups...), GroupNodes: append([]ServerGroup{}, s.config.GroupNodes...), ConnectionHistory: append([]ConnectionHistory{}, s.config.ConnectionHistory...), Commands: append([]QuickCommand{}, s.config.Commands...), CommandGroups: append([]string{}, s.config.CommandGroups...), Keys: append([]ManagedKey{}, s.config.Keys...), Assets: append([]ManagedAsset{}, s.config.Assets...), Proxies: make([]ManagedProxy, len(s.config.Proxies)), Appearance: cloneAppearance(s.config.Appearance)}
 	result.CommandHistory = cloneGlobalCommandHistory(s.config.CommandHistory)
+	result.LocalHistory = cloneGlobalCommandHistory(s.config.LocalHistory)
 	for i, key := range result.Keys {
 		result.Keys[i] = key.public()
 	}

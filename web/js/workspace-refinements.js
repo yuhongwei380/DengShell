@@ -56,8 +56,20 @@ async function refreshCommandHistory(profileID) {
 }
 window.DengCommandHistory = {
   refresh: refreshCommandHistory,
-  flush: async () => { await Promise.all([...commandHistoryQueues.keys()].map(pumpCommandHistory)); },
-  acceptConfig: config => { if (config.commandHistory) acceptGlobalCommandHistory(config.commandHistory); },
+  flush: async () => {
+    await Promise.all([
+      ...[...commandHistoryQueues.keys()].map(pumpCommandHistory),
+      // A failing local append must not hold back the rest of the settings save.
+      pumpLocalHistory().catch(() => {}),
+    ]);
+  },
+  acceptConfig: config => {
+    if (config.commandHistory) acceptGlobalCommandHistory(config.commandHistory);
+    if (config.localHistory) acceptLocalHistory(config.localHistory);
+  },
+  recordLocal: recordLocalCommand,
+  recallLocal: recallLocalCommand,
+  localEntries: () => [...localHistory.entries],
 };
 let globalCommandHistory = { entries: [], revision: -1 }, globalHistoryRequest = null, historyClearOperation = null;
 function acceptGlobalCommandHistory(result) {
@@ -75,6 +87,52 @@ async function clearGlobalCommandHistory() {
   historyClearOperation ||= crypto.randomUUID();
   const result = await api('/api/history', { method: 'DELETE', body: JSON.stringify({ operation: historyClearOperation }) });
   historyClearOperation = null; acceptGlobalCommandHistory(result);
+}
+// 本机历史：命令输入条在没有连接可用时（欢迎页、已退出的会话）回车的内容 ——
+// 本机探测、ssh 快速连接、reconnect / exit —— 从未进入远端 Shell，因此不进
+// 每台服务器的命令历史，也不进「历史命令」列表，而是单独保存在后端的 50 条
+// 列表里，只用 ↑ / ↓ 调出，没有按钮。已连接时 ↑ / ↓ 仍只浏览该服务器的历史。
+const localHistoryLimit = 50;
+let localHistory = { entries: [], revision: -1 }, localHistoryJobs = [], localHistoryRunning = null, localHistoryIndex = 0, localRecalled = '';
+function acceptLocalHistory(result) {
+  if (!result || !Array.isArray(result.entries) || result.revision < localHistory.revision) return;
+  const entries = [...result.entries];
+  // Keep commands still waiting for their acknowledgement visible, exactly like
+  // the per-server history; the reconstructed array is never posted back.
+  for (const job of localHistoryJobs) if (entries.at(-1) !== job.command) entries.push(job.command);
+  localHistory = { entries: entries.slice(-localHistoryLimit), revision: result.revision };
+  localHistoryIndex = Math.min(localHistoryIndex, localHistory.entries.length);
+}
+function pumpLocalHistory() {
+  if (localHistoryRunning) return localHistoryRunning;
+  localHistoryRunning = (async () => {
+    while (localHistoryJobs.length) {
+      const job = localHistoryJobs[0];
+      const result = await api('/api/local-history', { method: 'POST', body: JSON.stringify(job) });
+      localHistoryJobs.shift();
+      acceptLocalHistory(result);
+    }
+  })().finally(() => { localHistoryRunning = null; });
+  return localHistoryRunning;
+}
+function recordLocalCommand(command) {
+  const body = String(command || '').trim();
+  if (!body) return Promise.resolve();
+  localHistoryJobs.push({ operation: crypto.randomUUID(), command: body });
+  const entries = localHistory.entries.at(-1) === body ? [...localHistory.entries] : [...localHistory.entries, body];
+  localHistory = { entries: entries.slice(-localHistoryLimit), revision: localHistory.revision };
+  // After running a command, ↑ offers that same command again, as a shell does.
+  localHistoryIndex = localHistory.entries.length; localRecalled = '';
+  return pumpLocalHistory().catch(error => toast(`本机历史未能保存，退出窗口时将重试：${error.message || error}`));
+}
+function recallLocalCommand(value, direction) {
+  const entries = localHistory.entries;
+  // Text the user changed since the last recall restarts the walk at the newest
+  // entry, so editing a recalled command never silently jumps further back.
+  if (value !== localRecalled) localHistoryIndex = entries.length;
+  localHistoryIndex = Math.max(0, Math.min(entries.length, localHistoryIndex + direction));
+  localRecalled = entries[localHistoryIndex] || '';
+  return localRecalled;
 }
 async function copyText(text) { if (native()?.WriteClipboard) await native().WriteClipboard(text); else await navigator.clipboard.writeText(text); }
 async function pasteClipboard(state) {

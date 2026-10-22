@@ -31,7 +31,7 @@ function createWindow() {
   vm.runInContext(`
     const window={CLOUDSHELL:{uiPreferences:{}},addEventListener(){},focus(){},DengWindowTransfers:{changed(){}},DengWindowPreview:{arrive(){}}};
     const localStorage={length:0}, appearanceSave=Promise.resolve(), persistAppearance=async value=>patch(value), toast=notice, native=()=>null;
-    ${read('portable-preferences.js')}
+    ${read('js/portable-preferences.js')}
     const readSaved=(key,fallback)=>window.DengPortablePreferences.read(key,fallback);
     const sessions=new Map();let nextSessionOrder=0,activeID=null,historySession=null;const $=()=>({open:false});
     const dropSessionView=id=>sessions.delete(id),createTerminal=state=>{state.ready=true;state.connected=true},activate=id=>{activeID=id},setDrawer=()=>{},navigate=async()=>{},pollStats=()=>{},pollLatency=()=>{};
