@@ -44,8 +44,10 @@
 .titlebar .session-bar { height:auto; min-height:42px; align-items:flex-start; padding:4px 0; }
 .session-bar > :is(.connection-button,.add-session,#toggle-monitor) { margin-top:2px; }
 .titlebar .window-controls { margin-top:1px; }
-.session-tabs { flex:1; display:flex; flex-wrap:nowrap; align-items:center; height:35px; min-height:35px; max-height:35px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
-.session-tab-tools { display:flex; align-items:center; gap:2px; flex:none; }
+.session-tabs { flex:0 1 auto; display:flex; flex-wrap:nowrap; align-items:center; height:35px; min-height:35px; max-height:35px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; }
+.session-tabs:empty { display:none; }
+.session-row > .add-session { flex:none; width:26px; height:30px; }
+.session-tab-tools { display:flex; align-items:center; gap:2px; flex:none; margin-left:auto; }
 .session-tab-tools > .icon-button { flex:none; width:26px; height:30px; }
 .session-tab-tools > .icon-button svg { width:15px; height:15px; }
 #session-tabs-previous svg { transform:rotate(180deg); }

@@ -13,6 +13,16 @@ const child = spawn(chrome, ['--headless=new', '--no-sandbox', '--disable-dev-sh
 let browser, page;
 const errors = [], checks = [];
 const settle = () => page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+async function assertPlusFollowsLastTab() {
+  await settle();
+  const metrics = await page.evaluate(() => {
+    const tabs = $('#session-tabs');
+    const anchor = tabs.lastElementChild || $('#connection-button');
+    const plus = $('#add-session').getBoundingClientRect(), previous = anchor.getBoundingClientRect();
+    return { gap: plus.left - previous.right, top: plus.top, previousTop: previous.top };
+  });
+  assert(metrics.gap >= 0 && metrics.gap <= 8 && Math.abs(metrics.top - metrics.previousTop) < 5, JSON.stringify(metrics));
+}
 try {
   let endpoint;
   for (let i = 0; i < 100; i++) {
@@ -26,9 +36,60 @@ try {
   await page.goto(fixture.url, { waitUntil: 'networkidle0' });
   await page.waitForFunction(() => window.DengStartTabs && window.DengQuickConnect);
   await page.evaluate(() => reflectWindowState({ frameless: true }));
+  assert.equal(await page.$eval('#about-button', el => el.nextElementSibling.id), 'settings-button');
+  assert.equal(await page.$eval('#settings-button', el => el.nextElementSibling.id), 'github-button');
+  assert.equal(await page.$eval('#settings-button use', el => el.getAttribute('href')), '#i-settings');
+  await page.click('#settings-button');
+  await page.waitForSelector('#settings-menu:not([hidden])');
+  assert.equal(await page.$eval('#about-dialog', el => el.open), false);
+  await page.click('#about-button');
+  await page.waitForSelector('#about-dialog[open]');
+  assert.equal(await page.$eval('#settings-menu', el => el.hidden), true);
+  assert.deepEqual(await page.evaluate(() => [$('#about-version').textContent, $('#about-build').textContent]), await page.evaluate(() => [CLOUDSHELL.version, String(CLOUDSHELL.build)]));
+  if (process.env.DENGSHELL_ABOUT_SCREENSHOT) await page.screenshot({ path: process.env.DENGSHELL_ABOUT_SCREENSHOT });
+  await page.click('#close-about');
+  assert.equal(await page.$eval('#about-dialog', el => el.open), false);
+  assert.equal(await page.evaluate(() => document.activeElement.id), 'about-button');
+  await page.click('#about-button');
+  await page.keyboard.press('Escape');
+  assert.equal(await page.$eval('#about-dialog', el => el.open), false);
+  await page.click('#settings-button');
+  await page.click('#manage-keys');
+  await page.waitForSelector('#keys-dialog[open]');
+  await page.click('#close-keys');
+  checks.push('The gear next to the logo opens settings; the logo shows actual version/build, closes with X or Escape, and restores focus');
+  assert.equal(await page.$('#about-software'), null);
+  await page.evaluate(() => { window.qaOldOpen = window.open; window.qaOpened = []; window.open = (...args) => { qaOpened.push(args); return null; }; });
+  try {
+    await page.click('#github-button');
+    assert.deepEqual(await page.evaluate(() => qaOpened), [['https://github.com/yuhongwei380/DevShell', '_blank', 'noopener,noreferrer']]);
+  } finally { await page.evaluate(() => { window.open = qaOldOpen; delete window.qaOldOpen; }); }
+  await page.evaluate(() => { window.qaOldGo = window.go; window.qaNativeRepository = 0; window.go = { desktop: { Desktop: { OpenAbout: async () => { qaNativeRepository++; } } } }; });
+  try {
+    await page.click('#github-button');
+    assert.equal(await page.evaluate(() => qaNativeRepository), 1);
+  } finally { await page.evaluate(() => { window.go = qaOldGo; delete window.qaOldGo; }); }
+  await page.setOfflineMode(true);
+  try {
+    await page.click('#settings-button');
+    await page.click('#release-notes-button');
+    await page.waitForSelector('#release-notes-dialog[open]');
+    assert.equal(await page.$eval('#settings-menu', el => el.hidden), true);
+    assert.equal(await page.$eval('#release-notes-content h1', el => el.textContent), await page.evaluate(() => CLOUDSHELL.releaseNotes.split(/\r?\n/)[0].replace(/^#\s*/, '')));
+    assert.equal(await page.$eval('#release-notes-version', el => el.textContent), await page.evaluate(() => `当前版本 ${CLOUDSHELL.version} · 构建 ${CLOUDSHELL.build}`));
+    if (process.env.DENGSHELL_NOTES_SCREENSHOT) await page.screenshot({ path: process.env.DENGSHELL_NOTES_SCREENSHOT });
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => document.activeElement.id === 'settings-button');
+    await page.click('#settings-button'); await page.click('#release-notes-button');
+    await page.click('#close-release-notes');
+    assert.equal(await page.$eval('#release-notes-dialog', el => el.open), false);
+  } finally { await page.setOfflineMode(false); }
+  checks.push('Settings shows bundled current-version release notes offline and removes About software; GitHub opens the project through browser and native handlers');
   assert.equal(await page.$eval('#add-session', el => el.title), '新选项卡');
+  await assertPlusFollowsLastTab();
   await page.click('#add-session');
   await page.waitForSelector('.start-tab.active');
+  await assertPlusFollowsLastTab();
   assert.equal(await page.$eval('#welcome-state', el => el.hidden), false);
   assert.equal(await page.$eval('#quick-connect-dialog', el => el.open), false);
   assert.equal(await page.evaluate(() => sessions.size), 0);
@@ -36,6 +97,22 @@ try {
   await page.waitForSelector('#quick-connect-dialog[open]');
   await page.click('#quick-connect-dialog [data-close]');
   checks.push('The right-side + creates a frontend start page; quick connect remains available inside that page');
+  await page.click('#add-session');
+  await page.click('#add-session');
+  assert.equal(await page.$eval('.start-tab.active .session-tab-label', el => el.textContent), '新选项卡 3');
+  await page.click('.start-tab [aria-label="关闭 新选项卡 2"]');
+  await page.click('.start-tab [aria-label="关闭 新选项卡 3"]');
+  await page.click('#add-session');
+  assert.equal(await page.$eval('.start-tab.active .session-tab-label', el => el.textContent), '新选项卡 2');
+  // Closing a lower number must not reuse a number still open in another tab.
+  await page.click('.start-tab [aria-label="关闭 新选项卡 1"]');
+  await page.click('#add-session');
+  assert.deepEqual(await page.$$eval('.start-tab .session-tab-label', els => els.map(el => el.textContent)), ['新选项卡 2', '新选项卡 3']);
+  await page.click('.start-tab [aria-label="关闭 新选项卡 2"]');
+  await page.click('.start-tab [aria-label="关闭 新选项卡 3"]');
+  await page.click('#add-session');
+  assert.equal(await page.$eval('.start-tab.active .session-tab-label', el => el.textContent), '新选项卡 1');
+  checks.push('Closing tabs 2 and 3 lets the next start page reuse 2; live numbers never collide and closing all resets numbering to 1');
   // Create a real terminal view with a fake transport, never an SSH connection.
   await page.evaluate(() => {
     const profile = { id: 'tabs-live-profile', name: '保留的 SSH', host: 'example.invalid', user: 'qa', port: 22 };
@@ -47,6 +124,8 @@ try {
     window.qaSocketCloses = 0; state.ws = { readyState: WebSocket.OPEN, send() {}, close() { qaSocketCloses++; } };
     activate(state.id);
   });
+  await assertPlusFollowsLastTab();
+  checks.push('The + follows server management when empty and the last tab as start pages or connected sessions are added');
   await page.click('#add-session'); await settle();
   assert.equal(await page.evaluate(() => sessions.get('tabs-live').connected && sessions.get('tabs-live').host.hidden), true);
   assert.equal(await page.evaluate(() => qaSocketCloses), 0);
@@ -97,9 +176,10 @@ try {
     const metrics = await page.evaluate(() => {
       const plus = $('#add-session').getBoundingClientRect(), tabs = $('#session-tabs').getBoundingClientRect();
       const hit = document.elementFromPoint(plus.x + plus.width / 2, plus.y + plus.height / 2);
-      return { left: plus.left, right: plus.right, tabsRight: tabs.right, visible: !!hit?.closest('#add-session'), rows: new Set([...$('#session-tabs').children].map(el => el.offsetTop)).size };
+      const brandVisible = ['about-button', 'settings-button', 'github-button'].every(id => { const r = document.getElementById(id).getBoundingClientRect(); return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)?.closest('#' + id); });
+      return { left: plus.left, right: plus.right, tabsRight: tabs.right, visible: !!hit?.closest('#add-session'), brandVisible, rows: new Set([...$('#session-tabs').children].map(el => el.offsetTop)).size };
     });
-    assert(metrics.visible && metrics.right <= width + 1 && metrics.left >= metrics.tabsRight - 1 && metrics.rows === 1, JSON.stringify({width, scale, metrics}));
+    assert(metrics.visible && metrics.brandVisible && metrics.right <= width + 1 && metrics.left >= metrics.tabsRight - 1 && metrics.rows === 1, JSON.stringify({width, scale, metrics}));
     await page.click('#session-tabs-list');
     assert.equal(await page.$eval('#session-tabs-menu', el => { const r = el.getBoundingClientRect(); return r.left >= 0 && r.right <= innerWidth + 1 && r.bottom <= innerHeight + 1; }), true);
     await page.keyboard.press('Escape');

@@ -1,6 +1,8 @@
 package app
 
 import (
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -52,6 +54,20 @@ func TestBootstrapRequiresCapabilityAndRejectsOpaqueOrigins(t *testing.T) {
 			}
 			if test.want == 200 && (!strings.Contains(string(data), a.Token()) || response.Header.Get("Referrer-Policy") != "no-referrer") {
 				t.Fatal("authorized bootstrap unavailable or referrer policy missing")
+			}
+			if test.want == 200 {
+				var boot struct {
+					Version      string `json:"version"`
+					Build        uint64 `json:"build"`
+					ReleaseNotes string `json:"releaseNotes"`
+				}
+				payload := strings.TrimSuffix(strings.TrimPrefix(string(data), "window.CLOUDSHELL = "), ";")
+				if err := json.Unmarshal([]byte(payload), &boot); err != nil {
+					t.Fatal(err)
+				}
+				if boot.Version != ApplicationVersion || boot.Build != ApplicationBuild || !strings.Contains(boot.ReleaseNotes, ApplicationVersion) || !strings.Contains(boot.ReleaseNotes, fmt.Sprint(ApplicationBuild)) {
+					t.Fatal("bootstrap must ship release notes for the current version and build")
+				}
 			}
 		})
 	}

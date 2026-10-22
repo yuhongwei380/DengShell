@@ -1,10 +1,11 @@
 /* Keep settings and theme reachable while the session rows live in the
    terminal column and the sidebar stretches to the top. */
 .titlebar { grid-template-columns:var(--sidebar-width) var(--pane-gap) minmax(0,1fr); }
-.titlebar .brand { display:grid; width:100%; grid-template-columns:28px auto repeat(2,28px) minmax(28px,1fr); grid-column:1; grid-row:1; align-items:center; align-self:start; margin-top:7px; gap:14px; }
+.titlebar .brand { display:grid; width:100%; grid-template-columns:repeat(3,28px) minmax(0,1fr) repeat(2,28px); grid-column:1; grid-row:1; align-items:center; align-self:start; margin-top:7px; gap:8px; }
 .titlebar .brand > .icon-button { width:28px; height:28px; margin:0; border-radius:9px; }
-.titlebar .brand #settings-button { background:transparent; }
-.titlebar .brand #settings-button:is(:hover,:focus-visible,[aria-expanded="true"]) { background:var(--surface-hover,#e6edf2); box-shadow:0 0 0 2px var(--border,#dbe5ee); }
+.titlebar .brand :is(#about-button,#settings-button,#github-button) { background:transparent; }
+.titlebar .brand :is(#about-button,#settings-button,#github-button):is(:hover,:focus-visible,[aria-expanded="true"]) { background:var(--surface-hover,#e6edf2); box-shadow:0 0 0 2px var(--border,#dbe5ee); }
+.titlebar .app-version { min-width:0; overflow:hidden; text-overflow:ellipsis; }
 .titlebar .brand-logo { width:26px; height:26px; pointer-events:none; }
 [data-narrow="true"] .titlebar .brand .header-pill { margin:0!important; }
 /* Window buttons sit in the top-right corner with a stronger, visible pill. */
@@ -16,7 +17,7 @@
 [data-monitor-side="right"]:not([data-narrow="true"]) .titlebar .window-controls { grid-column:3; }
 [data-monitor-side="right"]:not([data-narrow="true"]) .titlebar .pinned-bar { grid-column:1; }
 [data-narrow="true"] .titlebar { display:grid; grid-template-columns:minmax(0,1fr); gap:0; height:auto; min-height:42px; padding-top:4px; }
-[data-narrow="true"] .titlebar .brand { width:max-content; grid-template-columns:28px auto repeat(2,28px); margin-bottom:3px; }
+[data-narrow="true"] .titlebar .brand { width:max-content; grid-template-columns:repeat(3,28px) auto repeat(2,28px); margin-bottom:3px; }
 [data-narrow="true"] .titlebar .window-controls { grid-column:1; justify-self:end; }
 [data-narrow="true"] .titlebar .pinned-bar { grid-column:1; grid-row:2; justify-self:start; margin-bottom:4px; }
 

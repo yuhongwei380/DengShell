@@ -61,7 +61,7 @@
 .text-editor-search-status,.text-editor-line-status{font-size:11px;color:var(--muted)}
 .text-editor-search-row>button:last-child,.text-editor-goto>button:last-child{margin-left:auto}
 .text-editor-panel[hidden],.text-editor-search[hidden],.text-editor-goto[hidden],.text-editor-search-row[hidden]{display:none}
-.file-permissions-dialog{width:440px}.file-permissions-dialog p{overflow-wrap:anywhere}.permission-bits{display:grid;gap:8px;margin:20px 0}.permission-bits>div{display:flex;align-items:center;justify-content:space-between;gap:8px}.permission-bits>div>span{min-width:65px;font-size:12px}.permission-bits label{font-size:12px;margin:0}.settings-about{margin-top:8px;border-top:1px solid var(--border)!important;color:var(--muted)!important}
+.file-permissions-dialog{width:440px}.file-permissions-dialog p{overflow-wrap:anywhere}.permission-bits{display:grid;gap:8px;margin:20px 0}.permission-bits>div{display:flex;align-items:center;justify-content:space-between;gap:8px}.permission-bits>div>span{min-width:65px;font-size:12px}.permission-bits label{font-size:12px;margin:0}
 @media(max-width:700px){.text-editor-dialog{padding:8px}.text-editor-tab{max-width:230px}.text-editor-toolbar{gap:4px}.text-editor-dialog .upload-button,.text-editor-dialog summary,.text-editor-dialog .primary-button{padding:4px 6px}.text-editor-footer>span{flex-basis:50%}}
 
 .file-context-menu button.file-context-danger{color:#ad6d77}[data-theme=dark] .file-context-menu button.file-context-danger{color:#d9a0aa}

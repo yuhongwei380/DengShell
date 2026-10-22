@@ -878,10 +878,8 @@ function renderMonitor(stats) {
   // The backend filters virtual volumes and deduplicates filesystem aliases.
   const disks = stats?.disks || [];
   const diskSpace = disks.reduce((sum, disk) => ({ used: sum.used + disk.used, available: sum.available + disk.available, total: sum.total + disk.total }), { used: 0, available: 0, total: 0 });
-  $('#disk-used').textContent = disks.length ? prettySize(diskSpace.used) : '—';
-  $('#disk-available').textContent = disks.length ? prettySize(diskSpace.available) : '—';
-  $('#disk-total').textContent = disks.length ? prettySize(diskSpace.total) : '—';
-  $('.disk-summary').title = disks.length ? `文件系统合计（${disks.length} 个）：${disks.slice(0, 12).map(disk => disk.path).join('、')}${disks.length > 12 ? '…' : ''}\n可用空间为文件系统报告值；不含 SWAP、未挂载空间和重复挂载` : '尚无文件系统容量数据';
+  meter('#disk-meter', diskSpace.total ? diskSpace.used / diskSpace.total * 100 : 0, diskSpace.total ? `${prettySize(diskSpace.used)} / ${prettySize(diskSpace.total)}` : '—', diskSpace.total > 0);
+  $('#disk-meter').title = disks.length ? `文件系统合计（${disks.length} 个）：${disks.slice(0, 12).map(disk => disk.path).join('、')}${disks.length > 12 ? '…' : ''}\n已用 ${prettySize(diskSpace.used)} / 总计 ${prettySize(diskSpace.total)}，可用 ${prettySize(diskSpace.available)}\n容量约每 30 秒更新；不含 SWAP、未挂载空间和重复挂载` : '尚无文件系统容量数据';
   $('#disk-read').textContent = stats?.sampleReady ? prettySize(stats.diskRead) + '/s' : '—'; $('#disk-write').textContent = stats?.sampleReady ? prettySize(stats.diskWrite) + '/s' : '—';
   renderNetwork(stats);
   renderServerAddresses(stats);

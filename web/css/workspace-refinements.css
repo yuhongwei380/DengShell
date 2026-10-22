@@ -25,7 +25,7 @@
 #network-chart:hover,#network-chart:focus-visible { background:#789bac13; }
 .ping-detail { font-size:10px; color:var(--muted); margin-top:6px; line-height:1.5; }
 .disk-section { display:flex; flex-direction:column; flex:0 0 auto; min-height:0; overflow:hidden; }
-.disk-io { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:10px; padding-top:0; }
+.disk-io { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:7px; margin-top:0; padding-top:0; }
 .disk-readout { display:flex; align-items:center; justify-content:space-between; gap:4px; padding:7px 8px; border-radius:9px; min-width:0; }
 .disk-readout span { font-size:10px; font-weight:600; letter-spacing:.1px; }
 .disk-readout strong { font-size:11px; font-weight:650; font-variant-numeric:tabular-nums; white-space:nowrap; }
@@ -67,7 +67,6 @@
 [data-narrow="true"] .diagnostics-toolbar { gap:6px; }
 [data-narrow="true"] .diagnostics-footer { flex-wrap:wrap; }
 [data-short="true"] .disk-readout { padding:6px 7px; gap:4px; }
-[data-short="true"] .disk-io { margin-top:8px; }
 .terminal-command-bar textarea { resize:none; width:100%; min-width:0; min-height:46px; max-height:140px; border:0; background:transparent; color:#dae7ee; font:13px/20px var(--terminal-family,monospace); padding:13px 0; scrollbar-width:thin; }
 .terminal-command-bar textarea::placeholder { color:#809aa9; }
 /* Single-line input — empty or typed — sits vertically centered in the tall

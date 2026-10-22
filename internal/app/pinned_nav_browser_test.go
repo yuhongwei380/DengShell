@@ -19,6 +19,10 @@ func TestSessionNavigationBrowser(t *testing.T) {
 	runIsolatedNavigationBrowser(t, "test-session-navigation-browser.mjs")
 }
 
+func TestMonitorBrowser(t *testing.T) {
+	runIsolatedNavigationBrowser(t, "test-monitor-browser.mjs")
+}
+
 func runIsolatedNavigationBrowser(t *testing.T, scriptName string) {
 	t.Helper()
 	module, chrome := os.Getenv("DENGSHELL_PUPPETEER"), os.Getenv("CHROME_BIN")

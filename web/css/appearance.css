@@ -6,6 +6,20 @@ body { transform-origin:0 0; }
 .session-bar { gap:5px; min-width:0; }
 .session-tabs { min-width:0; }
 #settings-button { flex-shrink:0; color:var(--muted); }
+#about-dialog { width:360px; }
+.about-versions { display:grid; grid-template-columns:auto minmax(0,1fr); gap:14px 24px; margin:20px 0 4px; font-size:13px; user-select:text; }
+.about-versions dt { color:var(--muted); }
+.about-versions dd { margin:0; overflow-wrap:anywhere; color:var(--text); }
+#release-notes-dialog { width:min(640px,calc(var(--view-width,100vw) - 32px)); max-height:calc(var(--view-height,100dvh) - 32px); }
+#release-notes-dialog[open] { display:flex; flex-direction:column; }
+#release-notes-dialog .dialog-heading { flex:none; }
+#release-notes-version { margin:6px 0 0; }
+#release-notes-content { min-height:0; overflow:auto; overflow-wrap:anywhere; font-size:13px; line-height:1.8; user-select:text; }
+#release-notes-content h1 { font-size:17px; margin:0 0 16px; }
+#release-notes-content :is(h2,h3) { font-size:14px; margin:16px 0 8px; }
+#release-notes-content p { font-size:13px; color:var(--text); margin:10px 0; }
+#release-notes-content :is(ul,ol) { padding-left:22px; }
+#release-notes-content a { color:var(--accent); }
 .window-controls { display:flex; gap:2px; margin-left:4px; --wails-draggable:no-drag; }
 .window-controls button { display:grid; place-items:center; width:34px; height:28px; color:var(--muted); border-radius:8px; }
 .window-controls svg { width:14px; height:14px; }

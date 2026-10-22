@@ -18,13 +18,13 @@ try {
    await chooseAppearance({onboardingCompleted:true,uiScale:1});
    document.documentElement.classList.add('frameless');document.querySelector('#window-controls').hidden=false;
  });
- assert.deepEqual(await page.$$eval('.brand button',bs=>bs.map(b=>b.id)),['settings-button','theme-toggle','security-lock-button']);
+ assert.deepEqual(await page.$$eval('.brand button',bs=>bs.map(b=>b.id)),['about-button','settings-button','github-button','theme-toggle','security-lock-button']);
  assert.equal(await page.$('.session-bar #settings-button'),null);
  const initialTheme=await page.evaluate(()=>document.documentElement.dataset.theme);
  await page.waitForFunction(()=>!document.documentElement.dataset.lightSwitch);await page.click('#theme-toggle');await page.waitForFunction(t=>document.documentElement.dataset.theme!==t&&!document.documentElement.dataset.lightSwitch,{},initialTheme);
  await page.click('#settings-button');await page.waitForSelector('#settings-menu:not([hidden])');
  assert.equal(await page.$eval('#settings-button',e=>e.getAttribute('aria-expanded')),'true');
- await page.keyboard.press('End');assert.equal(await page.evaluate(()=>document.activeElement.id),'about-software');
+ await page.keyboard.press('End');assert.equal(await page.evaluate(()=>document.activeElement.id),'check-updates');
  await page.keyboard.press('Escape');assert.equal(await page.evaluate(()=>document.activeElement.id),'settings-button');
  assert.equal(await page.$eval('#settings-menu',e=>e.hidden),true);
  for(const [entry,dialog,close] of [['#manage-shell-fonts','#appearance-dialog','#close-appearance'],['#manage-ui-appearance','#ui-appearance-dialog','#close-ui-appearance'],['#help-button','#help-manual-dialog','#help-manual-done']]){

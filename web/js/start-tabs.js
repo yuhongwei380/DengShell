@@ -2,7 +2,6 @@
 // Start pages are frontend tabs, never fake backend sessions to poll or close.
 window.DengStartTabs = (() => {
   const pages = new Map();
-  let sequence = 0;
   function activatePage(id) {
     if (id !== null && !pages.has(id)) return;
     if (activeID !== id) window.DengLocalPrompt?.reset();
@@ -20,7 +19,9 @@ window.DengStartTabs = (() => {
     });
   }
   function create() {
-    const page = { id: `start:${crypto.randomUUID()}`, name: `新选项卡 ${++sequence}`, tabOrder: nextSessionOrder++ };
+    let number = 1;
+    for (const page of pages.values()) number = Math.max(number, page.number + 1);
+    const page = { id: `start:${crypto.randomUUID()}`, number, name: `新选项卡 ${number}`, tabOrder: nextSessionOrder++ };
     pages.set(page.id, page);
     activatePage(page.id);
     return page;

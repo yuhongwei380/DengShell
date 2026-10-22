@@ -602,6 +602,29 @@ function initializeAppearance() {
   $('#toggle-monitor').onclick = () => { const open = document.documentElement.dataset.monitorOpen !== 'true'; document.documentElement.dataset.monitorOpen = String(open); $('#monitor-backdrop').hidden = !open; $('#toggle-monitor').setAttribute('aria-expanded', String(open)); };
   $('#monitor-backdrop').onclick = () => { document.documentElement.dataset.monitorOpen = 'false'; $('#monitor-backdrop').hidden = true; $('#toggle-monitor').setAttribute('aria-expanded', 'false'); };
   $('#settings-button').onclick = () => setSettingsMenu($('#settings-menu').hidden);
+  $('#about-button').onclick = () => {
+    setSettingsMenu(false);
+    $('#about-version').textContent = window.CLOUDSHELL?.version || '—';
+    $('#about-build').textContent = String(window.CLOUDSHELL?.build ?? '—');
+    if (!$('#about-dialog').open) $('#about-dialog').showModal();
+  };
+  $('#close-about').onclick = () => $('#about-dialog').close();
+  $('#github-button').onclick = safe(async () => {
+    setSettingsMenu(false);
+    if (native()?.OpenAbout) await native().OpenAbout();
+    else window.open('https://github.com/yuhongwei380/DevShell', '_blank', 'noopener,noreferrer');
+  });
+  $('#release-notes-button').onclick = () => {
+    setSettingsMenu(false);
+    const boot = window.CLOUDSHELL;
+    $('#release-notes-version').textContent = `当前版本 ${boot?.version || '—'} · 构建 ${boot?.build ?? '—'}`;
+    const notes = boot?.releaseNotes || '当前版本尚未提供更新说明。';
+    if (window.markdownit) $('#release-notes-content').innerHTML = window.markdownit({ html: false, linkify: false, breaks: true }).render(notes);
+    else $('#release-notes-content').textContent = notes;
+    if (!$('#release-notes-dialog').open) $('#release-notes-dialog').showModal();
+  };
+  $('#close-release-notes').onclick = () => $('#release-notes-dialog').close();
+  $('#release-notes-dialog').addEventListener('close', () => $('#settings-button').focus());
   document.addEventListener('click', event => { if (!event.target.closest('#settings-menu, #settings-button')) setSettingsMenu(false); });
   $('#settings-menu').addEventListener('click', event => { if (event.target.closest('button')) setSettingsMenu(false); });
   $('#settings-menu').addEventListener('keydown', event => {
