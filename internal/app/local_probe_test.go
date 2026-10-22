@@ -2,14 +2,18 @@ package app
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
+	"time"
 )
 
 func decodeProbe(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
@@ -19,6 +23,41 @@ func decodeProbe(t *testing.T, w *httptest.ResponseRecorder) map[string]any {
 		t.Fatalf("decode probe response: %v (%s)", err, w.Body.String())
 	}
 	return payload
+}
+
+// The route-tracing deadline must come from the tool's own hop budget: a full
+// 20-hop trace of a filtered path is legitimate and must not be cut short.
+func TestTracerouteDeadlineCoversTheToolHopBudget(t *testing.T) {
+	name, args, deadline := tracerouteProbeCommand("192.0.2.1")
+	wantName, wantWait, hopFlag := "traceroute", traceroutePosixWait, "-m"
+	if runtime.GOOS == "windows" {
+		wantName, wantWait, hopFlag = "tracert", tracerouteWindowsWait, "-h"
+	}
+	if name != wantName {
+		t.Fatalf("probe tool = %s, want %s", name, wantName)
+	}
+	if len(args) == 0 || args[len(args)-1] != "192.0.2.1" {
+		t.Fatalf("the validated host must stay the final argument: %v", args)
+	}
+	hops := ""
+	for index, argument := range args {
+		if argument == hopFlag && index+1 < len(args) {
+			hops = args[index+1]
+		}
+	}
+	if hops != strconv.Itoa(tracerouteMaximumHops) {
+		t.Fatalf("%s %q must carry the hop limit the deadline derives from", name, args)
+	}
+	want := time.Duration(tracerouteMaximumHops*tracerouteProbesPerHop)*wantWait + tracerouteProbeSlack
+	if deadline != want {
+		t.Fatalf("deadline = %v, want %v (%d hops x %d probes x %v plus slack)", deadline, want, tracerouteMaximumHops, tracerouteProbesPerHop, wantWait)
+	}
+	if deadline <= 45*time.Second {
+		t.Fatalf("deadline %v still cuts off a full-length trace", deadline)
+	}
+	if note := tracerouteDeadlineNote(deadline); !strings.Contains(note, fmt.Sprintf("%d 秒", int(deadline/time.Second))) {
+		t.Fatalf("the stop note must state the real limit: %q", note)
+	}
 }
 
 func TestLocalProbeRejectsInvalidTargets(t *testing.T) {
@@ -155,6 +194,52 @@ func TestLocalProbeCurlFetchesLoopback(t *testing.T) {
 	headOutput, _ := head["output"].(string)
 	if !strings.Contains(headOutput, "200") || strings.Contains(headOutput, "hello from probe") {
 		t.Fatalf("HEAD curl should show headers only: %q", headOutput)
+	}
+}
+
+// The streamed stop note must describe the deadline actually in force, and a
+// trace that finishes inside its budget must not be described as cut short.
+func TestTracerouteStreamNoteMatchesItsDeadline(t *testing.T) {
+	probe, args := "", []string(nil)
+	switch runtime.GOOS {
+	case "windows":
+		probe, args = "cmd.exe", []string{"/c", "ping -n 4 127.0.0.1 >nul & echo hop-late"}
+	case "darwin", "linux":
+		probe, args = "/bin/sh", []string{"-c", "sleep 2; echo hop-late"}
+	default:
+		t.Skipf("no portable slow probe tool on %s", runtime.GOOS)
+	}
+	path, err := exec.LookPath(probe)
+	if err != nil {
+		t.Skipf("%s not installed", probe)
+	}
+	a, err := New(t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer a.Close()
+	streamProbe := func(deadline time.Duration) string {
+		t.Helper()
+		ctx, cancel := context.WithTimeout(context.Background(), deadline)
+		defer cancel()
+		w := httptest.NewRecorder()
+		a.runTracerouteStream(ctx, w, w, probe, path, args, deadline)
+		var output strings.Builder
+		for _, line := range strings.Split(w.Body.String(), "\n") {
+			var frame map[string]any
+			if json.Unmarshal([]byte(strings.TrimSpace(line)), &frame) == nil {
+				if chunk, ok := frame["c"].(string); ok {
+					output.WriteString(chunk)
+				}
+			}
+		}
+		return output.String()
+	}
+	if output := streamProbe(time.Minute); !strings.Contains(output, "hop-late") || strings.Contains(output, "上限") {
+		t.Fatalf("a trace inside its budget was cut short: %q", output)
+	}
+	if output := streamProbe(time.Second); !strings.Contains(output, "1 秒上限") || strings.Contains(output, "45 秒") {
+		t.Fatalf("the stop note must state the live deadline: %q", output)
 	}
 }
 

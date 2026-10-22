@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -201,6 +202,39 @@ func (t *probeTTY) pump(feed io.Writer) <-chan struct{} {
 func (t *probeTTY) closeSlave()  { _ = t.slave.Close() }
 func (t *probeTTY) closeMaster() { _ = t.master.Close() }
 
+// The system route-tracing tools already bound themselves: they stop after a
+// fixed hop count, probing each hop a few times and waiting for each reply. A
+// flat wall-clock cap cut off legitimate full-length traces (a filtered 20-hop
+// path needs about two minutes), so the deadline is derived from exactly the
+// hop and wait values handed to the tool, plus slack for name resolution and
+// process startup. Ctrl+C still cancels immediately.
+const (
+	tracerouteMaximumHops  = 20
+	tracerouteProbesPerHop = 3
+	tracerouteProbeSlack   = 20 * time.Second
+	traceroutePosixWait    = 2 * time.Second
+	tracerouteWindowsWait  = 1 * time.Second
+)
+
+// tracerouteProbeCommand returns the fixed invocation and the matching deadline.
+func tracerouteProbeCommand(host string) (string, []string, time.Duration) {
+	hops := strconv.Itoa(tracerouteMaximumHops)
+	if runtime.GOOS == "windows" {
+		return "tracert", []string{"-d", "-h", hops, "-w", strconv.Itoa(int(tracerouteWindowsWait / time.Millisecond)), host}, tracerouteDeadline(tracerouteWindowsWait)
+	}
+	return "traceroute", []string{"-n", "-m", hops, "-w", strconv.Itoa(int(traceroutePosixWait / time.Second)), host}, tracerouteDeadline(traceroutePosixWait)
+}
+
+// tracerouteDeadline is the worst case in which every hop answers nothing, so
+// every probe waits the full timeout.
+func tracerouteDeadline(probeWait time.Duration) time.Duration {
+	return time.Duration(tracerouteMaximumHops*tracerouteProbesPerHop)*probeWait + tracerouteProbeSlack
+}
+
+func tracerouteDeadlineNote(deadline time.Duration) string {
+	return fmt.Sprintf("\n（已达到 %d 秒上限，提前停止）", int(deadline/time.Second))
+}
+
 func (a *App) registerLocalProbeHTTP(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/local-probe/nslookup", func(w http.ResponseWriter, r *http.Request) {
 		host, ok := localProbeHost(w, r, "nslookup")
@@ -353,20 +387,17 @@ func (a *App) registerLocalProbeHTTP(mux *http.ServeMux) {
 			return
 		}
 		defer release()
-		name, args := "traceroute", []string{"-n", "-m", "20", "-w", "2", host}
-		if runtime.GOOS == "windows" {
-			name, args = "tracert", []string{"-d", "-h", "20", "-w", "1000", host}
-		}
+		name, args, deadline := tracerouteProbeCommand(host)
 		path, err := exec.LookPath(name)
 		if err != nil {
 			respond(w, nil, fmt.Errorf("本机未找到 %s 命令", name))
 			return
 		}
-		ctx, cancel := context.WithTimeout(r.Context(), 45*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), deadline)
 		defer cancel()
 		if r.Header.Get("X-DevShell-Probe-Stream") == "1" {
 			if flusher, canFlush := w.(http.Flusher); canFlush {
-				a.runTracerouteStream(ctx, w, flusher, name, path, args)
+				a.runTracerouteStream(ctx, w, flusher, name, path, args, deadline)
 				return
 			}
 		}
@@ -382,7 +413,7 @@ func (a *App) registerLocalProbeHTTP(mux *http.ServeMux) {
 			return
 		}
 		if ctx.Err() != nil {
-			output += "\n（已达到 45 秒上限，提前停止）"
+			output += tracerouteDeadlineNote(deadline)
 		}
 		writeJSON(w, map[string]any{"output": output, "ok": runErr == nil})
 	})
@@ -446,7 +477,7 @@ func (a *App) registerLocalProbeHTTP(mux *http.ServeMux) {
 // runTracerouteStream keeps the frontend informed hop by hop. A pty is used
 // where available so the tool line-buffers; otherwise plain pipes still work,
 // just with output arriving whenever the child flushes.
-func (a *App) runTracerouteStream(ctx context.Context, w http.ResponseWriter, flusher http.Flusher, name, path string, args []string) {
+func (a *App) runTracerouteStream(ctx context.Context, w http.ResponseWriter, flusher http.Flusher, name, path string, args []string, deadline time.Duration) {
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.WriteHeader(http.StatusOK)
 	stream := &probeStream{enc: json.NewEncoder(w), flusher: flusher}
@@ -486,7 +517,7 @@ func (a *App) runTracerouteStream(ctx context.Context, w http.ResponseWriter, fl
 	}
 	writer.flush()
 	if ctx.Err() != nil {
-		stream.chunk("\n（已达到 45 秒上限，提前停止）")
+		stream.chunk(tracerouteDeadlineNote(deadline))
 	}
 	stream.done(runErr == nil)
 }
