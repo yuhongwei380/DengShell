@@ -41,6 +41,34 @@ try {
   assert.deepEqual(result.batchMenu,['删除选中的 2 项','打包并下载 2 项','复制所选路径'],'多选的右键菜单不直接下载单个文件');
   assert.deepEqual(result.downloads,[{id:'menu-fake',path:'/srv/a.txt'}],'下载走单个文件的直接下载通道');
   assert.deepEqual(result.archives,[{id:'menu-fake',paths:['/srv/a.txt']}],'打包并下载仍是单独的通道');
+  // The lrzsz bridge has to be loaded by the page itself and reach the real
+  // upload / cancel globals, so the wiring cannot rot silently.
+  const bridge = await page.evaluate(async () => {
+    const state = { id: 'zmodem-fake', connected: true, ready: true, closed: false, serial: false, localOnly: false,
+      cwd: '/srv/app', terminalDirectory: '/srv/logs', sftpAvailable: true, shellIntegration: { atPrompt: false },
+      term: { writeln: line => { window.qaNotes = (window.qaNotes || []).concat(line); } } };
+    sessions.set(state.id, state); activeID = state.id;
+    const calls = {};
+    window.chooseUploads = async (target, directory) => { (calls.uploads ||= []).push([target.id, directory]); };
+    window.sendInput = (_state, data) => { (calls.sent ||= []).push(data); };
+    const realDownload = DengFileTools.downloadFile;
+    DengFileTools.downloadFile = async (_state, path) => { (calls.downloads ||= []).push(path); };
+    try {
+      window.DengZmodemBridge.noteCommand(state, 'sz -a b.txt');
+      window.DengZmodemBridge.observe(state, new TextEncoder().encode('\r\n**0800000021bf71c\r\n'));
+      await new Promise(resolve => setTimeout(resolve, 80));
+      window.DengZmodemBridge.noteCommand(state, 'rz');
+      window.DengZmodemBridge.observe(state, new TextEncoder().encode('\r\x08\x08B0800000021bf71c'));
+      await new Promise(resolve => setTimeout(resolve, 80));
+      return { typeofBridge: typeof window.DengZmodemBridge.observe, typeofChooser: typeof chooseUploads, calls, notes: window.qaNotes || [] };
+    } finally { DengFileTools.downloadFile = realDownload; }
+  });
+  assert.equal(bridge.typeofBridge, 'function'); assert.equal(bridge.typeofChooser, 'function');
+  assert.deepEqual(bridge.calls.downloads, ['/srv/logs/b.txt'], 'sz 通过 SFTP 下载终端目录里的同名文件');
+  assert.deepEqual(bridge.calls.uploads, [['zmodem-fake', '/srv/logs']], 'rz 走 SFTP 上传到终端目录');
+  assert.deepEqual(bridge.calls.sent, ['\x18\x18', '\x18\x18'], '两次握手各中止一次');
+  assert.equal(bridge.notes.length, 2);
+  assert.match(bridge.notes.join('\n'), /SFTP 下载[\s\S]*SFTP 上传/);
   assert.deepEqual(errors,[]);
-  console.log('PASS: 文件命令全部在右键菜单内（下载与打包并下载分开、目录只打包、多选批量），状态栏无操作按钮。');
+  console.log('PASS: 文件命令全部在右键菜单内（下载与打包并下载分开、目录只打包、多选批量），状态栏无操作按钮；rz / sz 在页面里桥接到 SFTP 上传与下载。');
 } finally { await browser.close(); }

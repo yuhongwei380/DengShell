@@ -75,7 +75,7 @@ function bindShellIntegration(state) {
     if (!integration.nonce || parts[2] !== integration.nonce) return true;
     switch (parts[1]) {
       case 'ready': integration.ready = true; integration.shell = parts[3] || integration.shell; if (typeof applyPendingFollow === 'function') applyPendingFollow(state); break;
-      case 'prompt': integration.atPrompt = true; break;
+      case 'prompt': integration.atPrompt = true; window.DengZmodemBridge?.clear(state); break;
       case 'busy': integration.atPrompt = false; break;
       case 'command':
       case 'cwd':
@@ -84,7 +84,7 @@ function bindShellIntegration(state) {
           const bytes = Uint8Array.from(atob(parts[3]), character => character.charCodeAt(0));
           const command = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
           if (command.length <= 16384 && !command.includes('\0')) {
-            if (parts[1] === 'command') recordCommand(state, command);
+            if (parts[1] === 'command') { recordCommand(state, command); window.DengZmodemBridge?.noteCommand(state, command); }
             else if (command.startsWith('/')) {
               state.terminalDirectory = command;
               if (state.follow && command !== state.cwd) navigate(command, state).catch(error => toast(error?.message || String(error)));

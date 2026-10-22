@@ -9,8 +9,10 @@ import (
 )
 
 // The right-click menu is the only place that offers file commands, and it keeps
-// direct download apart from the archive. This needs no SSH or SFTP fixture: the
-// page fabricates a session and stubs the desktop download bridge.
+// direct download apart from the archive. The same page also proves that the
+// lrzsz bridge (rz / sz) reaches the real upload and cancel globals. This needs
+// no SSH or SFTP fixture: the page fabricates a session and stubs the desktop
+// download bridge.
 // DENGSHELL_PUPPETEER points to puppeteer-core's ESM entry point.
 func TestFileMenuBrowser(t *testing.T) {
 	module := os.Getenv("DENGSHELL_PUPPETEER")

@@ -413,7 +413,7 @@ function createTerminal(state) {
     if (state.closed || !state.connected || sessions.get(state.id) !== state) return;
     if (event.data instanceof ArrayBuffer) {
       const firstOutput = !state.terminalOutputStarted; state.terminalOutputStarted = true;
-      terminal.write(new Uint8Array(event.data), () => { sendMessage(state, { type: 'ack' }); if (firstOutput && current() === state && state.connected) { pollStats(); pollLatency(); } });
+      const bytes = new Uint8Array(event.data); window.DengZmodemBridge?.observe(state, bytes); terminal.write(bytes, () => { sendMessage(state, { type: 'ack' }); if (firstOutput && current() === state && state.connected) { pollStats(); pollLatency(); } });
       return;
     }
     const message = JSON.parse(event.data);
@@ -999,7 +999,16 @@ function showPane(pane, persist = true) { workspaceInitialized = true; setWorksp
 $$('.file-tab').forEach(tab => { tab.onclick = () => showPane(tab.dataset.pane); });
 $('#choose-files').onclick = event => { const menu = $('#upload-menu'), rect = event.currentTarget.getBoundingClientRect(); menu.hidden = !menu.hidden; menu.style.left = `${Math.min(rect.left / effectiveScale, logicalWidth() - 155)}px`; menu.style.top = `${Math.min(rect.bottom / effectiveScale + 5, logicalHeight() - 90)}px`; };
 document.addEventListener('click', event => { if (!event.target.closest('#upload-menu, #choose-files')) $('#upload-menu').hidden = true; });
-$('#upload-files-option').onclick = safe(async () => { $('#upload-menu').hidden = true; if (native()) { const state = current(); const directory = state?.cwd; const paths = await native().ChooseUploads(); if (paths?.length) await uploadNative(paths, state, directory); } else $('#file-picker').click(); });
+$('#upload-files-option').onclick = safe(() => { $('#upload-menu').hidden = true; return chooseUploads(); });
+// Shared with the lrzsz bridge: choose local files and upload them to a given
+// remote directory. The browser fallback picker always targets the active
+// session, so a background session cannot silently receive the files.
+async function chooseUploads(state = current(), directory = state?.cwd) {
+ if (!state?.connected) return toast('请先连接服务器');
+ if (native()) { const paths = await native().ChooseUploads(); if (paths?.length) await uploadNative(paths, state, directory); }
+ else if (state === current()) { if (directory !== state.cwd && state.sftpAvailable !== false) { try { await navigate(directory, state); } catch {} } $('#file-picker').click(); }
+ else toast('请在该连接对应的窗口里用文件面板上传');
+}
 $('#upload-folder-option').onclick = safe(async () => { $('#upload-menu').hidden = true; if (native()) { const state = current(); const directory = state?.cwd; const path = await native().ChooseFolder(); if (path) await uploadNative([path], state, directory); } else $('#folder-picker').click(); });
 for (const id of ['file-picker', 'folder-picker']) $(`#${id}`).onchange = safe(async event => { const files = [...event.target.files]; event.target.value = ''; await queueFiles(files.map(file => ({ file, relativePath: file.webkitRelativePath || file.name }))); });
 let activeUploads = 0;
