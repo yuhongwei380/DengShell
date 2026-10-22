@@ -10,6 +10,9 @@ const appSource = readFileSync(new URL('../../web/js/app.js', import.meta.url), 
 const normalizePathSource = appSource.split('\n').find(line => line.startsWith('function normalizePath('));
 assert.ok(normalizePathSource, 'app.js normalizePath helper moved; update this test');
 
+const cancelRounds = 3;
+const can = '\x18\x18';
+
 function fixture(options = {}) {
   const sent = [], lines = [], notices = [], downloads = [], uploads = [];
   const state = {
@@ -19,7 +22,7 @@ function fixture(options = {}) {
     shellIntegration: { atPrompt: options.atPrompt ?? false },
   };
   const context = vm.createContext({
-    window: {}, console, TextDecoder, TextEncoder,
+    window: {}, console, TextDecoder, TextEncoder, setTimeout, clearTimeout,
     normalizePath: new Function(`return (${normalizePathSource})`)(),
     sendInput: (_state, data) => sent.push(data),
     toast: message => notices.push(message),
@@ -30,7 +33,9 @@ function fixture(options = {}) {
   vm.runInContext(bridgeSource, context);
   const bridge = context.window.DengZmodemBridge;
   const feed = text => bridge.observe(state, new TextEncoder().encode(text));
-  const settle = () => new Promise(resolve => setTimeout(resolve, 0));
+  // The cancel sequence is paced out before the transfer starts, so waiting has
+  // to outlast it.
+  const settle = (ms = 1200) => new Promise(resolve => setTimeout(resolve, ms));
   return { state, bridge, feed, settle, sent, lines, notices, downloads, uploads };
 }
 
@@ -56,20 +61,23 @@ const overstrike = '\r\x08\x08B0800000021bf71c';
   harness.feed(zmlink);
   await harness.settle();
   assert.deepEqual(harness.downloads, ['/srv/logs/b.txt', '/srv/logs/log one.txt']);
-  assert.deepEqual(harness.sent, ['\x18\x18'], 'the half-open handshake is cancelled once');
+  assert.ok(harness.sent.every(value => value === can), '只发送中止字节');
+  assert.equal(harness.sent.length, cancelRounds, '握手在开始传输前被反复中止');
   assert.equal(harness.lines.length, 1);
   assert.match(harness.lines[0], /SFTP 下载/);
-  // A repeated advertisement inside lrzsz's retry window must not re-download.
+  // lrzsz repeats the advertisement until it dies: a repeat may only poke the
+  // cancel sequence again, never open a second transfer or print a second note.
   harness.feed(zmlink);
   await harness.settle();
-  assert.equal(harness.downloads.length, 2);
-  assert.equal(harness.sent.length, 1);
+  assert.equal(harness.downloads.length, 2, '重试的广告不得重复下载');
+  assert.equal(harness.lines.length, 1, '重试的广告不得再提示一次');
+  assert.equal(harness.sent.length, cancelRounds + 1, '重试只补发一次中止序列');
   // But a fresh shell-confirmed command is a new attempt, not a retry.
   harness.bridge.noteCommand(harness.state, 'rz');
   harness.feed(overstrike);
   await harness.settle();
   assert.deepEqual(harness.uploads, [['qa-session', '/srv/logs']]);
-  assert.equal(harness.sent.length, 2);
+  assert.equal(harness.sent.length, cancelRounds * 2 + 1);
 }
 
 // rz uploads through the existing picker, into the directory the shell is in.
@@ -79,7 +87,7 @@ const overstrike = '\r\x08\x08B0800000021bf71c';
   harness.feed(overstrike);
   await harness.settle();
   assert.deepEqual(harness.uploads, [['qa-session', '/srv/logs']]);
-  assert.deepEqual(harness.sent, ['\x18\x18']);
+  assert.equal(harness.sent.length, cancelRounds);
   assert.match(harness.lines[0], /SFTP 上传，目标目录：\/srv\/logs/);
 }
 
@@ -90,7 +98,7 @@ const overstrike = '\r\x08\x08B0800000021bf71c';
   harness.feed('\r\n**8800000000000000\r\n');
   await harness.settle();
   assert.deepEqual(harness.uploads, []); assert.deepEqual(harness.downloads, []);
-  assert.deepEqual(harness.sent, ['\x18\x18']);
+  assert.equal(harness.sent.length, cancelRounds);
   assert.match(harness.lines[0], /不支持该协议/);
 }
 
@@ -101,15 +109,23 @@ const realRz = 'rz waiting to receive.**\x18B0100000023be50\r\x8a\x11**\x18B0100
 const realSz = 'rz\r**\x18B00000000000000\r\x8a\x11';
 
 // Without shell integration there is no command report, yet lrzsz's own text
-// names the direction: rz still becomes an SFTP upload.
+// names the direction: rz still becomes an SFTP upload. Its own retries must not
+// stack a second picker on top of the first one.
 {
   const harness = fixture();
   harness.state.shellIntegration = undefined;
   harness.feed(realRz);
   await harness.settle();
-  assert.deepEqual(harness.sent, ['\x18\x18'], 'the repeated advertisement is cancelled once');
+  assert.equal(harness.sent.length, cancelRounds, '中止序列在打开选择框前就发出');
   assert.deepEqual(harness.uploads, [['qa-session', '/srv/logs']]);
   assert.match(harness.lines[0], /SFTP 上传/);
+  // The retries lrzsz keeps sending while it waits: still one transfer, one note.
+  harness.feed(realRz);
+  harness.feed('**\x18B0100000023be50\r\x8a\x11');
+  await harness.settle();
+  assert.equal(harness.uploads.length, 1, '重试的广告不得再开一次上传');
+  assert.equal(harness.lines.length, 1, '重试的广告不得再提示一次');
+  assert.equal(harness.sent.length, cancelRounds + 2, '重试继续补发中止序列');
 }
 
 // sz's advertisement with a shell-confirmed command downloads the named files.
@@ -119,13 +135,13 @@ const realSz = 'rz\r**\x18B00000000000000\r\x8a\x11';
   harness.feed(realSz);
   await harness.settle();
   assert.deepEqual(harness.downloads, ['/srv/logs/probe.txt']);
-  assert.deepEqual(harness.sent, ['\x18\x18']);
+  assert.equal(harness.sent.length, cancelRounds);
   // sz alone, without a command report, cannot invent names but still cancels.
   const blind = fixture();
   blind.feed(realSz);
   await blind.settle();
   assert.deepEqual(blind.downloads, []);
-  assert.deepEqual(blind.sent, ['\x18\x18']);
+  assert.equal(blind.sent.length, cancelRounds);
 }
 
 // Ordinary output that merely looks hex-ish is ignored.
@@ -186,7 +202,7 @@ const realSz = 'rz\r**\x18B00000000000000\r\x8a\x11';
   harness.feed(zmlink);
   await harness.settle();
   assert.deepEqual(harness.downloads, []);
-  assert.deepEqual(harness.sent, ['\x18\x18'], 'the advertisement is still cancelled');
+  assert.equal(harness.sent.length, cancelRounds, 'the advertisement is still cancelled');
 
   const cleared = fixture();
   cleared.bridge.noteCommand(cleared.state, 'sz b.txt');
@@ -196,4 +212,4 @@ const realSz = 'rz\r**\x18B00000000000000\r\x8a\x11';
   assert.deepEqual(cleared.downloads, []);
 }
 
-console.log('PASS: rz / sz 桥接到 SFTP 上传与下载，握手只中止一次，普通输出不误触发。');
+console.log('PASS: rz / sz 桥接到 SFTP 上传与下载，一次尝试只走一次传输，重试的广告只补发中止序列。');

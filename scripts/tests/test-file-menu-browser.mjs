@@ -56,18 +56,21 @@ try {
     try {
       window.DengZmodemBridge.noteCommand(state, 'sz -a b.txt');
       window.DengZmodemBridge.observe(state, new TextEncoder().encode('rz\r**\x18B00000000000000\r\x8a\x11'));
-      await new Promise(resolve => setTimeout(resolve, 80));
+      await new Promise(resolve => setTimeout(resolve, 1200));
+      window.DengZmodemBridge.observe(state, new TextEncoder().encode('**\x18B00000000000000\r\x8a\x11'));
+      await new Promise(resolve => setTimeout(resolve, 300));
       window.DengZmodemBridge.noteCommand(state, 'rz');
       window.DengZmodemBridge.observe(state, new TextEncoder().encode('rz waiting to receive.**\x18B0100000023be50\r\x8a\x11'));
-      await new Promise(resolve => setTimeout(resolve, 80));
+      await new Promise(resolve => setTimeout(resolve, 1200));
       return { typeofBridge: typeof window.DengZmodemBridge.observe, typeofChooser: typeof chooseUploads, calls, notes: window.qaNotes || [] };
     } finally { DengFileTools.downloadFile = realDownload; }
   });
   assert.equal(bridge.typeofBridge, 'function'); assert.equal(bridge.typeofChooser, 'function');
-  assert.deepEqual(bridge.calls.downloads, ['/srv/logs/b.txt'], 'sz 通过 SFTP 下载终端目录里的同名文件');
+  assert.deepEqual(bridge.calls.downloads, ['/srv/logs/b.txt'], 'sz 通过 SFTP 下载终端目录里的同名文件（重试的广告不重复下载）');
   assert.deepEqual(bridge.calls.uploads, [['zmodem-fake', '/srv/logs']], 'rz 走 SFTP 上传到终端目录');
-  assert.deepEqual(bridge.calls.sent, ['\x18\x18', '\x18\x18'], '两次握手各中止一次');
-  assert.equal(bridge.notes.length, 2);
+  assert.equal(bridge.calls.sent.length, 7, '两次尝试各补发中止序列，重试的广告只补发一次');
+  assert.ok(bridge.calls.sent.every(value => value === '\x18\x18'), '只发送中止字节');
+  assert.equal(bridge.notes.length, 2, '一次尝试只提示一次');
   assert.match(bridge.notes.join('\n'), /SFTP 下载[\s\S]*SFTP 上传/);
   assert.deepEqual(errors,[]);
   console.log('PASS: 文件命令全部在右键菜单内（下载与打包并下载分开、目录只打包、多选批量），状态栏无操作按钮；rz / sz 在页面里桥接到 SFTP 上传与下载。');
