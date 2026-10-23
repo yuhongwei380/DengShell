@@ -3,6 +3,7 @@
 package desktop
 
 import (
+	"cloudshell/internal/installguard"
 	"golang.org/x/sys/windows"
 	"os"
 	"runtime"
@@ -47,6 +48,7 @@ var trayWindow atomic.Uintptr
 var trayCallback = windows.NewCallback(trayWndProc)
 var trayNotify trayNotifyData
 var trayCreatedMessage uint32
+var installerQuitMessage uint32
 
 func trayString(value string) *uint16 { s, _ := windows.UTF16PtrFromString(value); return s }
 func trayAdd() {
@@ -61,6 +63,15 @@ func trayAdd() {
 	}
 }
 func trayWndProc(hwnd uintptr, msg uint32, wparam, lparam uintptr) uintptr {
+	if msg == installerQuitMessage && msg != 0 {
+		if wparam == installguard.QuitRequest {
+			trayEvents.Or(4)
+		}
+		if wparam == installguard.QuitCancel {
+			trayEvents.Or(8)
+		}
+		return installguard.QuitAcknowledged
+	}
 	if msg == trayCreatedMessage && trayCreatedMessage != 0 {
 		trayAdd()
 		return 0
@@ -123,6 +134,8 @@ func platformInitializeTray(_ string) {
 		trayWindow.Store(hwnd)
 		created, _, _ := windowUser32.NewProc("RegisterWindowMessageW").Call(uintptr(unsafe.Pointer(trayString("TaskbarCreated"))))
 		trayCreatedMessage = uint32(created)
+		message, _, _ := windowUser32.NewProc("RegisterWindowMessageW").Call(uintptr(unsafe.Pointer(trayString(installguard.QuitMessage))))
+		installerQuitMessage = uint32(message)
 		icon, _, _ := windowUser32.NewProc("LoadImageW").Call(instance, 2, 1, 32, 32, 0x8000)
 		trayNotify = trayNotifyData{Window: hwnd, ID: uint32(os.Getpid()), Flags: 1 | 2 | 4, Callback: 0x8001, Icon: icon}
 		trayNotify.Size = uint32(unsafe.Sizeof(trayNotify))

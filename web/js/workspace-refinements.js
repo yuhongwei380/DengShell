@@ -491,14 +491,40 @@ async function cancelDiagnostic() {
   // Cancellation is asynchronous: keep observing until the process/channel exits.
   if (generation === diagnosticView.generation && $('#diagnostics-dialog').open) await pollDiagnostic(generation);
 }
-function requestQuit() {
-  if ($('#exit-dialog').open) return;
-  if ([...sessions.values()].some(state=>state.detaching||state.handoffProvisional||state.ownershipUncertain)) { native()?.CancelQuit?.(); toast('正在交接终端，请待独立窗口打开后再关闭'); return; }
-  if (window.DengTextEditors?.savingCount()) { native()?.CancelQuit?.(); toast('远程文件正在保存，请等待完成后退出'); return; }
+let installerQuitRequested = false, installerQuitBusy = false, installerQuitWaitTimer = null;
+function clearInstallerQuit() {
+  installerQuitRequested = false;
+  clearTimeout(installerQuitWaitTimer); installerQuitWaitTimer = null;
+}
+async function finishWindowQuit(allowDiscard = true) {
+  if ([...sessions.values()].some(state=>state.detaching||state.handoffProvisional||state.ownershipUncertain)) throw new Error('终端正在交接，请稍后重试');
+  if (window.DengTextEditors?.savingCount()) throw new Error('远程文件正在保存，请等待完成');
+  await window.DengCommandHistory?.flush?.();
+  await window.DengPortablePreferences.flush();
+  if (!allowDiscard && (window.DengTextEditors?.unsavedCount() || [...localTasks.values()].some(task => ['queued','uploading'].includes(task.status)))) throw new Error('出现新的未保存编辑或传输任务，请处理后继续安装');
+  await Promise.all([...sessions.keys()].map(closeSession));
+  await native()?.ConfirmQuit?.();
+}
+async function requestQuit(options = {}) {
+  if (options?.installer) installerQuitRequested = true;
+  if (installerQuitBusy) return;
+  if ($('#exit-dialog').open) { if (options?.installer) $('#exit-dialog').close(); else return; }
+  if ([...sessions.values()].some(state=>state.detaching||state.handoffProvisional||state.ownershipUncertain) || window.DengTextEditors?.savingCount()) {
+    if (installerQuitRequested) { clearTimeout(installerQuitWaitTimer); installerQuitWaitTimer = setTimeout(() => requestQuit({installer: true}), 500); }
+    else { native()?.CancelQuit?.(); toast('终端正在交接或远程文件正在保存，请等待完成后退出'); }
+    return;
+  }
   const unsaved = window.DengTextEditors?.unsavedCount() || 0;
   const count = [...sessions.values()].filter(state => state.connected).length;
   const transfers = [...localTasks.values()].filter(task => ['queued','uploading'].includes(task.status)).length;
-  const description = [count ? `将关闭当前窗口，断开其中 ${count} 个 SSH 会话。其他独立窗口会保持运行。` : '确认关闭当前窗口。其他独立窗口会保持运行。', transfers ? `${transfers} 个传输任务尚未完成。` : '', unsaved ? `${unsaved} 个远程文件有未保存的修改，退出会丢弃这些修改。` : ''].filter(Boolean).join(' ');
+  if (installerQuitRequested && !unsaved && !transfers && !window.DengSecurityLock?.isLocked()) {
+    installerQuitBusy = true;
+    try { await finishWindowQuit(false); }
+    catch (error) { await native()?.CancelQuit?.(); clearInstallerQuit(); toast(`暂时无法为安装退出：${error.message || error}`); }
+    finally { installerQuitBusy = false; }
+    return;
+  }
+  const description = [installerQuitRequested ? `安装程序请求关闭 DevShell，当前窗口的 ${count} 个 SSH 会话将断开，独立窗口也需要退出。` : count ? `将关闭当前窗口，断开其中 ${count} 个 SSH 会话。其他独立窗口会保持运行。` : '确认关闭当前窗口。其他独立窗口会保持运行。', transfers ? `${transfers} 个传输任务尚未完成。` : '', unsaved ? `${unsaved} 个远程文件有未保存的修改，退出会丢弃这些修改。请先返回编辑器保存，或明确选择丢弃后继续。` : ''].filter(Boolean).join(' ');
   if (window.DengSecurityLock?.confirmExit(description, async () => {
     if ([...sessions.values()].some(s=>s.detaching||s.handoffProvisional||s.ownershipUncertain)) throw new Error('终端正在交接，请稍后重试');
     if (window.DengTextEditors?.savingCount()) throw new Error('远程文件正在保存，请等待完成');
@@ -507,14 +533,19 @@ function requestQuit() {
     // Do not wait on normal API calls or preference flushes: they await unlock.
     for (const id of [...sessions.keys()]) dropSessionView(id);
     await native()?.ConfirmQuit?.();
-  }, async () => { await native()?.CancelQuit?.(); })) return;
+  }, async () => { clearInstallerQuit(); await native()?.CancelQuit?.(); })) return;
+  $('#exit-dialog h2').textContent = installerQuitRequested ? '关闭 DevShell 以继续安装？' : '退出 DevShell？';
+  $('#cancel-exit').textContent = installerQuitRequested && unsaved ? '返回保存' : '继续使用';
+  $('#confirm-exit').textContent = installerQuitRequested ? unsaved ? '丢弃修改并关闭' : transfers ? '中止传输并关闭' : '关闭并继续安装' : '退出';
+  $('#wait-exit-transfers').hidden = !installerQuitRequested || !transfers || !!unsaved;
   $('#exit-description').textContent = description;
   $('#exit-dialog').showModal(); $('#cancel-exit').focus();
 }
 async function initializeQuitConfirmation() {
   if (quitListenerReady || !window.runtime?.EventsOn) return;
   window.runtime.EventsOn('dengshell:confirm-quit', requestQuit); quitListenerReady = true;
-  if (native()?.WindowState && (await native().WindowState()).quitPending) requestQuit();
+  window.runtime.EventsOn('dengshell:installer-quit-cancelled', () => { const wasInstaller = installerQuitRequested; clearInstallerQuit(); if (wasInstaller) { if ($('#exit-dialog').open) $('#exit-dialog').close(); window.DengSecurityLock?.cancelExitConfirmation?.(); } });
+  if (native()?.WindowState) { const state = await native().WindowState(); if (state.quitPending) requestQuit({installer: state.installerQuitPending}); }
 }
 function initializeRefinements() {
   for (const key of ['cpu','memory']) {
@@ -542,7 +573,16 @@ function initializeRefinements() {
   $('#diagnostics-local').onclick = safe(() => startDiagnostic('local'));
   $('#diagnostics-remote').onclick = safe(async () => { const target = await ask({ title:'从服务器 MTR 到…', description:'输入目标 IPv4 或 IPv6 地址。探测从当前服务器发起。', input:true, confirm:'开始检测' }); if (target?.trim()) await startDiagnostic('remote', target.trim()); });
   $('#copy-diagnostics').onclick = safe(async () => { await copyText(`${$('#diagnostics-route').textContent}\n${$('#diagnostics-output').textContent}`); toast('诊断结果已复制'); });
-  $('#cancel-exit').onclick = safe(async () => { await native()?.CancelQuit?.(); $('#exit-dialog').close(); });
-  $('#exit-dialog').oncancel = safe(async event => { event.preventDefault(); await native()?.CancelQuit?.(); $('#exit-dialog').close(); });
-  $('#exit-form').onsubmit = safe(async event => { event.preventDefault(); $('#confirm-exit').disabled = true; try { await window.DengPortablePreferences.flush(); if ([...sessions.values()].some(state=>state.detaching||state.handoffProvisional||state.ownershipUncertain)) throw new Error('终端正在交接，请稍后重试'); await Promise.all([...sessions.keys()].map(closeSession)); await native()?.ConfirmQuit?.(); $('#exit-dialog').close(); } catch (error) { $('#exit-description').textContent = `暂时无法退出：${error.message || error}`; } finally { $('#confirm-exit').disabled = false; } });
+  $('#cancel-exit').onclick = safe(async () => { clearInstallerQuit(); await native()?.CancelQuit?.(); $('#exit-dialog').close(); });
+  $('#exit-dialog').oncancel = safe(async event => { event.preventDefault(); clearInstallerQuit(); await native()?.CancelQuit?.(); $('#exit-dialog').close(); });
+  $('#wait-exit-transfers').onclick = () => {
+    $('#exit-dialog').close();
+    const wait = () => {
+      if (!installerQuitRequested) return;
+      if ([...localTasks.values()].some(task => ['queued','uploading'].includes(task.status)) || window.DengTextEditors?.savingCount()) installerQuitWaitTimer = setTimeout(wait, 500);
+      else requestQuit({installer: true});
+    };
+    wait();
+  };
+  $('#exit-form').onsubmit = safe(async event => { event.preventDefault(); $('#confirm-exit').disabled = true; try { await finishWindowQuit(); $('#exit-dialog').close(); } catch (error) { $('#exit-description').textContent = `暂时无法退出：${error.message || error}`; } finally { $('#confirm-exit').disabled = false; } });
 }

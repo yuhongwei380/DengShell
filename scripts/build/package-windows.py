@@ -26,6 +26,13 @@ def build(stage, output):
     cache.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix='dengshell-nsis-', dir=cache) as temp:
         temp = Path(temp)
+        # Ship the control helper inside the installer, not in the application
+        # directory. It can safely replace a running/older DevShell executable.
+        installer_control = temp / 'installer-control.exe'
+        subprocess.run(['go', 'build', '-buildvcs=false', '-trimpath',
+                        '-ldflags', '-s -w -H windowsgui', '-o', str(installer_control),
+                        './cmd/installer-control'], cwd=ROOT, check=True,
+                       env={**os.environ, 'GOOS': 'windows', 'GOARCH': 'amd64', 'CGO_ENABLED': '0'})
         files = sorted(p for p in stage.rglob('*') if p.is_file())
         uninstall = []
         for p in files:
@@ -53,6 +60,7 @@ def build(stage, output):
                         '-DICON='+str(ROOT/'build/dengshell.ico'),
                         '-DLICENSE_FILE='+str(ROOT/'LICENSE'),
                         '-DUNINSTALL_FILES='+str(temp/'uninstall-files.nsh'),
+                        '-DINSTALLER_CONTROL='+str(installer_control),
                         '-DESTIMATED_SIZE='+str(sum(p.stat().st_size for p in files)//1024),
                         '-DVERSION='+version, '-DPACKAGE_VERSION='+package_version, '-DBUILD_REVISION='+str(application_build % 1000),
                         str(ROOT/'scripts/build/windows-installer.nsi')], check=True,

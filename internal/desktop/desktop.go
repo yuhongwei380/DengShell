@@ -35,23 +35,25 @@ import (
 )
 
 type Desktop struct {
-	ctx              context.Context
-	app              desktopBackend
-	mu               sync.Mutex
-	terminals        map[string]*nativeTerminal
-	quitConfirmed    bool
-	quitPending      bool
-	minimizePending  bool
-	minimizeHandled  bool
-	trayHidden       bool
-	updateInstalling bool
-	lifecycleCancel  context.CancelFunc
-	detachedNonce    string
-	children         map[string]*exec.Cmd
-	pendingWindows   map[string]bool
-	pickerBusy       bool
-	lastDirs         map[string]string
-	windowClosed     bool
+	ctx                   context.Context
+	app                   desktopBackend
+	mu                    sync.Mutex
+	terminals             map[string]*nativeTerminal
+	quitConfirmed         bool
+	quitPending           bool
+	installerQuitPending  bool
+	installerQuitApproved bool
+	minimizePending       bool
+	minimizeHandled       bool
+	trayHidden            bool
+	updateInstalling      bool
+	lifecycleCancel       context.CancelFunc
+	detachedNonce         string
+	children              map[string]*exec.Cmd
+	pendingWindows        map[string]bool
+	pickerBusy            bool
+	lastDirs              map[string]string
+	windowClosed          bool
 }
 
 type nativeTerminal struct {
@@ -61,10 +63,11 @@ type nativeTerminal struct {
 }
 
 type DesktopWindowState struct {
-	Platform    string `json:"platform"`
-	Frameless   bool   `json:"frameless"`
-	Maximised   bool   `json:"maximised"`
-	QuitPending bool   `json:"quitPending"`
+	Platform             string `json:"platform"`
+	Frameless            bool   `json:"frameless"`
+	Maximised            bool   `json:"maximised"`
+	QuitPending          bool   `json:"quitPending"`
+	InstallerQuitPending bool   `json:"installerQuitPending"`
 }
 
 func (d *Desktop) CaptureWindowState() error {
@@ -97,6 +100,14 @@ func (d *Desktop) ConfirmQuit() error {
 		return errors.New("终端正在交接，请稍后再关闭窗口")
 	}
 	if d.detachedNonce == "" && len(d.children) > 0 {
+		if d.installerQuitPending {
+			// Keep the backend alive until independent windows have resolved
+			// their own dirty editors and exited. The lifecycle loop finishes.
+			d.installerQuitApproved = true
+			d.quitPending = false
+			d.mu.Unlock()
+			return nil
+		}
 		d.windowClosed = true
 		d.quitPending = false
 		d.mu.Unlock()
@@ -109,7 +120,26 @@ func (d *Desktop) ConfirmQuit() error {
 	runtime.Quit(d.ctx)
 	return nil
 }
-func (d *Desktop) CancelQuit() { d.mu.Lock(); d.quitPending = false; d.mu.Unlock() }
+func (d *Desktop) CancelQuit() {
+	d.mu.Lock()
+	d.quitPending = false
+	d.installerQuitPending = false
+	d.installerQuitApproved = false
+	d.mu.Unlock()
+}
+
+func (d *Desktop) requestInstallerQuit() {
+	d.mu.Lock()
+	if d.quitConfirmed || d.installerQuitApproved {
+		d.mu.Unlock()
+		return
+	}
+	d.installerQuitPending = true
+	d.quitPending = true
+	d.mu.Unlock()
+	d.RestoreWindow()
+	runtime.EventsEmit(d.ctx, "dengshell:confirm-quit", map[string]bool{"installer": true})
+}
 func (d *Desktop) beforeClose(ctx context.Context) bool {
 	d.mu.Lock()
 	if d.quitConfirmed {
@@ -117,11 +147,12 @@ func (d *Desktop) beforeClose(ctx context.Context) bool {
 		return false
 	}
 	d.quitPending = true
+	installer := d.installerQuitPending
 	d.mu.Unlock()
 	d.RestoreWindow()
 	// The frontend de-duplicates visible confirmations. Re-emit on another
 	// close request so a lost event or dismissed cover cannot strand the user.
-	runtime.EventsEmit(ctx, "dengshell:confirm-quit")
+	runtime.EventsEmit(ctx, "dengshell:confirm-quit", map[string]bool{"installer": installer})
 	return true
 }
 
@@ -129,6 +160,7 @@ func (d *Desktop) WindowState() DesktopWindowState {
 	state := DesktopWindowState{Platform: goruntime.GOOS, Frameless: goruntime.GOOS == "windows"}
 	d.mu.Lock()
 	state.QuitPending = d.quitPending
+	state.InstallerQuitPending = d.installerQuitPending
 	d.mu.Unlock()
 	if d.ctx != nil {
 		state.Maximised = runtime.WindowIsMaximised(d.ctx)

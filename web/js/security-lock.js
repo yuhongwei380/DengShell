@@ -159,7 +159,7 @@
   form.onsubmit=event=>{event.preventDefault();void perform(action);};
   el('security-exit-cancel').focus();return true;
  }
- window.DengSecurityLock={confirmExit,ready,isLocked:()=>covered||focusCheck,whenUnlocked:()=>(covered||focusCheck)?new Promise(r=>waiters.push(r)):Promise.resolve(),blocked(){cover(true);refresh();},openSettings};
+ window.DengSecurityLock={confirmExit,cancelExitConfirmation(){if(exitConfirmation&&!exitConfirmation.busy){exitConfirmation.restore();if(covered)el('security-unlock-open').focus();}},ready,isLocked:()=>covered||focusCheck,whenUnlocked:()=>(covered||focusCheck)?new Promise(r=>waiters.push(r)):Promise.resolve(),blocked(){cover(true);refresh();},openSettings};
  document.addEventListener('DOMContentLoaded',async()=>{
   screen=el('security-lock-screen');settings=el('security-lock-settings');
   screen.addEventListener('cancel',e=>e.preventDefault());screen.addEventListener('close',()=>{if(covered)originalModal.call(screen);});

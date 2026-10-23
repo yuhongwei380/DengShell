@@ -21,7 +21,7 @@ VIAddVersionKey /LANG=2052 "LegalCopyright" "DevShell contributors · MIT"
 !define MUI_UNICON "${ICON}"
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "安装 DevShell"
-!define MUI_WELCOMEPAGE_TEXT "将 DevShell 安装到当前用户目录，并创建开始菜单和桌面快捷方式。$\r$\n$\r$\n升级前请先退出 DevShell。原有 data 配置、密钥、字体和背景会保留；此前 DengShell 的安装位置与数据会自动沿用。$\r$\n$\r$\n应用首次启动会检查 WebView2，缺少时提供安装指引。"
+!define MUI_WELCOMEPAGE_TEXT "将 DevShell 安装到当前用户目录，并创建开始菜单和桌面快捷方式。$\r$\n$\r$\n若 DevShell 正在运行，安装器会提示关闭并自动继续。请先保存编辑并完成传输。原有 data 配置、密钥、字体和背景会保留；此前 DengShell 的安装位置与数据会自动沿用。$\r$\n$\r$\n应用首次启动会检查 WebView2，缺少时提供安装指引。"
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${LICENSE_FILE}"
 !insertmacro MUI_PAGE_DIRECTORY
@@ -59,13 +59,39 @@ FunctionEnd
 Section "DevShell" SEC_MAIN
   SetShellVarContext current
   SetRegView 64
-  SetOutPath "$INSTDIR"
-  SetOverwrite on
+  InitPluginsDir
+  SetOutPath "$PLUGINSDIR\payload"
+  ; No extraction into the live installation until shutdown is complete. Try
+  ; suppresses NSIS's Abort/Retry/Ignore box; errors are handled explicitly.
+  SetOverwrite try
   ClearErrors
   File /r "${FILESPEC}"
-  IfErrors 0 +3
-    MessageBox MB_OK|MB_ICONSTOP "程序文件未能完整写入。请退出 DevShell 后重新运行安装器。"
+  SetOutPath "$PLUGINSDIR"
+  File /oname=installer-control.exe "${INSTALLER_CONTROL}"
+  ${If} ${Errors}
+    MessageBox MB_OK|MB_ICONSTOP "无法准备安装文件，现有 DevShell 未修改。请检查磁盘空间后重新安装。" /SD IDOK
+    SetErrorLevel 1
     Abort
+  ${EndIf}
+  StrCpy $1 ""
+  ${If} ${Silent}
+    StrCpy $1 "--silent"
+  ${EndIf}
+  DetailPrint "正在检查运行实例并准备安装……"
+  ClearErrors
+  ExecWait '"$PLUGINSDIR\installer-control.exe" --directory "$INSTDIR" --payload "$PLUGINSDIR\payload" --owner $HWNDPARENT $1' $0
+  ${If} ${Errors}
+    MessageBox MB_OK|MB_ICONSTOP "安装助手无法启动，现有 DevShell 未修改。" /SD IDOK
+    SetErrorLevel 1
+    Abort
+  ${EndIf}
+  ${If} $0 != 0
+    DetailPrint "安装已停止，未继续修改注册表或快捷方式。"
+    SetErrorLevel $0
+    Abort
+  ${EndIf}
+  SetOutPath "$INSTDIR"
+  SetOverwrite on
   ; Rename migration: drop the previous DengShell program file, shortcuts and
   ; registry entries; personal data under data\ is untouched.
   Delete "$INSTDIR\DengShell.exe"
