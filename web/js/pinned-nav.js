@@ -7,6 +7,7 @@
 window.DengPinnedNav = (() => {
   const LAYOUT_KEY = 'dengshell.pinned.v1';
   let bar, pinButton, pinned = [], overflowControl, layoutChips = () => {};
+  let cancelDrag, reorderPending = false, reorderSave = Promise.resolve(), suppressClickUntil = 0;
   function readPinned() {
     const raw = appearance.layout?.[LAYOUT_KEY];
     pinned = Array.isArray(raw) ? raw.filter(id => typeof id === 'string') : [];
@@ -14,6 +15,115 @@ window.DengPinnedNav = (() => {
   function isPinned(id) { return pinned.includes(id); }
   async function writePinned() {
     await persistAppearance({ layout: { [LAYOUT_KEY]: pinned } });
+  }
+  function reorder(source, target, after) {
+    if (reorderPending || source === target) return;
+    readPinned();
+    const previous = [...pinned];
+    if (!previous.includes(source) || !previous.includes(target)) return;
+    const next = previous.filter(id => id !== source);
+    next.splice(next.indexOf(target) + (after ? 1 : 0), 0, source);
+    if (next.every((id, index) => id === previous[index])) return;
+    pinned = next;
+    reorderPending = true;
+    reorderSave = (async () => {
+      try {
+        const saving = writePinned(); // persistAppearance applies the layout immediately.
+        render();
+        await saving;
+      } catch (error) {
+        // Restore just this key, preserving unrelated appearance changes.
+        if (JSON.stringify(appearance.layout?.[LAYOUT_KEY]) === JSON.stringify(next)) {
+          appearance.layout[LAYOUT_KEY] = previous;
+        }
+        throw error;
+      } finally {
+        reorderPending = false;
+        render(); reflect();
+      }
+    })();
+    safe(() => reorderSave)();
+  }
+  function bindSorting(item, open, profile) {
+    item.dataset.pinnedId = profile.id;
+    item.addEventListener('dragstart', event => event.preventDefault());
+    open.addEventListener('pointerdown', event => {
+      if (event.button !== 0 || event.isPrimary === false || reorderPending) return;
+      cancelDrag?.();
+      let moved = false, position, frame, marked;
+      let x = event.clientX, y = event.clientY;
+      const clearMark = () => { marked?.classList.remove('pinned-drop-before', 'pinned-drop-after'); marked = null; };
+      const cleanup = () => {
+        if (moved) suppressClickUntil = Date.now() + 600;
+        cancelAnimationFrame(frame); clearMark();
+        item.classList.remove('pinned-drag-source');
+        document.documentElement.classList.remove('pinned-sorting');
+        document.removeEventListener('pointermove', move);
+        document.removeEventListener('pointerup', up);
+        document.removeEventListener('pointercancel', cancel);
+        document.removeEventListener('keydown', keydown, true);
+        window.removeEventListener('blur', cancel);
+        open.removeEventListener('lostpointercapture', cancel);
+        if (open.hasPointerCapture(event.pointerId)) open.releasePointerCapture(event.pointerId);
+        if (cancelDrag === cancel) cancelDrag = null;
+      };
+      const cancel = () => { cleanup(); };
+      const keydown = e => { if (e.key === 'Escape') { e.preventDefault(); e.stopImmediatePropagation(); cancel(); } };
+      const update = () => {
+        clearMark(); position = null;
+        const hit = document.elementFromPoint(x, y);
+        if (!hit || !bar.contains(hit)) return;
+        if (hit.closest('.pinned-more') && overflowControl.menu.hidden) overflowControl.show();
+        let target = hit.closest('[data-pinned-id]');
+        const vertical = !!hit.closest('.pinned-more-menu');
+        if (!target) {
+          const candidates = [...bar.querySelectorAll(vertical ? '.pinned-more-item' : '.pinned-chip:not([hidden])')];
+          target = candidates.find(el => { const r = el.getBoundingClientRect(); return vertical ? y < r.bottom : x < r.right; }) || candidates.at(-1);
+        }
+        if (!target) return;
+        const r = target.getBoundingClientRect();
+        const after = vertical ? y >= (r.top + r.bottom) / 2 : x >= (r.left + r.right) / 2;
+        position = { id: target.dataset.pinnedId, after };
+        marked = target;
+        marked.classList.add(after ? 'pinned-drop-after' : 'pinned-drop-before');
+      };
+      const tick = () => {
+        const menu = overflowControl.menu, r = menu.getBoundingClientRect();
+        if (!menu.hidden && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) {
+          const edge = Math.min(24, r.height / 3);
+          menu.scrollTop += (y < r.top + edge ? -5 : y > r.bottom - edge ? 5 : 0) / effectiveScale;
+        }
+        update(); frame = requestAnimationFrame(tick);
+      };
+      const move = e => {
+        if (e.pointerId !== event.pointerId) return;
+        x = e.clientX; y = e.clientY;
+        if (!moved && Math.hypot(x - event.clientX, y - event.clientY) < 6) return;
+        if (!moved) {
+          moved = true;
+          open.setPointerCapture(event.pointerId);
+          item.classList.add('pinned-drag-source');
+          document.documentElement.classList.add('pinned-sorting');
+          frame = requestAnimationFrame(tick);
+        }
+        e.preventDefault(); update();
+      };
+      const up = e => {
+        if (e.pointerId !== event.pointerId) return;
+        x = e.clientX; y = e.clientY;
+        if (moved) { e.preventDefault(); update(); }
+        const drop = moved && position;
+        cleanup();
+        if (drop) reorder(profile.id, drop.id, drop.after);
+      };
+      cancelDrag = cancel;
+      document.addEventListener('pointermove', move);
+      document.addEventListener('pointerup', up);
+      document.addEventListener('pointercancel', cancel);
+      document.addEventListener('keydown', keydown, true);
+      window.addEventListener('blur', cancel);
+      open.addEventListener('lostpointercapture', cancel);
+    });
   }
   const profileSubtitle = profile => profile.protocol === 'serial' ? window.DengSerial.label(profile) : `${profile.user}@${profile.host}:${profile.port}`;
   function openConnection(profile) {
@@ -55,7 +165,7 @@ window.DengPinnedNav = (() => {
     render(); reflect();
     toast(`已重命名为「${saved.name}」`);
   }
-  const chipTitle = profile => `${profile.name} · ${profileSubtitle(profile)}\n左键新建会话 · 右键重命名 · × 关闭（取消固定需确认）`;
+  const chipTitle = profile => `${profile.name} · ${profileSubtitle(profile)}\n拖拽调整顺序 · 左键新建会话 · 右键重命名 · × 关闭（取消固定需确认）`;
   function chipFor(profile) {
     const chip = node('span', 'pinned-chip');
     const open = node('button', 'pinned-chip-open');
@@ -65,6 +175,7 @@ window.DengPinnedNav = (() => {
     chip.oncontextmenu = event => { event.preventDefault(); safe(() => renameProfile(profile))(); };
     chip.append(open, removeButtonFor(profile));
     chip.title = chipTitle(profile);
+    bindSorting(chip, open, profile);
     return chip;
   }
   function moreFor() {
@@ -93,29 +204,30 @@ window.DengPinnedNav = (() => {
         item.oncontextmenu = event => { event.preventDefault(); safe(() => renameProfile(profile))(); };
         item.append(open, removeButtonFor(profile));
         item.title = chipTitle(profile);
+        bindSorting(item, open, profile);
         menu.append(item);
       });
     };
+    const show = () => {
+      const r = btn.getBoundingClientRect();
+      menu.hidden = false;
+      const top = r.bottom / effectiveScale + 7;
+      menu.style.left = Math.max(8, Math.min(r.left / effectiveScale, logicalWidth() - menu.offsetWidth - 8)) + 'px';
+      menu.style.top = top + 'px';
+      menu.style.maxHeight = Math.min(320, Math.max(0, logicalHeight() - top - 8)) + 'px';
+      btn.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+    };
     btn.onclick = event => {
       event.stopPropagation();
-      if (menu.hidden) {
-        const r = btn.getBoundingClientRect();
-        menu.hidden = false;
-        const top = r.bottom / effectiveScale + 7;
-        menu.style.left = Math.max(8, Math.min(r.left / effectiveScale, logicalWidth() - menu.offsetWidth - 8)) + 'px';
-        menu.style.top = top + 'px';
-        menu.style.maxHeight = Math.min(320, Math.max(0, logicalHeight() - top - 8)) + 'px';
-        btn.classList.add('open');
-        btn.setAttribute('aria-expanded', 'true');
-      } else {
-        close();
-      }
+      if (menu.hidden) show(); else close();
     };
     wrap.append(btn, menu);
-    return { wrap, btn, menu, close, update };
+    return { wrap, btn, menu, close, show, update };
   }
   function render() {
     if (!bar) return;
+    cancelDrag?.();
     readPinned();
     const items = pinned.map(id => connectionProfile(id)).filter(Boolean);
     bar.hidden = false;
@@ -129,6 +241,7 @@ window.DengPinnedNav = (() => {
     bar.replaceChildren(row);
     let previousCount = -1;
     layoutChips = () => {
+      cancelDrag?.();
       more.close();
       label.hidden = false;
       more.wrap.hidden = false;
@@ -159,8 +272,8 @@ window.DengPinnedNav = (() => {
     };
     layoutChips();
   }
-  async function pin(id) { pinned = [...pinned, id]; await writePinned(); render(); reflect(); }
-  async function unpin(id) { pinned = pinned.filter(x => x !== id); await writePinned(); render(); reflect(); toast('已从链接栏取消固定'); }
+  async function pin(id) { await reorderSave.catch(() => {}); pinned = [...pinned, id]; await writePinned(); render(); reflect(); }
+  async function unpin(id) { await reorderSave.catch(() => {}); pinned = pinned.filter(x => x !== id); await writePinned(); render(); reflect(); toast('已从链接栏取消固定'); }
   async function toggleCurrent() {
     const state = current(), profile = profileFor(state);
     if (!state || !profile) return;
@@ -197,6 +310,12 @@ window.DengPinnedNav = (() => {
   }
   document.addEventListener('DOMContentLoaded', () => {
     bar = $('#pinned-bar');
+    bar.addEventListener('pointerdown', () => { suppressClickUntil = 0; }, true);
+    bar.addEventListener('click', event => {
+      if (Date.now() < suppressClickUntil && event.detail !== 0) {
+        event.preventDefault(); event.stopImmediatePropagation();
+      }
+    }, true);
     pinButton = node('button', 'terminal-popout');
     pinButton.id = 'pin-session';
     pinButton.hidden = true;

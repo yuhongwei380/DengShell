@@ -37,3 +37,13 @@
 [data-theme="dark"] .pinned-more-menu { background: #16222e; border-color: #2a3a48; box-shadow: 0 10px 26px #00000066; }
 [data-theme="dark"] .pinned-more-item { color: #c6d6e2; }
 [data-theme="dark"] .pinned-more-item:hover { background: #223243; }
+
+.pinned-chip, .pinned-more-item { position: relative; touch-action: none; user-select: none; }
+.pinned-drag-source { opacity: .45; }
+.pinned-sorting, .pinned-sorting * { cursor: grabbing !important; user-select: none !important; }
+.pinned-drop-before::after, .pinned-drop-after::after { content: ''; position: absolute; pointer-events: none; background: var(--accent, #658daf); border-radius: 2px; width: 3px; top: 0; bottom: 0; }
+.pinned-chip.pinned-drop-before::after { left: -5px; }
+.pinned-chip.pinned-drop-after::after { right: -5px; }
+.pinned-more-item.pinned-drop-before::after, .pinned-more-item.pinned-drop-after::after { width: auto; height: 3px; left: 0; right: 0; bottom: auto; }
+.pinned-more-item.pinned-drop-before::after { top: -3px; }
+.pinned-more-item.pinned-drop-after::after { top: auto; bottom: -3px; }
