@@ -5,6 +5,13 @@
 .startup-update-source { color:var(--muted); font-size:12px; }
 .startup-update-content h3 { font-size:14px; margin-bottom:8px; }
 #startup-update-notes { white-space:pre-wrap; overflow-wrap:anywhere; font-size:13px; line-height:1.75; max-height:30vh; overflow:auto; }
+.release-note-tag { display:inline; padding:1px 5px; margin-right:4px; border-radius:4px; font-weight:700; box-decoration-break:clone; -webkit-box-decoration-break:clone; }
+.release-note-tag[data-kind="added"] { color:#176b4b; background:#e8f4ed; }
+.release-note-tag[data-kind="fixed"] { color:#995000; background:#fff0dd; }
+.release-note-tag[data-kind="changed"] { color:#205faa; background:#e9f1fc; }
+[data-theme="dark"] .release-note-tag[data-kind="added"] { color:#9fdfb5; background:#213c2c; }
+[data-theme="dark"] .release-note-tag[data-kind="fixed"] { color:#ffd398; background:#43321d; }
+[data-theme="dark"] .release-note-tag[data-kind="changed"] { color:#a9ceff; background:#23354c; }
 .startup-update-reserved { color:var(--muted); background:var(--surface-inset); border-radius:13px; padding:12px; font-size:12px; line-height:1.65; }
 .startup-update-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:10px; margin-top:14px; }
 .startup-update-install-note{font-size:12px;line-height:1.65;color:var(--muted);background:var(--surface-inset);padding:12px;border-radius:12px}#startup-update-progress progress{width:100%;height:8px;accent-color:#78a99b}#startup-update-progress p{font-size:12px;color:var(--muted)}#startup-update-error{font-size:12px;color:#c56f78;white-space:pre-wrap;overflow-wrap:anywhere}

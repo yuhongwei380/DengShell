@@ -621,6 +621,7 @@ function initializeAppearance() {
     const notes = boot?.releaseNotes || '当前版本尚未提供更新说明。';
     if (window.markdownit) $('#release-notes-content').innerHTML = window.markdownit({ html: false, linkify: false, breaks: true }).render(notes);
     else $('#release-notes-content').textContent = notes;
+    window.DengReleaseNoteTags?.highlight($('#release-notes-content'));
     if (!$('#release-notes-dialog').open) $('#release-notes-dialog').showModal();
   };
   $('#close-release-notes').onclick = () => $('#release-notes-dialog').close();

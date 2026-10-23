@@ -85,6 +85,54 @@ try {
     assert.equal(await page.$eval('#release-notes-dialog', el => el.open), false);
   } finally { await page.setOfflineMode(false); }
   checks.push('Settings shows bundled current-version release notes offline and removes About software; GitHub opens the project through browser and native handlers');
+  const originalTheme = await page.evaluate(() => CloudShellTheme.preference);
+  const categoryParsing = await page.evaluate(() => {
+    const container = document.createElement('div');
+    container.innerHTML = '<p>新增：项目</p><p>修复: 项目</p><p>  1. 调整：项目</p><pre>新增：代码块</pre><p><code>修复：行内代码</code></p><p>正文中的调整：保持不变</p>';
+    const original = container.textContent;
+    DengReleaseNoteTags.highlight(container);
+    const first = container.innerHTML;
+    DengReleaseNoteTags.highlight(container);
+    return { kinds: [...container.querySelectorAll('.release-note-tag')].map(tag => tag.dataset.kind), originalPreserved: original === container.textContent, repeatedUnchanged: first === container.innerHTML, codeTags: container.querySelectorAll('pre .release-note-tag,code .release-note-tag').length };
+  });
+  assert.deepEqual(categoryParsing, { kinds: ['added', 'fixed', 'changed'], originalPreserved: true, repeatedUnchanged: true, codeTags: 0 });
+  async function assertCategoryColors(selector, expectedKinds = ['added', 'changed', 'fixed']) {
+    const tags = await page.$eval(selector, container => {
+      const luminance = css => {
+        const channels = css.match(/[\d.]+/g).slice(0, 3).map(Number).map(value => { const c = value / 255; return c <= .04045 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; });
+        return channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+      };
+      return [...container.querySelectorAll('.release-note-tag')].map(tag => {
+        const style = getComputedStyle(tag), fg = luminance(style.color), bg = luminance(style.backgroundColor);
+        return { kind: tag.dataset.kind, weight: Number(style.fontWeight), contrast: (Math.max(fg, bg) + .05) / (Math.min(fg, bg) + .05), color: style.color };
+      });
+    });
+    assert.deepEqual([...new Set(tags.map(tag => tag.kind))].sort(), expectedKinds);
+    assert.equal(new Set(tags.map(tag => tag.color)).size, expectedKinds.length);
+    assert(tags.every(tag => tag.weight >= 700 && tag.contrast >= 4.5), JSON.stringify(tags));
+  }
+  const releaseKinds = await page.evaluate(() => {
+    const kinds = { 新增: 'added', 修复: 'fixed', 调整: 'changed' };
+    return [...new Set([...CLOUDSHELL.releaseNotes.matchAll(/(?:^|\n)\s*(?:[-*+]\s+)?(新增|修复|调整)[：:]/g)].map(match => kinds[match[1]]))].sort();
+  });
+  const categoryFixture = '新增：第一项\n修复: 第二项\n- 调整：第三项';
+  for (const theme of ['light', 'dark']) {
+    await page.evaluate(value => CloudShellTheme.set(value), theme);
+    await page.waitForFunction(() => !document.documentElement.dataset.lightSwitch);
+    await page.click('#settings-button'); await page.click('#release-notes-button');
+    await assertCategoryColors('#release-notes-content', releaseKinds);
+    await page.click('#close-release-notes');
+    await page.evaluate(notes => { window.qaUpdateDialog = DengUpdates.showUpdate({ currentVersion: CLOUDSHELL.version, currentBuild: CLOUDSHELL.build, latestVersion: CLOUDSHELL.version, latestBuild: CLOUDSHELL.build + 1, platform: 'windows-amd64', installerReady: false, notes }); }, categoryFixture);
+    await page.waitForSelector('#startup-update-dialog[open]');
+    await assertCategoryColors('#startup-update-notes');
+    assert.equal(await page.$eval('#startup-update-notes', el => el.textContent), categoryFixture);
+    if (process.env.DENGSHELL_NOTE_TAGS_SCREENSHOT) await page.screenshot({ path: process.env.DENGSHELL_NOTE_TAGS_SCREENSHOT + '-' + theme + '.png' });
+    await page.click('#startup-update-later');
+    await page.evaluate(() => qaUpdateDialog);
+  }
+  await page.evaluate(value => CloudShellTheme.set(value), originalTheme);
+  await page.waitForFunction(() => !document.documentElement.dataset.lightSwitch);
+  checks.push('Added/fixed/changed use distinct bold colors in update offers and release logs, with at least 4.5:1 text contrast in both themes');
   assert.equal(await page.$eval('#add-session', el => el.title), '新选项卡');
   await assertPlusFollowsLastTab();
   await page.click('#add-session');
