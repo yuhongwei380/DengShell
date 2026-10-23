@@ -19,7 +19,7 @@ func (d *Desktop) ChooseExternalEditor() (string, error) {
 	}
 
 	return d.openDialog("external-editor", func(directory string) (string, error) {
-		return runtime.OpenFileDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择本地文本编辑器可执行文件", DefaultDirectory: directory})
+		return platformOpenFileDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择本地文本编辑器可执行文件", DefaultDirectory: directory})
 	})
 }
 func (d *Desktop) OpenRemoteFile(sessionID, remote string) (string, error) {

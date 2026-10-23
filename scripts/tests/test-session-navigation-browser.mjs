@@ -45,7 +45,7 @@ try {
   await page.click('#about-button');
   await page.waitForSelector('#about-dialog[open]');
   assert.equal(await page.$eval('#settings-menu', el => el.hidden), true);
-  assert.deepEqual(await page.evaluate(() => [$('#about-version').textContent, $('#about-build').textContent]), await page.evaluate(() => [CLOUDSHELL.version, String(CLOUDSHELL.build)]));
+  assert.deepEqual(await page.evaluate(() => [$('#about-version').textContent, $('#about-build').textContent]), await page.evaluate(() => [CLOUDSHELL.displayVersion || CLOUDSHELL.version, String(CLOUDSHELL.build)]));
   if (process.env.DENGSHELL_ABOUT_SCREENSHOT) await page.screenshot({ path: process.env.DENGSHELL_ABOUT_SCREENSHOT });
   await page.click('#close-about');
   assert.equal(await page.$eval('#about-dialog', el => el.open), false);
@@ -76,7 +76,7 @@ try {
     await page.waitForSelector('#release-notes-dialog[open]');
     assert.equal(await page.$eval('#settings-menu', el => el.hidden), true);
     assert.equal(await page.$eval('#release-notes-content h1', el => el.textContent), await page.evaluate(() => CLOUDSHELL.releaseNotes.split(/\r?\n/)[0].replace(/^#\s*/, '')));
-    assert.equal(await page.$eval('#release-notes-version', el => el.textContent), await page.evaluate(() => `当前版本 ${CLOUDSHELL.version} · 构建 ${CLOUDSHELL.build}`));
+    assert.equal(await page.$eval('#release-notes-version', el => el.textContent), await page.evaluate(() => `当前版本 ${CLOUDSHELL.displayVersion || CLOUDSHELL.version} · 构建 ${CLOUDSHELL.build}`));
     if (process.env.DENGSHELL_NOTES_SCREENSHOT) await page.screenshot({ path: process.env.DENGSHELL_NOTES_SCREENSHOT });
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => document.activeElement.id === 'settings-button');

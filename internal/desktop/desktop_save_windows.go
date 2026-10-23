@@ -31,30 +31,58 @@ const (
 // and the overwrite prompt. Real write failures still propagate from DownloadTo.
 // https://learn.microsoft.com/windows/win32/api/shobjidl_core/ne-shobjidl_core-_fileopendialogoptions
 func platformSaveFileDialog(_ context.Context, options wailsruntime.SaveDialogOptions) (string, error) {
-	// A separate STA keeps the WebView's UI loop free to deliver terminal output
-	// and cancellation bytes while the modal picker is open.
+	return runWindowsFileDialog(func(owner uintptr) (string, error) {
+		return showWindowsSaveDialog(owner, options)
+	})
+}
+
+// Keep ALL file pickers off WebView's UI thread. Chromium's
+// HideCursorWhileTyping can leave that thread's ShowCursor count negative when
+// a keyboard-triggered modal disables its parent, which then cannot receive the
+// mouse event that would show it again. A separate STA keeps cancellation
+// messages flowing; a scoped activation hook balances inherited cursor hiding
+// after Windows attaches the modal dialog's input queue to its owner.
+// https://github.com/electron/electron/issues/54630
+// Do not change the user's system-wide "Hide pointer while typing" setting.
+func runWindowsFileDialog[T any](show func(owner uintptr) (T, error)) (T, error) {
 	type result struct {
-		path string
-		err  error
+		value T
+		err   error
 	}
 	done := make(chan result, 1)
 	owner := platformWindowHandle()
 	go func() {
 		runtime.LockOSThread()
 		defer runtime.UnlockOSThread()
-		selected, err := showWindowsSaveDialog(owner, options)
-		done <- result{selected, err}
+		r := func() result {
+			err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED|ole.COINIT_DISABLE_OLE1DDE)
+			if err != nil {
+				// S_FALSE also requires CoUninitialize: this thread already had an STA.
+				if status, ok := err.(*ole.OleError); !ok || status.Code() != 1 {
+					return result{err: err}
+				}
+			}
+			defer ole.CoUninitialize()
+			restore, err := installPickerCursorGuard()
+			if err != nil {
+				return result{err: err}
+			}
+			defer restore()
+			selected, err := show(owner)
+			return result{selected, err}
+		}()
+		done <- r
 	}()
 	r := <-done
-	return r.path, r.err
+	return r.value, r.err
 }
 
 // COM objects contain only their native vtable here. Never store Go state (such
 // as the owner HWND) in memory immediately after that pointer: it belongs to COM.
-type saveCOMObject struct{ vtable *[29]uintptr }
+type shellCOMObject struct{ vtable *[29]uintptr }
 
 //go:uintptrescapes
-func (object *saveCOMObject) call(method int, args ...uintptr) error {
+func (object *shellCOMObject) call(method int, args ...uintptr) error {
 	params := append([]uintptr{uintptr(unsafe.Pointer(object))}, args...)
 	hr, _, _ := syscall.SyscallN(object.vtable[method], params...)
 	runtime.KeepAlive(object)
@@ -64,11 +92,11 @@ func (object *saveCOMObject) call(method int, args ...uintptr) error {
 	return nil
 }
 
-func (object *saveCOMObject) release() {
+func (object *shellCOMObject) release() {
 	syscall.SyscallN(object.vtable[2], uintptr(unsafe.Pointer(object)))
 }
 
-func (object *saveCOMObject) setText(method int, text string) error {
+func (object *shellCOMObject) setText(method int, text string) error {
 	value, err := windows.UTF16PtrFromString(text)
 	if err != nil {
 		return err
@@ -78,14 +106,14 @@ func (object *saveCOMObject) setText(method int, text string) error {
 	return err
 }
 
-func newWindowsSaveDialog(options wailsruntime.SaveDialogOptions) (_ *saveCOMObject, err error) {
+func newWindowsSaveDialog(options wailsruntime.SaveDialogOptions) (_ *shellCOMObject, err error) {
 	unknown, err := ole.CreateInstance(
 		ole.NewGUID("{C0B4E2F3-BA21-4773-8DBA-335EC946EB8B}"),
 		ole.NewGUID("{84BCCD23-5FDE-4CDB-AEA4-AF64B83D78AB}"))
 	if err != nil {
 		return nil, err
 	}
-	dialog := (*saveCOMObject)(unsafe.Pointer(unknown))
+	dialog := (*shellCOMObject)(unsafe.Pointer(unknown))
 	defer func() {
 		if err != nil {
 			dialog.release()
@@ -113,7 +141,7 @@ func newWindowsSaveDialog(options wailsruntime.SaveDialogOptions) (_ *saveCOMObj
 	return dialog, nil
 }
 
-func (dialog *saveCOMObject) setFolder(directory string) error {
+func (dialog *shellCOMObject) setFolder(directory string) error {
 	absolute, err := filepath.Abs(directory)
 	if err != nil {
 		return err
@@ -130,7 +158,7 @@ func (dialog *saveCOMObject) setFolder(directory string) error {
 		return err
 	}
 	iid := ole.NewGUID("{43826D1E-E718-42EE-BC55-A1E261C37BFE}") // IShellItem
-	var folder *saveCOMObject
+	var folder *shellCOMObject
 	hr, _, _ := windowShell32.NewProc("SHCreateItemFromParsingName").Call(
 		uintptr(unsafe.Pointer(value)), 0, uintptr(unsafe.Pointer(iid)), uintptr(unsafe.Pointer(&folder)))
 	runtime.KeepAlive(value)
@@ -143,14 +171,6 @@ func (dialog *saveCOMObject) setFolder(directory string) error {
 }
 
 func showWindowsSaveDialog(owner uintptr, options wailsruntime.SaveDialogOptions) (string, error) {
-	err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED|ole.COINIT_DISABLE_OLE1DDE)
-	if err != nil {
-		// S_FALSE also requires CoUninitialize: this thread already had an STA.
-		if status, ok := err.(*ole.OleError); !ok || status.Code() != 1 {
-			return "", err
-		}
-	}
-	defer ole.CoUninitialize()
 	dialog, err := newWindowsSaveDialog(options)
 	if err != nil {
 		return "", err
@@ -162,13 +182,17 @@ func showWindowsSaveDialog(owner uintptr, options wailsruntime.SaveDialogOptions
 		}
 		return "", err
 	}
-	var item *saveCOMObject
+	var item *shellCOMObject
 	if err = dialog.call(20, uintptr(unsafe.Pointer(&item))); err != nil { // GetResult
 		return "", err
 	}
 	defer item.release()
+	return item.filesystemPath()
+}
+
+func (item *shellCOMObject) filesystemPath() (string, error) {
 	var filename *uint16
-	if err = item.call(5, 0x80058000, uintptr(unsafe.Pointer(&filename))); err != nil { // SIGDN_FILESYSPATH
+	if err := item.call(5, 0x80058000, uintptr(unsafe.Pointer(&filename))); err != nil { // SIGDN_FILESYSPATH
 		return "", err
 	}
 	defer ole.CoTaskMemFree(uintptr(unsafe.Pointer(filename)))

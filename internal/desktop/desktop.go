@@ -327,7 +327,7 @@ func (d *Desktop) ChooseUploads() ([]string, error) {
 	}
 
 	return d.openDialogMulti("upload", func(directory string) ([]string, error) {
-		return runtime.OpenMultipleFilesDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择上传文件", DefaultDirectory: directory})
+		return platformOpenMultipleFilesDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择上传文件", DefaultDirectory: directory})
 	})
 }
 func (d *Desktop) ChooseFolder() (string, error) {
@@ -336,7 +336,7 @@ func (d *Desktop) ChooseFolder() (string, error) {
 	}
 
 	return d.openFolderDialog("upload-folder", func(directory string) (string, error) {
-		return runtime.OpenDirectoryDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择上传文件夹", DefaultDirectory: directory})
+		return platformOpenDirectoryDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择上传文件夹", DefaultDirectory: directory})
 	})
 }
 func (d *Desktop) ChooseKey() (string, error) {
@@ -345,7 +345,7 @@ func (d *Desktop) ChooseKey() (string, error) {
 	}
 
 	return d.openDialog("key", func(directory string) (string, error) {
-		return runtime.OpenFileDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择 SSH 私钥", ShowHiddenFiles: true, DefaultDirectory: directory})
+		return platformOpenFileDialog(d.ctx, runtime.OpenDialogOptions{Title: "选择 SSH 私钥", ShowHiddenFiles: true, DefaultDirectory: directory})
 	})
 }
 func (d *Desktop) ChooseAsset(kind string) (*app.ManagedAsset, error) {
@@ -365,7 +365,7 @@ func (d *Desktop) ChooseAsset(kind string) (*app.ManagedAsset, error) {
 		return nil, errors.New("未知资源类型")
 	}
 	filename, err := d.openDialog("asset-"+kind, func(directory string) (string, error) {
-		return runtime.OpenFileDialog(d.ctx, runtime.OpenDialogOptions{
+		return platformOpenFileDialog(d.ctx, runtime.OpenDialogOptions{
 			Title:            title,
 			Filters:          []runtime.FileFilter{{DisplayName: label, Pattern: pattern}},
 			DefaultDirectory: directory,

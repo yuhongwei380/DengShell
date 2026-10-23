@@ -604,7 +604,7 @@ function initializeAppearance() {
   $('#settings-button').onclick = () => setSettingsMenu($('#settings-menu').hidden);
   $('#about-button').onclick = () => {
     setSettingsMenu(false);
-    $('#about-version').textContent = window.CLOUDSHELL?.version || '—';
+    $('#about-version').textContent = window.CLOUDSHELL?.displayVersion || window.CLOUDSHELL?.version || '—';
     $('#about-build').textContent = String(window.CLOUDSHELL?.build ?? '—');
     if (!$('#about-dialog').open) $('#about-dialog').showModal();
   };
@@ -617,7 +617,7 @@ function initializeAppearance() {
   $('#release-notes-button').onclick = () => {
     setSettingsMenu(false);
     const boot = window.CLOUDSHELL;
-    $('#release-notes-version').textContent = `当前版本 ${boot?.version || '—'} · 构建 ${boot?.build ?? '—'}`;
+    $('#release-notes-version').textContent = `当前版本 ${boot?.displayVersion || boot?.version || '—'} · 构建 ${boot?.build ?? '—'}`;
     const notes = boot?.releaseNotes || '当前版本尚未提供更新说明。';
     if (window.markdownit) $('#release-notes-content').innerHTML = window.markdownit({ html: false, linkify: false, breaks: true }).render(notes);
     else $('#release-notes-content').textContent = notes;

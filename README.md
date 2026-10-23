@@ -4,7 +4,7 @@
 
 DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VPS、维护 Linux 服务器、编辑远程配置和排查网络问题。支持 Windows、Linux、macOS 桌面（发行包仅提供 Windows 与 macOS），可同时连接多台服务器，并按自己的习惯调整字体、背景、布局和监控曲线。
 
-本说明对应 **v26.10.0 · 构建 20261023145**。本分支更新源为 GitHub Releases，界面字体为阿里巴巴普惠体 3.0。R20 以来的累计变化汇总在 [更新日志](CHANGELOG.md)。
+本说明对应 **v26.10.0-rc.1 · 构建 20261023146**，用于验证 Windows 的 rz/sz 原生选择框鼠标指针修复。[RC 测试版下载](https://github.com/yuhongwei380/DevShell/releases/tag/v26.10.0-rc.1-build20261023146)；稳定版与内置更新仍使用构建 20261023145。界面字体为阿里巴巴普惠体 3.0，完整变化见 [更新日志](CHANGELOG.md)。
 
 > **项目来源**：本项目源自上游 [BitsFlowCloud/DengShell](https://github.com/BitsFlowCloud/DengShell) 的 **DengShell v0.03 分支**，在此基础上独立维护。上游改动不再自动同步，已移植的上游改进（构建 107–114）见更新日志。
 
@@ -234,9 +234,13 @@ DevShell 不实现 ZModem 协议，服务器上的 `rz` / `sz` 不会像 Xshell 
 
 文件选择框在首次识别握手后立即触发，无需等待后续重试；同一次尝试的重试不会重复打开选择框，返回 Shell 提示符或开始下一条命令后停止补发中止字节。同一时刻只打开一个本机选择框，当前窗口内按操作类型记住上次目录。
 
+Windows 的本机文件和目录选择框与终端界面分开处理，避免键盘输入后弹出选择框时，沿用终端界面的鼠标指针隐藏状态。
+
 Windows 保存框不再预先创建目标文件，避免系统预检查误报无写入权限；实际下载仍使用临时文件并在完成后替换目标，真实的写入失败会正常显示。
 
 需要真正的 ZModem 语义（例如脚本里的 `rz`）时，请改用 SFTP 传输队列或 scp / sftp。
+
+ZMODEM 有公开协议规范，也有开源实现：[lrzsz](https://www.ohse.de/uwe/software/lrzsz.html) 使用 GNU GPL，[zmodem.js](https://github.com/FGasper/zmodemjs) 使用 Apache-2.0。DevShell 当前使用 SFTP 桥接是功能实现现状，并非因为 ZMODEM 闭源。
 
 ### 内置文本编辑器
 

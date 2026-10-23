@@ -57,15 +57,16 @@ func TestBootstrapRequiresCapabilityAndRejectsOpaqueOrigins(t *testing.T) {
 			}
 			if test.want == 200 {
 				var boot struct {
-					Version      string `json:"version"`
-					Build        uint64 `json:"build"`
-					ReleaseNotes string `json:"releaseNotes"`
+					Version        string `json:"version"`
+					DisplayVersion string `json:"displayVersion"`
+					Build          uint64 `json:"build"`
+					ReleaseNotes   string `json:"releaseNotes"`
 				}
 				payload := strings.TrimSuffix(strings.TrimPrefix(string(data), "window.CLOUDSHELL = "), ";")
 				if err := json.Unmarshal([]byte(payload), &boot); err != nil {
 					t.Fatal(err)
 				}
-				if boot.Version != ApplicationVersion || boot.Build != ApplicationBuild || !strings.Contains(boot.ReleaseNotes, ApplicationVersion) || !strings.Contains(boot.ReleaseNotes, fmt.Sprint(ApplicationBuild)) {
+				if boot.Version != ApplicationVersion || boot.DisplayVersion != ApplicationDisplayVersion || boot.Build != ApplicationBuild || !strings.Contains(boot.ReleaseNotes, ApplicationVersion) || !strings.Contains(boot.ReleaseNotes, fmt.Sprint(ApplicationBuild)) {
 					t.Fatal("bootstrap must ship release notes for the current version and build")
 				}
 			}
