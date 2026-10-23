@@ -35,4 +35,21 @@ context.chooseServerFolder('missing',{toggle:true});assert.equal(context.manager
 context.manager.selectedGroup='deep';
 context.manager.selectedProfiles.add('three');context.acceptServerManagerConfig({servers:profiles.filter(p=>p.id!=='three'),groupNodes:groups.filter(g=>g.id!=='deep')});assert.equal(context.manager.selectedGroup,'');assert.equal(context.manager.selectedProfiles.size,0,'deleted connections must leave the selection');
 const deepGroups=[];for(let n=0;n<1200;n++)deepGroups.push({id:`g${n}`,name:`目录 ${n}`,parentId:n?`g${n-1}`:''});context.profiles=[{id:'last',name:'末级连接',groupId:'g1199'}];context.acceptServerManagerConfig({servers:context.profiles,groupNodes:deepGroups});context.manager.selectedGroup='g0';context.manager.includeChildren=true;tree=context.serverGroupTree();assert.equal(tree.depths.get('g1199'),1199);assert.equal(tree.counts.get('g0'),1);assert.equal(context.serverFolderAncestors(tree,'g1199').length,1200);assert.deepEqual(list(),['last']);
-console.log('PASS: directory filtering, global search, repeat-click toggling, explicit navigation, collapse persistence and independence, deletion cleanup and 1,200-level traversal.');
+context.profiles=[];
+context.acceptServerManagerConfig({servers:[],groupNodes:[
+ {id:'z',name:'Z',parentId:'',order:1},{id:'a',name:'A',parentId:'',order:2},
+ {id:'new',name:'New',parentId:''},{id:'c',name:'C',parentId:'z',order:2},{id:'d',name:'D',parentId:'z',order:1}
+]});
+tree=context.serverGroupTree();
+assert.deepEqual(Array.from(tree.children.get(''),g=>g.id),['z','a','new'],'manual order wins over name; new groups follow');
+assert.deepEqual(Array.from(tree.children.get('z'),g=>g.id),['d','c'],'nested order is independent');
+assert.deepEqual(Array.from(tree.flat,g=>g.id),['z','d','c','a','new'],'subtree travels with parent');
+const requests=[];context.post=async(url,body)=>{requests.push({url,body});return context.manager.nodes.map(g=>({...g,order:body.ids.includes(g.id)?body.ids.indexOf(g.id)+1:g.order}));};
+await context.reorderServerGroup('new','z',true);
+assert.equal(requests[0].url,'/api/group-nodes/order');assert.deepEqual(Array.from(requests[0].body.ids),['new','z','a']);
+assert.deepEqual(Array.from(context.serverGroupTree().children.get(''),g=>g.id),['new','z','a']);
+await context.reorderServerGroup('c','a',false);assert.equal(requests.length,1,'cross-parent move is ignored');
+const unchanged=JSON.stringify(context.manager.nodes);context.post=async()=>{throw new Error('write failed')};
+await assert.rejects(context.reorderServerGroup('a','new',true),/write failed/);
+assert.equal(JSON.stringify(context.manager.nodes),unchanged,'failed order save preserves UI order');assert.equal(context.manager.groupOrderSaving,false);
+console.log('PASS: directory filtering, search, collapse/navigation, deep traversal, sibling order, subtree preservation and failed-save recovery.');

@@ -165,3 +165,10 @@
 .server-profile-row,
 .server-profile-row * { -webkit-user-select:none; user-select:none; }
 .server-profile-row[data-selectable="true"] { cursor:pointer; }
+
+.server-folder-select[draggable="true"] { cursor:grab; }
+.server-folder-dragging { opacity:.45; }
+.server-folder-row.server-folder-drop-before::before,
+.server-folder-row.server-folder-drop-after::after { content:""; position:absolute; left:0; right:0; height:3px; border-radius:2px; background:var(--accent,#326982); pointer-events:none; z-index:1; }
+.server-folder-row.server-folder-drop-before::before { top:-2px; }
+.server-folder-row.server-folder-drop-after::after { bottom:-2px; }
