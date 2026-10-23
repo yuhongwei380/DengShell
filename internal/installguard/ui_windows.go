@@ -19,6 +19,10 @@ type choice struct {
 // TASKDIALOGCONFIG and TASKDIALOG_BUTTON use pack(1), including on x64.
 // Keep their byte layout explicit instead of relying on Go struct padding.
 func showChoices(owner uintptr, heading, content string, choices ...choice) (int32, error) {
+	return showChoicesWithIcon(owner, heading, content, 0, choices...)
+}
+
+func showChoicesWithIcon(owner uintptr, heading, content string, systemIcon uint64, choices ...choice) (int32, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	if unsafe.Sizeof(uintptr(0)) != 8 {
@@ -39,9 +43,15 @@ func showChoices(owner uintptr, heading, content string, choices ...choice) (int
 	put := func(offset int, value uint64) { binary.LittleEndian.PutUint64(config[offset:], value) }
 	binary.LittleEndian.PutUint32(config[:], uint32(len(config)))
 	put(4, uint64(owner))
-	binary.LittleEndian.PutUint32(config[20:], 0x0008|0x0100) // allow cancellation, position relative to parent
+	flags := uint32(0x0008 | 0x0100) // allow cancellation, position relative to parent
 	put(28, stringPointer("DevShell 安装"))
-	put(36, 0xffff) // MAKEINTRESOURCEW(-1): low 16 bits, not a sign-extended pointer
+	if systemIcon != 0 {
+		put(36, systemIcon)
+	} else if appIcon := installerIcon(owner); appIcon != 0 {
+		flags |= 0x0002 // TDF_USE_HICON_MAIN; the owner retains ownership of its icon.
+		put(36, uint64(appIcon))
+	}
+	binary.LittleEndian.PutUint32(config[20:], flags)
 	put(44, stringPointer(heading))
 	put(52, stringPointer(content))
 	buttons := make([]byte, len(choices)*12)
@@ -52,7 +62,7 @@ func showChoices(owner uintptr, heading, content string, choices ...choice) (int
 	binary.LittleEndian.PutUint32(config[60:], uint32(len(choices)))
 	put(64, uint64(uintptr(unsafe.Pointer(&buttons[0]))))
 	binary.LittleEndian.PutUint32(config[72:], uint32(choices[len(choices)-1].id)) // safest choice gets focus
-	binary.LittleEndian.PutUint32(config[156:], 330)
+	binary.LittleEndian.PutUint32(config[156:], 236)                               // dialog units; Windows scales the layout with DPI
 	var selected int32
 	hr, _, _ := windows.NewLazySystemDLL("comctl32.dll").NewProc("TaskDialogIndirect").Call(uintptr(unsafe.Pointer(&config[0])), uintptr(unsafe.Pointer(&selected)), 0, 0)
 	runtime.KeepAlive(keep)
@@ -61,6 +71,20 @@ func showChoices(owner uintptr, heading, content string, choices ...choice) (int
 		return 0, fmt.Errorf("无法显示安装提示：0x%x", hr)
 	}
 	return selected, nil
+}
+
+func installerIcon(owner uintptr) uintptr {
+	if owner == 0 {
+		return 0
+	}
+	// NSIS waits for this helper in another process. Never block indefinitely
+	// asking that window for its icon, and never destroy its shared icon handle.
+	var icon uintptr
+	user32.NewProc("SendMessageTimeoutW").Call(owner, 0x007f, 1, 0, 0x0002, 100, uintptr(unsafe.Pointer(&icon))) // WM_GETICON, ICON_BIG
+	if icon == 0 {
+		icon, _, _ = user32.NewProc("GetClassLongPtrW").Call(owner, ^uintptr(13)) // GCLP_HICON (-14)
+	}
+	return icon
 }
 
 func activateControls() (func(), error) {
@@ -105,7 +129,7 @@ func activateControls() (func(), error) {
 }
 
 func ShowError(owner uintptr, err error) {
-	_, showError := showChoices(owner, "安装未完成", err.Error(), choice{2, "返回安装器"})
+	_, showError := showChoicesWithIcon(owner, "安装未完成", err.Error(), 0xfffe, choice{2, "返回安装器"}) // TD_ERROR_ICON
 	if showError != nil {
 		text, _ := windows.UTF16PtrFromString(err.Error())
 		title, _ := windows.UTF16PtrFromString("DevShell 安装")

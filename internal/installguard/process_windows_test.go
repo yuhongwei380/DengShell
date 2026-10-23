@@ -307,7 +307,7 @@ func TestInstallerTaskDialogNative(t *testing.T) {
 			}
 		}
 	}()
-	selected, err := showChoices(0, "安装提示回归", "仅用于项目测试的安装提示，不会关闭正在运行的应用。", choice{100, "关闭 DevShell 并继续安装"}, choice{2, "取消安装"})
+	selected, err := showChoices(0, "安装提示回归", "仅用于项目测试的安装提示，不会关闭正在运行的应用。", choice{100, "关闭并继续"}, choice{2, "取消安装"})
 	if err != nil || selected != 100 {
 		t.Fatalf("native prompt: %d %v", selected, err)
 	}

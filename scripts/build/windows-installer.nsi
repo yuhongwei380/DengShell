@@ -10,8 +10,10 @@ InstallDirRegKey HKCU "Software\DevShell" "InstallDir"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 SetCompressorDictSize 16
-ShowInstDetails show
-ShowUninstDetails show
+ShowInstDetails hide
+ShowUninstDetails hide
+BrandingText "DevShell"
+SetFont "Microsoft YaHei UI" 9
 VIProductVersion "${PACKAGE_VERSION}.${BUILD_REVISION}"
 VIAddVersionKey /LANG=2052 "ProductName" "DevShell"
 VIAddVersionKey /LANG=2052 "FileDescription" "DevShell 当前用户安装程序"
@@ -60,6 +62,9 @@ Section "DevShell" SEC_MAIN
   SetShellVarContext current
   SetRegView 64
   InitPluginsDir
+  SetDetailsPrint textonly
+  DetailPrint "正在准备安装文件…"
+  SetDetailsPrint listonly
   SetOutPath "$PLUGINSDIR\payload"
   ; No extraction into the live installation until shutdown is complete. Try
   ; suppresses NSIS's Abort/Retry/Ignore box; errors are handled explicitly.
@@ -77,19 +82,29 @@ Section "DevShell" SEC_MAIN
   ${If} ${Silent}
     StrCpy $1 "--silent"
   ${EndIf}
-  DetailPrint "正在检查运行实例并准备安装……"
+  SetDetailsPrint both
+  DetailPrint "正在检查并等待 DevShell 退出…"
+  SetDetailsPrint listonly
   ClearErrors
   ExecWait '"$PLUGINSDIR\installer-control.exe" --directory "$INSTDIR" --payload "$PLUGINSDIR\payload" --owner $HWNDPARENT $1' $0
+  SetDetailsPrint both
   ${If} ${Errors}
     MessageBox MB_OK|MB_ICONSTOP "安装助手无法启动，现有 DevShell 未修改。" /SD IDOK
     SetErrorLevel 1
     Abort
   ${EndIf}
   ${If} $0 != 0
-    DetailPrint "安装已停止，未继续修改注册表或快捷方式。"
+    ${If} $0 == 1602
+      DetailPrint "安装已取消。"
+    ${Else}
+      SetDetailsView show
+      DetailPrint "安装未完成，请查看上方提示。"
+    ${EndIf}
     SetErrorLevel $0
     Abort
   ${EndIf}
+  DetailPrint "正在完成安装…"
+  SetDetailsPrint listonly
   SetOutPath "$INSTDIR"
   SetOverwrite on
   ; Rename migration: drop the previous DengShell program file, shortcuts and
@@ -115,6 +130,8 @@ Section "DevShell" SEC_MAIN
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DevShell" "EstimatedSize" ${ESTIMATED_SIZE}
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DevShell" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DevShell" "NoRepair" 1
+  SetDetailsPrint both
+  DetailPrint "安装完成。"
 SectionEnd
 
 Function un.onInit

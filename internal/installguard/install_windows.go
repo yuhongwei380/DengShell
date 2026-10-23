@@ -3,6 +3,7 @@ package installguard
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -65,7 +66,7 @@ func closeRunning(session processSession, owner uintptr, silent bool, show promp
 	if silent {
 		return fmt.Errorf("DevShell 正在运行；静默安装不会自动关闭程序，请退出后再安装")
 	}
-	selected, err := show(owner, "DevShell 正在运行", "安装需要关闭此安装目录下的所有 DevShell 窗口。SSH 会话将断开，请先完成文件编辑和传输。\n\n确认后将请求程序正常退出，并自动继续安装。", choice{100, "关闭 DevShell 并继续安装"}, choice{2, "取消安装"})
+	selected, err := show(owner, "关闭 DevShell 以继续安装", "安装器将关闭此目录下的 DevShell 窗口，退出后自动继续。\n\n请先保存编辑并完成传输，SSH 会话将断开。", choice{100, "关闭并继续"}, choice{2, "取消安装"})
 	if err != nil {
 		return err
 	}
@@ -106,9 +107,9 @@ func closeRunning(session processSession, owner uintptr, silent bool, show promp
 		}
 		var names []string
 		for _, p := range processes {
-			names = append(names, fmt.Sprintf("%s（PID %d）", p.path, p.pid))
+			names = append(names, fmt.Sprintf("%s · PID %d", filepath.Base(p.path), p.pid))
 		}
-		selected, err = show(owner, "DevShell 尚未退出", "请先在 DevShell 中处理未保存文件或传输任务。\n\n"+strings.Join(names, "\n"), choice{100, "继续等待"}, choice{101, "强制关闭并继续"}, choice{2, "取消安装"})
+		selected, err = show(owner, "正在等待 DevShell 退出", "请返回 DevShell，处理未保存的编辑或传输。\n\n"+strings.Join(names, "\n"), choice{100, "继续等待"}, choice{101, "强制关闭…"}, choice{2, "取消安装"})
 		if err != nil {
 			return err
 		}
