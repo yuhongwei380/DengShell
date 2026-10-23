@@ -118,9 +118,13 @@ dialog :is(input, select):focus { background-color: var(--focus-input); }
 [data-theme="dark"] .transfer-state.failed { color: #e0aaa2; background: #452f32; }
 [data-theme="dark"] .transfer-state.cancelled { color: var(--muted); background: #293846; }
 [data-theme="dark"] .transfer-retry { color: var(--accent); }
-[data-theme="dark"] .transfer-progress::-webkit-progress-bar { background: var(--surface-inset); }
-[data-theme="dark"] .transfer-progress::-webkit-progress-value { background: #7faf99; }
-[data-theme="dark"] .transfer-progress::-moz-progress-bar { background: #7faf99; }
+[data-theme="dark"] .transfer-progress { background: transparent; color: #b2dbc6; }
+[data-theme="dark"] .transfer-ring-track { stroke: var(--surface-inset); }
+[data-theme="dark"] .transfer-ring-fill { stroke: #7faf99; }
+[data-theme="dark"] .transfer-progress.failed { color: #e0aaa2; }
+[data-theme="dark"] .transfer-progress.failed .transfer-ring-fill { stroke: #d3998d; }
+[data-theme="dark"] .transfer-progress.cancelled { color: var(--muted); }
+[data-theme="dark"] .transfer-progress.cancelled .transfer-ring-fill { stroke: #91a4b0; }
 [data-theme="dark"] .drop-overlay { background: #172b3bf5; border-color: #6e96b1; color: #b6d1e3; }
 [data-theme="dark"] .drop-overlay :is(span, b) { color: #a6c2d7; }
 [data-theme="dark"] .toast { background: #2b4356f5; border-color: #58788d66; box-shadow: 0 4px 20px #00000033; }

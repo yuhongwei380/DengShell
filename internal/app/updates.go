@@ -30,7 +30,7 @@ const ApplicationVersion = "v26.10.0"
 // ApplicationDisplayVersion identifies this self-maintained branch in the user
 // interface. ApplicationVersion above stays the functional version that drives
 // update comparison and package metadata; never put branch text into it.
-const ApplicationDisplayVersion = "ver.Phoenix · v26.10.0-rc.1"
+const ApplicationDisplayVersion = "ver.Phoenix · v26.10.0-rc.2"
 
 // Package managers use ApplicationVersion without the leading v. It must stay
 // greater than the last upstream package version (0.3.0).
@@ -40,7 +40,7 @@ const ApplicationPackageVersion = "26.10.0"
 // three-digit daily sequence. Increase it for every published build, including
 // packaging-only releases; update manifests must exceed it. The sequence tracks
 // the upstream DengShell build numbering (107–114 ported on 2026-10-18).
-const ApplicationBuild uint64 = 20261023146
+const ApplicationBuild uint64 = 20261023147
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,

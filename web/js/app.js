@@ -1125,14 +1125,26 @@ function renderTransfers() {
   updateTransferNotice(); $('#transfer-empty').hidden = localTasks.size > 0;
   const label = { queued: '等待上传', uploading: '上传中', done: '已完成', failed: '失败', cancelled: '已取消' };
   $('#transfer-list').replaceChildren(...[...localTasks.values()].map(task => {
-    const row = node('div', 'transfer-row'), info = node('div', 'transfer-info'); const name = node('strong', '', task.name), detail = node('small', '', task.error || task.target); detail.title = task.error || task.target; info.append(name, detail);
-    const progress = node('progress', 'transfer-progress'); progress.max = task.total || 1; progress.value = task.done || 0; progress.setAttribute('aria-label', task.name + ' 上传进度'); info.append(progress);
-    const percent = task.total > 0 ? Math.min(100, Math.round(task.done / task.total * 100)) : 0;
-    const status = node('span', `transfer-state ${task.status}`, `${label[task.status] || task.status}${task.status === 'uploading' ? ' ' + percent + '%' : ''}`);
+    const row = node('div', 'transfer-row'), info = node('div', 'transfer-info'); const name = node('strong', '', task.name), detail = node('small', '', task.error || task.target); name.title = task.name; detail.title = task.error || task.target; info.append(name, detail);
+    const percent = task.status === 'done' ? 100 : task.total > 0 ? Math.max(0, Math.min(100, Math.round((task.done || 0) / task.total * 100))) : 0;
+    const progress = node('div', `transfer-progress ${task.status}`);
+    progress.setAttribute('role', 'progressbar'); progress.setAttribute('aria-label', task.name + ' 上传进度');
+    progress.setAttribute('aria-valuemin', '0'); progress.setAttribute('aria-valuemax', '100'); progress.setAttribute('aria-valuenow', String(percent));
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); ring.setAttribute('viewBox', '0 0 48 48'); ring.setAttribute('aria-hidden', 'true');
+    for (const type of ['track', 'fill']) {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('class', `transfer-ring-${type}`); circle.setAttribute('cx', '24'); circle.setAttribute('cy', '24'); circle.setAttribute('r', '20'); circle.setAttribute('pathLength', '100');
+      if (type === 'fill') circle.setAttribute('stroke-dasharray', `${percent} 100`);
+      ring.append(circle);
+    }
+    progress.append(ring, node('span', 'transfer-percent', `${percent}%`));
+    const status = node('span', `transfer-state ${task.status}`, label[task.status] || task.status);
+    const meta = node('div', 'transfer-meta'); meta.append(node('span', 'transfer-size', prettySize(task.done) + ' / ' + prettySize(task.total)), status); info.append(meta);
+    const actions = node('div', 'transfer-actions');
     const cancel = node('button', 'icon-button'); cancel.title = ['queued', 'uploading'].includes(task.status) ? '取消上传' : '移除记录'; cancel.setAttribute('aria-label', cancel.title); cancel.append(icon('close')); cancel.onclick = safe(() => cancelTask(task));
-    row.append(icon('file'), info, node('span', 'transfer-size', prettySize(task.done) + ' / ' + prettySize(task.total)), status);
-    if (['failed', 'cancelled'].includes(task.status) && (task.file || task.retryable)) { const retry = node('button', 'transfer-retry', task.error?.includes('已存在') ? '覆盖' : '重试'); retry.onclick = safe(() => retryTask(task)); row.append(retry); }
-    row.append(cancel); return row;
+    row.append(progress, info, actions);
+    if (['failed', 'cancelled'].includes(task.status) && (task.file || task.retryable)) { const retry = node('button', 'transfer-retry', task.error?.includes('已存在') ? '覆盖' : '重试'); retry.onclick = safe(() => retryTask(task)); actions.append(retry); }
+    actions.append(cancel); return row;
   }));
 }
 const filesPanel = $('#files-panel'); let dragDepth = 0;
