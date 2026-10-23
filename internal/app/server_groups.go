@@ -191,6 +191,33 @@ func (s *Store) SaveGroup(group ServerGroup) (ServerGroup, error) {
 	defer s.mu.Unlock()
 	return s.saveGroupLocked(group)
 }
+
+// Move only the group fields, preserving the latest connection and credentials.
+func (s *Store) MoveProfileGroup(id, groupID string) (Profile, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	groups := groupIndex(s.config.GroupNodes)
+	if _, ok := groups[groupID]; !ok {
+		return Profile{}, errors.New("目标分组不存在")
+	}
+	for i, profile := range s.config.Servers {
+		if profile.ID != id || profile.DeletedAt != nil {
+			continue
+		}
+		if profile.GroupID == groupID {
+			return publicProfile(profile), nil
+		}
+		s.config.Servers[i].GroupID = groupID
+		s.config.Servers[i].Group = legacyGroupPath(groupID, groups)
+		if err := s.writeLocked(); err != nil {
+			s.config.Servers[i] = profile
+			return Profile{}, err
+		}
+		return publicProfile(s.config.Servers[i]), nil
+	}
+	return Profile{}, errors.New("服务器配置不存在或已删除")
+}
+
 func (s *Store) deleteGroupLocked(id string) error {
 	found := false
 	for _, group := range s.config.GroupNodes {

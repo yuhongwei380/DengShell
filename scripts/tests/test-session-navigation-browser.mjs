@@ -111,6 +111,19 @@ try {
     assert.equal(new Set(tags.map(tag => tag.color)).size, expectedKinds.length);
     assert(tags.every(tag => tag.weight >= 700 && tag.contrast >= 4.5), JSON.stringify(tags));
   }
+  async function assertCategoryAlignment(selector) {
+    const rows = await page.$eval(selector, container => [...container.querySelectorAll('.release-note-tag')].map(tag => {
+      const bounds = tag.getBoundingClientRect();
+      let text = tag.nextSibling;
+      while (text && text.nodeType !== Node.TEXT_NODE) text = text.nextSibling;
+      const range = document.createRange(); range.setStart(text, 0); range.setEnd(text, 1);
+      return { left: bounds.left, width: bounds.width, body: range.getBoundingClientRect().left };
+    }));
+    assert(rows.length >= 3);
+    for (const row of rows) {
+      assert(Math.abs(row.left - rows[0].left) < .5 && Math.abs(row.width - rows[0].width) < .5 && Math.abs(row.body - rows[0].body) < .5, JSON.stringify(rows));
+    }
+  }
   const releaseKinds = await page.evaluate(() => {
     const kinds = { 新增: 'added', 修复: 'fixed', 调整: 'changed' };
     return [...new Set([...CLOUDSHELL.releaseNotes.matchAll(/(?:^|\n)\s*(?:[-*+]\s+)?(新增|修复|调整)[：:]/g)].map(match => kinds[match[1]]))].sort();
@@ -121,10 +134,16 @@ try {
     await page.waitForFunction(() => !document.documentElement.dataset.lightSwitch);
     await page.click('#settings-button'); await page.click('#release-notes-button');
     await assertCategoryColors('#release-notes-content', releaseKinds);
+    await page.$eval('#release-notes-content', (container, notes) => {
+      container.innerHTML = window.markdownit({ html: false, breaks: true }).render(notes);
+      DengReleaseNoteTags.highlight(container);
+    }, categoryFixture);
+    await assertCategoryAlignment('#release-notes-content');
     await page.click('#close-release-notes');
     await page.evaluate(notes => { window.qaUpdateDialog = DengUpdates.showUpdate({ currentVersion: CLOUDSHELL.version, currentBuild: CLOUDSHELL.build, latestVersion: CLOUDSHELL.version, latestBuild: CLOUDSHELL.build + 1, platform: 'windows-amd64', installerReady: false, notes }); }, categoryFixture);
     await page.waitForSelector('#startup-update-dialog[open]');
     await assertCategoryColors('#startup-update-notes');
+    await assertCategoryAlignment('#startup-update-notes');
     assert.equal(await page.$eval('#startup-update-notes', el => el.textContent), categoryFixture);
     if (process.env.DENGSHELL_NOTE_TAGS_SCREENSHOT) await page.screenshot({ path: process.env.DENGSHELL_NOTE_TAGS_SCREENSHOT + '-' + theme + '.png' });
     await page.click('#startup-update-later');
@@ -132,7 +151,7 @@ try {
   }
   await page.evaluate(value => CloudShellTheme.set(value), originalTheme);
   await page.waitForFunction(() => !document.documentElement.dataset.lightSwitch);
-  checks.push('Added/fixed/changed use distinct bold colors in update offers and release logs, with at least 4.5:1 text contrast in both themes');
+  checks.push('Added/fixed/changed use distinct bold colors with 4.5:1 contrast; mixed list markers and colon widths keep labels and body starts aligned in both themes');
   assert.equal(await page.$eval('#add-session', el => el.title), '新选项卡');
   await assertPlusFollowsLastTab();
   await page.click('#add-session');

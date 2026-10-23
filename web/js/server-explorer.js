@@ -125,6 +125,7 @@ function openServerProfileMenu(profile, actions, anchor) {
   if (!profile.deletedAt) buttons.push(serverManagerButton([...sessions.values()].some(s => s.profileId === profile.id && s.connected) ? profile.protocol === 'serial' ? '新建串口会话' : '新建 SSH 会话' : '连接', () => { closeServerGroupMenu(); return connect(profile.id); }));
   if (profile.notes) buttons.push(serverManagerButton('查看备注', () => window.DengProfileNotes.open(profile)));
   for (const button of actions.children) buttons.push(button);
+  if (!profile.deletedAt) buttons.push(serverManagerButton('移动到…', () => openServerMoveDialog(profile)));
   if (!profile.deletedAt) buttons.push(serverManagerButton('定位所属分组', () => { closeServerGroupMenu(); serverManager.tab = 'servers'; chooseServerFolder(profile.groupId); serverManager.selectedProfiles.add(profile.id); reflectServerSelection(); const row = [...$('#server-folder-list').querySelectorAll('[data-group-id]')].find(row => row.dataset.groupId === profile.groupId); row?.scrollIntoView({ block: 'nearest', inline: 'nearest' }); }));
   buttons.push(serverManagerButton('复制地址', async () => { await copyText(profile.protocol === 'serial' ? profile.serialPort || profile.host : `${profile.user}@${profile.host}:${profile.port}`); closeServerGroupMenu(); toast('地址已复制'); }));
   // Preserve row action handlers when the same menu is reopened.
@@ -134,6 +135,36 @@ function openServerProfileMenu(profile, actions, anchor) {
   menu.style.left = `${Math.max(8, Math.min(rect.right / scale - menu.offsetWidth, innerWidth / scale - menu.offsetWidth - 8))}px`;
   menu.style.top = `${Math.max(8, Math.min(rect.bottom / scale + 4, innerHeight / scale - menu.offsetHeight - 8))}px`;
   menu.querySelector('button')?.focus();
+}
+function openServerMoveDialog(profile) {
+  closeServerGroupMenu();
+  const current = profiles.find(item => item.id === profile.id && !item.deletedAt);
+  if (!current) return toast('连接不存在或已删除，请刷新后重试');
+  const form = $('#server-move-form'); form.dataset.profileId = current.id;
+  $('#server-move-profile').textContent = `将「${current.name}」移动到以下分组：`;
+  $('#server-move-error').hidden = true;
+  renderServerGroupChoices(current.groupId, $('#server-move-group'));
+  $('#save-server-move').disabled = !serverManager.nodes.length;
+  $('#server-move-dialog').showModal();
+}
+async function submitServerMove(event) {
+  event.preventDefault();
+  const button = $('#save-server-move'), select = $('#server-move-group'), cancel = $('#cancel-server-move');
+  if (button.disabled) return;
+  const id = event.currentTarget.dataset.profileId, groupId = select.value;
+  const error = $('#server-move-error'); error.hidden = true;
+  button.disabled = select.disabled = cancel.disabled = true;
+  try {
+    await post(`/api/profiles/${encodeURIComponent(id)}/group`, { groupId });
+    await loadProfiles();
+    $('#server-move-dialog').close();
+    serverManager.tab = 'servers'; chooseServerFolder(groupId);
+    serverManager.selectedProfiles.add(id); reflectServerSelection();
+    const row = [...$('#connection-groups').querySelectorAll('[data-profile-id]')].find(item => item.dataset.profileId === id);
+    row?.scrollIntoView({ block: 'nearest' }); row?.querySelector('.connection-card')?.focus({ preventScroll: true });
+    toast('连接已移动到所选分组');
+  } catch (failure) { error.textContent = failure.message || String(failure); error.hidden = false; }
+  finally { button.disabled = select.disabled = cancel.disabled = false; }
 }
 function fitServerExplorer() {
   const drawer = $('#connections-drawer');
@@ -147,6 +178,9 @@ function fitServerExplorer() {
   const divider = $('#server-manager-divider'); divider.setAttribute('aria-valuenow', String(Math.round(width))); divider.setAttribute('aria-valuemax', String(Math.round(maximum)));
 }
 function initializeServerExplorer() {
+  $('#cancel-server-move').onclick = () => $('#server-move-dialog').close();
+  $('#server-move-dialog').oncancel = event => { if ($('#cancel-server-move').disabled) event.preventDefault(); };
+  $('#server-move-form').onsubmit = safe(submitServerMove);
   const saved = readSaved('dengshell.server-manager', {});
   serverManager.treeWidth = Number.isFinite(saved?.treeWidth) ? Math.max(145, Math.min(520, saved.treeWidth)) : 320;
   serverManager.includeChildren = saved?.includeChildren !== false;

@@ -173,6 +173,16 @@ func (a *App) registerConnectionManagementHTTP(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /api/group-nodes/{id}", func(w http.ResponseWriter, r *http.Request) {
 		respond(w, map[string]bool{"ok": true}, a.store.DeleteGroup(r.PathValue("id")))
 	})
+	mux.HandleFunc("POST /api/profiles/{id}/group", func(w http.ResponseWriter, r *http.Request) {
+		var input struct {
+			GroupID string `json:"groupId"`
+		}
+		if !decode(w, r, &input) {
+			return
+		}
+		profile, err := a.store.MoveProfileGroup(r.PathValue("id"), input.GroupID)
+		respond(w, profile, err)
+	})
 	mux.HandleFunc("POST /api/trash/{id}/restore", func(w http.ResponseWriter, r *http.Request) {
 		profile, err := a.store.Restore(r.PathValue("id"))
 		respond(w, profile, err)

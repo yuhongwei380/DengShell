@@ -60,6 +60,9 @@
 .server-group-menu button:hover:not(:disabled) { background:var(--surface-inset,#edf4f8); }
 .server-group-menu button:disabled { opacity:.4; cursor:default; }
 #server-group-dialog { width:430px; max-height:calc(var(--view-height,100vh) - 30px); overflow:auto; }
+#server-move-dialog { width:430px; }
+#server-move-profile { overflow-wrap:anywhere; }
+#server-move-error { color:var(--danger,#c67b7b); }
 #server-group-dialog .dialog-heading { margin-bottom:18px; }
 .group-emoji-field { display:flex; gap:9px; align-items:center; }
 .group-emoji-field input { min-width:0; flex:1; }

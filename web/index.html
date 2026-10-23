@@ -11,7 +11,7 @@
   <script src="js/theme.js?v=20260920-v002-b70"></script>
   <link rel="stylesheet" href="vendor/xterm.css">
   <link rel="stylesheet" href="css/style.css?v=20261020-icon2">
-  <link rel="stylesheet" href="css/theme.css?v=20261020-ver1">
+  <link rel="stylesheet" href="css/theme.css?v=20261023-header145">
   <link rel="stylesheet" href="css/workspace-tools.css?v=20261001-composer">
   <link rel="stylesheet" href="css/appearance.css?v=20261023-notes1">
   <link rel="stylesheet" href="css/process-view.css?v=20260920-v002-b70">
@@ -19,9 +19,9 @@
   <link rel="stylesheet" href="css/file-browser.css?v=20260921-v002-b72">
   <link rel="stylesheet" href="css/themed-select.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/config-document.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="css/startup-update.css?v=20261023-tags1">
-  <link rel="stylesheet" href="css/desktop-polish.css?v=20261023-notes1">
-  <link rel="stylesheet" href="css/server-manager.css?v=20260928-card1">
+  <link rel="stylesheet" href="css/startup-update.css?v=20261023-tags2">
+  <link rel="stylesheet" href="css/desktop-polish.css?v=20261023-header145">
+  <link rel="stylesheet" href="css/server-manager.css?v=20261023-move145">
   <link rel="stylesheet" href="css/connection-extras.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/help-guide.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/appearance-tools.css?v=20261018-follow1">
@@ -91,7 +91,6 @@
       <button class="icon-button" id="about-button" title="关于 DevShell" aria-label="关于 DevShell" aria-haspopup="dialog" aria-controls="about-dialog"><img class="brand-logo" src="assets/dengshell.svg" alt="" draggable="false"></button>
       <button class="icon-button" id="settings-button" title="设置" aria-label="设置" aria-haspopup="menu" aria-controls="settings-menu" aria-expanded="false"><svg><use href="#i-settings"/></svg></button>
       <button class="icon-button" id="github-button" title="GitHub 项目仓库" aria-label="GitHub 项目仓库"><svg><use href="#i-github"/></svg></button>
-      <span class="app-version" id="app-version"></span>
       <button class="icon-button theme-toggle header-pill theme-pill" id="theme-toggle" aria-label="深色模式" aria-pressed="false" title="切换到深色模式"><svg class="theme-moon"><use href="#i-moon"/></svg><svg class="theme-sun"><use href="#i-sun"/></svg></button>
       <button class="icon-button header-pill" id="security-lock-button" aria-label="立即锁定" title="请先在设置中启用安全锁定" disabled><svg><use href="#i-lock"/></svg></button>
     </div>
@@ -181,6 +180,13 @@
     <div id="server-manager-create" class="server-manager-create"><button class="new-connection" id="new-connection"><svg><use href="#i-plus"/></svg>新建连接</button><button class="text-button" id="open-rdp-sessions" type="button" hidden>RDP 会话</button><button class="text-button" id="new-group">＋ 新建分组</button></div>
   </aside>
   <div id="server-group-menu" class="server-group-menu" role="menu" aria-label="分组操作" hidden></div>
+  <dialog id="server-move-dialog" aria-labelledby="server-move-title"><form id="server-move-form">
+    <div class="dialog-heading"><h2 id="server-move-title">移动连接</h2><button type="button" id="cancel-server-move" class="icon-button" aria-label="取消移动"><svg><use href="#i-close"/></svg></button></div>
+    <p id="server-move-profile"></p>
+    <label>移动到分组<select name="groupId" id="server-move-group" required></select></label>
+    <p id="server-move-error" role="alert" hidden></p>
+    <button type="submit" id="save-server-move" class="primary-button">移动</button>
+  </form></dialog>
   <dialog id="server-group-dialog"><form id="server-group-form">
     <div class="dialog-heading"><h2 id="server-group-editor-title">新建分组</h2><button type="button" id="cancel-server-group" class="icon-button" aria-label="取消分组编辑"><svg><use href="#i-close"/></svg></button></div>
     <input name="id" type="hidden"><label>分组名称<input name="name" required maxlength="100" placeholder="例如：生产环境"></label>
@@ -353,7 +359,7 @@
   <script src="vendor/markdown-it.js?v=15.0.3"></script>
   <script src="js/command-composer.js?v=20261001-composer"></script>
   <script src="js/workspace-tools.js?v=20260925-v002-b86"></script>
-  <script src="js/release-note-tags.js?v=20261023-tags1"></script>
+  <script src="js/release-note-tags.js?v=20261023-tags2"></script>
   <script src="js/appearance.js?v=20261023-tags1"></script>
   <script src="js/ui-appearance.js?v=20261019-brand1"></script>
   <script src="js/font-library.js?v=20261019-brand1"></script>
@@ -370,7 +376,7 @@
   <script src="js/startup-update.js?v=20261023-tags1"></script>
   <script src="js/portable-preferences.js?v=20261018-pin2"></script>
   <script src="js/server-manager.js?v=20261019-serial1"></script>
-  <script src="js/server-explorer.js?v=20261019-serial1"></script>
+  <script src="js/server-explorer.js?v=20261023-move145"></script>
   <script src="js/help-guide.js?v=20261019-serial1"></script>
   <script src="js/chart-styles.js?v=20260920-v002-b70"></script>
   <script src="js/appearance-tools.js?v=20261019-brand1"></script>
@@ -387,7 +393,7 @@
   <script src="js/rdp.js?v=20261022-tabs1"></script>
   <script src="js/serial.js?v=20261022-tabs1"></script>
   <script src="js/upload-confirmation.js?v=20260928-overwrite1"></script>
-  <script src="js/app.js?v=20261023-disk1"></script>
+  <script src="js/app.js?v=20261023-header145"></script>
   <script src="js/quick-connect.js?v=20261022-tabs1"></script>
   <script src="js/local-prompt.js?v=20261022-tabs1"></script>
   <script src="js/pinned-nav.js?v=20261022-overflow1"></script>
