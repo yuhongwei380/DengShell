@@ -106,3 +106,18 @@ jobs:
             build/macos-release/SHA256SUMS.txt \
             build/macos-release/build-info.json \
             --clobber
+  finalize-26-10-1:
+    name: Finalize v26.10.1 and retire RC tests
+    needs: [windows, macos]
+    # One-time cleanup explicitly authorized for this stable release only.
+    if: ${{ (github.event.inputs.tag || github.ref_name) == 'v26.10.1-build20261023150' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+      - name: Verify stable assets and remove RC releases and tags
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: python3 scripts/build/finalize-v26.10.1.py

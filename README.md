@@ -4,7 +4,7 @@
 
 DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VPS、维护 Linux 服务器、编辑远程配置和排查网络问题。支持 Windows、Linux、macOS 桌面（发行包仅提供 Windows 与 macOS），可同时连接多台服务器，并按自己的习惯调整字体、背景、布局和监控曲线。
 
-本说明对应 **v26.10.0-rc.4 · 构建 20261023149**，包含 Windows 安装提示与进度界面优化。[RC.4 测试版下载](https://github.com/yuhongwei380/DevShell/releases/tag/v26.10.0-rc.4-build20261023149)；稳定版与内置更新仍使用构建 20261023145。界面字体为阿里巴巴普惠体 3.0，完整变化见 [更新日志](CHANGELOG.md)。
+本说明对应正式版 **v26.10.1 · 构建 20261023150**，包含候选版已验证的原生文件选择框修复、SFTP 圆环进度、链接栏排序与 Windows 安装升级优化。[正式版下载](https://github.com/yuhongwei380/DevShell/releases/tag/v26.10.1-build20261023150)；已安装版本可通过内置更新升级。界面字体为阿里巴巴普惠体 3.0，完整变化见 [更新日志](CHANGELOG.md)。
 
 > **项目来源**：本项目源自上游 [BitsFlowCloud/DengShell](https://github.com/BitsFlowCloud/DengShell) 的 **DengShell v0.03 分支**，在此基础上独立维护。上游改动不再自动同步，已移植的上游改进（构建 107–114）见更新日志。
 
@@ -63,7 +63,7 @@ DevShell 是一款中文界面的开源 SSH 桌面工具，适合日常管理 VP
 
 Windows 版本需要 Microsoft Edge WebView2，缺少时程序会提供安装指引。安装版默认安装到当前用户目录，卸载保留个人配置。
 
-自 RC.3 起，安装器加入运行实例检测：确认后请求同一安装目录下的 DevShell 正常退出，处理未保存编辑与传输，释放占用后自动继续；写入失败回滚旧程序。RC.4 优化提示框比例、图标与文案，安装及卸载日志默认折叠。旧版可能需要在应用中确认退出，详见 [安装升级流程](docs/INSTALLER-UPGRADE.md)。
+安装器提供运行实例检测：确认后请求同一安装目录下的 DevShell 正常退出，处理未保存编辑与传输，释放占用后自动继续；写入失败回滚旧程序。安装提示框使用 DevShell 图标与精简文案，安装及卸载日志默认折叠。旧版可能需要在应用中确认退出，详见 [安装升级流程](docs/INSTALLER-UPGRADE.md)。
 
 **关于 `up.*` 文件**：Releases 页里的 `up.exe` 及同名 `.json` 描述文件是 **Windows 内置在线更新的载荷**，由已安装客户端的启动更新检查自动下载消费，无需（也不要）手动下载运行。流程：启动时获取描述文件 → 校验构建号大于本机（防回退）→ 弹窗确认后下载并校验 SHA-256 → 替换程序（保留旧程序副本）→ 自动重启，数据目录不变。这些文件名是更新协议的固定契约（见 [更新契约](docs/release/UPDATER-CONTRACT.md)），旧客户端按名字寻找新载荷，不可改名。Linux 载荷 `up.deb` / `up.pkg.tar.zst` 已随 Linux 发版停止，不再发布。
 
