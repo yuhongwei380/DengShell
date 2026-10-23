@@ -25,22 +25,22 @@ import (
 // Version rule for this branch: v<X>.<Y>.<Z> — X is the two-digit year, Y the
 // month without a leading zero, Z the zero-based release index within that
 // month. The first release of October 2026 is v26.10.0.
-const ApplicationVersion = "v26.10.1"
+const ApplicationVersion = "v26.10.2"
 
 // ApplicationDisplayVersion identifies this self-maintained branch in the user
 // interface. ApplicationVersion above stays the functional version that drives
 // update comparison and package metadata; never put branch text into it.
-const ApplicationDisplayVersion = "ver.Phoenix · v26.10.1"
+const ApplicationDisplayVersion = "ver.Phoenix · v26.10.2"
 
 // Package managers use ApplicationVersion without the leading v. It must stay
 // greater than the last upstream package version (0.3.0).
-const ApplicationPackageVersion = "26.10.1"
+const ApplicationPackageVersion = "26.10.2"
 
 // ApplicationBuild is the monotonic anti-rollback build: YYYYMMDD plus a
 // three-digit daily sequence. Increase it for every published build, including
 // packaging-only releases; update manifests must exceed it. The sequence tracks
 // the upstream DengShell build numbering (107–114 ported on 2026-10-18).
-const ApplicationBuild uint64 = 20261023150
+const ApplicationBuild uint64 = 20261024151
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,

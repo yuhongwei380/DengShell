@@ -863,6 +863,28 @@ function renderGPUs(stats) {
     return row;
   }));
 }
+function renderDisks(stats) {
+  // Each entry is a mounted filesystem; aliases and virtual volumes have
+  // already been removed by the backend. Keep the total, but expose each
+  // filesystem so free space on another disk cannot hide a nearly full root.
+  const disks = stats?.disks || [];
+  const diskSpace = disks.reduce((sum, disk) => ({ used: sum.used + disk.used, available: sum.available + disk.available, total: sum.total + disk.total }), { used: 0, available: 0, total: 0 });
+  meter('#disk-meter', diskSpace.total ? diskSpace.used / diskSpace.total * 100 : 0, diskSpace.total ? `${prettySize(diskSpace.used)} / ${prettySize(diskSpace.total)}` : '—', diskSpace.total > 0);
+  $('#disk-meter').title = disks.length ? `文件系统合计（${disks.length} 个）：${disks.slice(0, 12).map(disk => disk.path).join('、')}${disks.length > 12 ? '…' : ''}\n已用 ${prettySize(diskSpace.used)} / 总计 ${prettySize(diskSpace.total)}，可用 ${prettySize(diskSpace.available)}\n容量约每 30 秒更新；不含 SWAP、未挂载空间和重复挂载` : '尚无文件系统容量数据';
+  const box = $('#disk-filesystems');
+  box.hidden = disks.length < 2;
+  box.replaceChildren(...(box.hidden ? [] : disks.map(disk => {
+    const valid = disk.total > 0, percent = valid ? disk.used / disk.total * 100 : 0;
+    const row = node('div', 'metric disk-filesystem');
+    row.title = `挂载点：${disk.path}\n已用 ${prettySize(disk.used)} / 总计 ${prettySize(disk.total)}，可用 ${prettySize(disk.available)}`;
+    const label = node('span', '', disk.path); label.title = disk.path;
+    const bar = node('div', 'meter');
+    const fill = node('i'); fill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    bar.append(fill, node('b', '', valid ? `${percent.toFixed(1)}%` : '—'), node('em', '', valid ? `${prettySize(disk.used)} / ${prettySize(disk.total)}` : '—'));
+    row.append(label, bar);
+    return row;
+  })));
+}
 function renderMonitor(stats) {
   if (window.DengSystemIdentity) window.DengSystemIdentity.render(stats?.os);
   else { $('#system-os').textContent = stats?.os || '—'; $('#system-os').title = stats?.os || ''; }
@@ -873,11 +895,7 @@ function renderMonitor(stats) {
   meter('#swap-meter', stats?.swapTotal ? stats.swapUsed / stats.swapTotal * 100 : 0, stats ? `${prettySize(stats.swapUsed)} / ${prettySize(stats.swapTotal)}` : '—', !!stats);
   renderGPUs(stats);
   renderProcesses(stats);
-  // The backend filters virtual volumes and deduplicates filesystem aliases.
-  const disks = stats?.disks || [];
-  const diskSpace = disks.reduce((sum, disk) => ({ used: sum.used + disk.used, available: sum.available + disk.available, total: sum.total + disk.total }), { used: 0, available: 0, total: 0 });
-  meter('#disk-meter', diskSpace.total ? diskSpace.used / diskSpace.total * 100 : 0, diskSpace.total ? `${prettySize(diskSpace.used)} / ${prettySize(diskSpace.total)}` : '—', diskSpace.total > 0);
-  $('#disk-meter').title = disks.length ? `文件系统合计（${disks.length} 个）：${disks.slice(0, 12).map(disk => disk.path).join('、')}${disks.length > 12 ? '…' : ''}\n已用 ${prettySize(diskSpace.used)} / 总计 ${prettySize(diskSpace.total)}，可用 ${prettySize(diskSpace.available)}\n容量约每 30 秒更新；不含 SWAP、未挂载空间和重复挂载` : '尚无文件系统容量数据';
+  renderDisks(stats);
   $('#disk-read').textContent = stats?.sampleReady ? prettySize(stats.diskRead) + '/s' : '—'; $('#disk-write').textContent = stats?.sampleReady ? prettySize(stats.diskWrite) + '/s' : '—';
   renderNetwork(stats);
   renderServerAddresses(stats);

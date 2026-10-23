@@ -109,7 +109,10 @@
         <div class="metric"><span>内存</span><div class="meter" id="memory-meter"><i style="width:0" class="memory-fill"></i><b>—</b><em>—</em></div></div>
         <div class="metric"><span>交换</span><div class="meter" id="swap-meter"><i style="width:0"></i><b>—</b><em>—</em></div></div>
         <div id="gpu-metrics" hidden></div>
-        <div class="metric"><span>磁盘</span><div class="meter" id="disk-meter"><i style="width:0"></i><b>—</b><em>—</em></div></div>
+        <div class="disk-resources" role="group" aria-label="磁盘文件系统容量">
+          <div class="metric"><span>磁盘</span><div class="meter" id="disk-meter"><i style="width:0"></i><b>—</b><em>—</em></div></div>
+          <div id="disk-filesystems" aria-label="各挂载点容量" hidden></div>
+        </div>
         <div class="network-grid">
           <div class="disk-io" aria-label="磁盘读写速度"><div class="disk-readout read"><span>↓ 读取</span><strong id="disk-read">—</strong></div><div class="disk-readout write"><span>↑ 写入</span><strong id="disk-write">—</strong></div></div>
           <div class="network-card traffic-card"><div class="chart-caption network-caption">网络流量 <select id="network-interface" aria-label="选择真实网卡" title="选择网卡"><option value="">未连接</option></select></div><div class="chart-heading"><b class="upload-color">上行 —</b><b class="download-color">下行 —</b></div><svg id="network-chart" class="chart" role="button" tabindex="0" title="上传与下载共用零起点刻度，单位为每秒字节；点击运行 MTR 路径诊断" viewBox="0 0 270 54" preserveAspectRatio="none" aria-label="网络流量图，上传与下载共用刻度，点击运行 MTR 路径诊断"></svg></div>

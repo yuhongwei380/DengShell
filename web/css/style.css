@@ -92,6 +92,10 @@ svg use { pointer-events: none; }
 .meter i.memory-fill { background: #c8ddeb; }
 .meter i.gpu-fill { background: #d8d0e2; }
 .gpu-row > span { width: auto; min-width: 27px; }
+.disk-filesystem > span { flex: 0 0 54px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.disk-filesystem .meter { min-width: 0; gap: 6px; }
+.disk-filesystem .meter b { flex-shrink: 0; }
+.disk-filesystem .meter em { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meter b, .meter em { position: relative; font-weight: 400; font-style: normal; }
 .meter b { color: #698394; }
 .meter em { color: #8da0ae; }
