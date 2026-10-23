@@ -68,6 +68,37 @@ func TestUpdateReceiptHighWaterAndMalformedReceiptFailClosed(t *testing.T) {
 	}
 }
 
+func TestUpdateInstallAfterManualNewerBuild(t *testing.T) {
+	for _, tc := range []struct {
+		name         string
+		receiptBuild uint64
+		build        uint64
+		version      string
+		wantOK       bool
+	}{
+		{"older receipt superseded", ApplicationBuild - 1, ApplicationBuild + 1, ApplicationVersion, true},
+		{"same build rejected", ApplicationBuild - 1, ApplicationBuild, ApplicationVersion, false},
+		{"lower current version rejected", ApplicationBuild - 1, ApplicationBuild + 1, "v0.00", false},
+		{"unknown receipt build remains protected", 0, ApplicationBuild + 1, ApplicationVersion, false},
+		{"current receipt remains protected", ApplicationBuild, ApplicationBuild + 1, ApplicationVersion, false},
+		{"newer receipt remains protected", ApplicationBuild + 1, ApplicationBuild + 2, ApplicationVersion, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			receipt, err := json.Marshal(UpdateReceipt{Build: tc.receiptBuild, Version: ApplicationVersion + ".1"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := WriteUpdateReceipt(dir, receipt); err != nil {
+				t.Fatal(err)
+			}
+			if err := ValidateUpdateBuild(dir, tc.build, tc.version); (err == nil) != tc.wantOK {
+				t.Fatalf("installation validation returned %v; want success %t", err, tc.wantOK)
+			}
+		})
+	}
+}
+
 func TestUpdateDescriptorIdentityAndValidation(t *testing.T) {
 	public, private, err := ed25519.GenerateKey(rand.Reader)
 	if err != nil {
@@ -95,6 +126,9 @@ func TestUpdateDescriptorIdentityAndValidation(t *testing.T) {
 		{"old display version with higher build", hash, "none", UpdateReceipt{}, func(d *UpdateDescriptor) { d.Version = "v0.00" }},
 		{"unknown version syntax", hash, "none", UpdateReceipt{}, func(d *UpdateDescriptor) { d.Version = "v0.01-old" }},
 		{"receipt version blocks old release", hash, "none", UpdateReceipt{Version: ApplicationVersion + ".1"}, nil},
+		{"manual newer build supersedes older receipt version", hash, "available", UpdateReceipt{Build: ApplicationBuild - 1, Version: ApplicationVersion + ".1"}, nil},
+		{"current build receipt version still blocks rollback", hash, "none", UpdateReceipt{Build: ApplicationBuild, Version: ApplicationVersion + ".1"}, nil},
+		{"newer build receipt version still blocks rollback", hash, "none", UpdateReceipt{Build: ApplicationBuild + 1, Version: ApplicationVersion + ".1"}, nil},
 		{"invalid sha", hash, "none", UpdateReceipt{}, func(d *UpdateDescriptor) { d.SHA256 = "bad" }},
 		{"invalid platform", hash, "none", UpdateReceipt{}, func(d *UpdateDescriptor) { d.Platform = "windows-amd64" }},
 		{"invalid product", hash, "none", UpdateReceipt{}, func(d *UpdateDescriptor) { d.Product = "other" }},
@@ -226,6 +260,7 @@ func TestUpdateAcceptsUnsignedGitHubReleaseManifest(t *testing.T) {
 		t.Fatalf("manifest claiming a bogus signature accepted: %+v", got)
 	}
 }
+
 // A release published after startup must still be downloadable in the same
 // session: the manual check refreshes the cached offer that the download
 // compares the confirmed hash against.

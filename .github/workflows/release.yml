@@ -58,7 +58,7 @@ jobs:
           $tag = "${{ github.event.inputs.tag || github.ref_name }}"
           $version = (Select-String -Path internal/app/updates.go -Pattern 'const ApplicationVersion = "([^"]+)"').Matches[0].Groups[1].Value
           $notes = "docs/release/RELEASE-$version.md"
-          $releaseOptions = @()
+          $releaseOptions = @('--latest')
           if ($tag -match '-(rc|alpha|beta)([.-]|$)') {
             $releaseOptions = @('--prerelease', '--latest=false')
           }
@@ -89,7 +89,7 @@ jobs:
           tag="${{ github.event.inputs.tag || github.ref_name }}"
           version=$(sed -n 's/^const ApplicationVersion = "\([^"]*\)".*/\1/p' internal/app/updates.go)
           notes="docs/release/RELEASE-$version.md"
-          release_options=()
+          release_options=(--latest)
           if [[ "$tag" =~ -(rc|alpha|beta)([.-]|$) ]]; then
             release_options=(--prerelease --latest=false)
           fi

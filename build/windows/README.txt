@@ -1,4 +1,4 @@
-DevShell v26.10.2 · Windows 10/11 x64
+DevShell v26.10.1 · Windows 10/11 x64
 
 安装版：运行 DevShell-Setup-x64.exe。默认安装到当前用户的 LocalAppData\Programs\DevShell，建立开始菜单／桌面快捷方式，并注册“控制面板 → 程序和功能”与 Windows 设置中的卸载入口。升级前退出程序；此前 DengShell 的安装位置与 data 数据会自动沿用。卸载仅移除发行文件与快捷方式，保留个人 data 配置、SSH 密钥、字体和背景。自 2026-10-20 起不再发布绿色 ZIP，安装版是唯一 Windows 发行方式。
 
