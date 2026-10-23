@@ -39,9 +39,9 @@ func platformSaveFileDialog(_ context.Context, options wailsruntime.SaveDialogOp
 // Keep ALL file pickers off WebView's UI thread. Chromium's
 // HideCursorWhileTyping can leave that thread's ShowCursor count negative when
 // a keyboard-triggered modal disables its parent, which then cannot receive the
-// mouse event that would show it again. A separate STA keeps cancellation
-// messages flowing; a scoped activation hook balances inherited cursor hiding
-// after Windows attaches the modal dialog's input queue to its owner.
+// mouse event that would show it again. Use an unowned dialog on a separate STA
+// and manually disable main: an HWND owner would attach their input queues and
+// let later Chromium cursor changes leak back into the picker.
 // https://github.com/electron/electron/issues/54630
 // Do not change the user's system-wide "Hide pointer while typing" setting.
 func runWindowsFileDialog[T any](show func(owner uintptr) (T, error)) (T, error) {
@@ -63,12 +63,12 @@ func runWindowsFileDialog[T any](show func(owner uintptr) (T, error)) (T, error)
 				}
 			}
 			defer ole.CoUninitialize()
-			restore, err := installPickerCursorGuard()
+			restore, err := installPickerModalGuard(owner)
 			if err != nil {
 				return result{err: err}
 			}
 			defer restore()
-			selected, err := show(owner)
+			selected, err := show(0)
 			return result{selected, err}
 		}()
 		done <- r

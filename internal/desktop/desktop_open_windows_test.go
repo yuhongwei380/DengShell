@@ -155,8 +155,8 @@ func TestWindowsOpenDialogNative(t *testing.T) {
 	}
 }
 
-// Reproduce a keyboard-hidden pointer on a real modal owner. Check the picker
-// thread's count at activation, AFTER Windows attaches the owner, without
+// Reproduce a keyboard-hidden pointer on the application's main window. Check
+// the picker's state at activation and repeatedly during its modal loop without
 // moving the user's mouse or changing system pointer settings.
 func TestWindowsPickerHiddenOwnerNative(t *testing.T) {
 	if os.Getenv("DENGSHELL_NATIVE_DIALOG_TEST") != "1" {
@@ -164,6 +164,23 @@ func TestWindowsPickerHiddenOwnerNative(t *testing.T) {
 	}
 	owner, stopOwner := testHiddenPickerOwner(t)
 	defer stopOwner()
+	t.Run("error-and-already-disabled", func(t *testing.T) {
+		for _, initiallyEnabled := range []uintptr{1, 0} {
+			windowUser32.NewProc("EnableWindow").Call(owner, initiallyEnabled)
+			failure := errors.New("configuration failed")
+			_, err := runWindowsFileDialog(func(_ uintptr) (bool, error) {
+				if enabled, _, _ := windowUser32.NewProc("IsWindowEnabled").Call(owner); enabled != 0 {
+					return false, errors.New("主窗口未被禁用")
+				}
+				return false, failure
+			})
+			enabled, _, _ := windowUser32.NewProc("IsWindowEnabled").Call(owner)
+			if !errors.Is(err, failure) || enabled != initiallyEnabled {
+				t.Fatalf("异常后窗口状态恢复错误：enabled=%d err=%v", enabled, err)
+			}
+		}
+		windowUser32.NewProc("EnableWindow").Call(owner, 1)
+	})
 	for _, kind := range []string{"open", "save"} {
 		for _, accept := range []bool{false, true} {
 			t.Run(fmt.Sprintf("%s/accept=%v", kind, accept), func(t *testing.T) {
@@ -180,26 +197,64 @@ func checkHiddenOwnerPicker(t *testing.T, owner uintptr, kind string, accept boo
 		t.Fatal(err)
 	}
 	title := fmt.Sprintf("DevShell hidden owner QA %d %s %v", os.Getpid(), kind, accept)
-	stopPicker := driveTestOpenPicker(title, accept)
+	stopPicker := driveTestOpenPickerAfter(title, accept, 2*time.Second)
 	defer stopPicker()
 	_, err := runWindowsFileDialog(func(actualOwner uintptr) (bool, error) {
-		if actualOwner != owner {
-			return false, fmt.Errorf("选择框所属窗口 %x，期望 %x", actualOwner, owner)
+		if actualOwner != 0 {
+			return false, fmt.Errorf("选择框仍关联 WebView 窗口 %x", actualOwner)
 		}
 		checked := false
+		var dialogWindow uintptr
 		var checkError error
+		checks := 0
+		timerCallback := syscall.NewCallback(func(_ uintptr, _ uint32, _ uintptr, _ uint32) uintptr {
+			if !checked {
+				return 0
+			}
+			checks++
+			// Model later WebView input/paint events while the shell pumps messages.
+			windowUser32.NewProc("SendMessageW").Call(owner, 0x8001, 0, 0)
+			defer windowUser32.NewProc("SendMessageW").Call(owner, 0x8002, 0, 0)
+			arrow, _, _ := windowUser32.NewProc("LoadCursorW").Call(0, 32512)
+			previous, _, _ := windowUser32.NewProc("SetCursor").Call(arrow)
+			defer windowUser32.NewProc("SetCursor").Call(previous)
+			oldOwnerCursor, _, _ := windowUser32.NewProc("SendMessageW").Call(owner, 0x8003, 0, 0)
+			defer windowUser32.NewProc("SendMessageW").Call(owner, 0x8004, oldOwnerCursor, 0)
+			cursor, _, _ := windowUser32.NewProc("GetCursor").Call()
+			windowUser32.NewProc("ShowCursor").Call(1)
+			count, _, _ := windowUser32.NewProc("ShowCursor").Call(0)
+			if cursor != arrow || int32(count) < 0 {
+				checkError = fmt.Errorf("弹窗运行期间指针受主窗口影响：cursor=%x count=%d", cursor, int32(count))
+			}
+			// Exercise the shell's normal mouse cursor dispatch as well.
+			windowUser32.NewProc("SetCursor").Call(0)
+			windowUser32.NewProc("SendMessageW").Call(dialogWindow, 0x20, dialogWindow, 1|(0x200<<16)) // WM_SETCURSOR, HTCLIENT, WM_MOUSEMOVE
+			if cursor, _, _ := windowUser32.NewProc("GetCursor").Call(); cursor == 0 {
+				checkError = errors.New("选择框处理鼠标移动后未恢复指针句柄")
+			}
+			return 0
+		})
+		timer, _, timerError := windowUser32.NewProc("SetTimer").Call(0, 0, 30, timerCallback)
+		if timer == 0 {
+			return false, timerError
+		}
+		defer windowUser32.NewProc("KillTimer").Call(0, timer)
 		callback := syscall.NewCallback(func(code int32, window, data uintptr) uintptr {
-			// The production hook was registered first. Let it restore visibility
-			// before checking the activated dialog's state.
+			// Let the production modality hook run before checking dialog state.
 			result, _, _ := windowUser32.NewProc("CallNextHookEx").Call(0, uintptr(code), window, data)
 			if code == 5 { // HCBT_ACTIVATE
 				parent, _, _ := windowUser32.NewProc("GetWindow").Call(window, 4) // GW_OWNER
-				if parent == owner {
+				if parent == 0 {
 					checked = true
+					dialogWindow = window
+					// Reproduce Chromium hiding again AFTER the activation guard ran.
+					windowUser32.NewProc("SendMessageW").Call(owner, 0x8001, 0, 0)
+					defer windowUser32.NewProc("SendMessageW").Call(owner, 0x8002, 0, 0)
 					ownerThread, _, _ := windowUser32.NewProc("GetWindowThreadProcessId").Call(owner, 0)
+					enabled, _, _ := windowUser32.NewProc("IsWindowEnabled").Call(owner)
 					windowUser32.NewProc("ShowCursor").Call(1)
 					count, _, _ := windowUser32.NewProc("ShowCursor").Call(0)
-					if uint32(ownerThread) == windows.GetCurrentThreadId() || int32(count) < 0 {
+					if enabled != 0 || uint32(ownerThread) == windows.GetCurrentThreadId() || int32(count) < 0 {
 						checkError = fmt.Errorf("模态窗口未隔离或指针仍隐藏：cursor=%d", int32(count))
 					}
 				}
@@ -214,13 +269,13 @@ func checkHiddenOwnerPicker(t *testing.T, owner uintptr, kind string, accept boo
 		var selected bool
 		if kind == "save" {
 			var path string
-			path, err = showWindowsSaveDialog(owner, wailsruntime.SaveDialogOptions{
+			path, err = showWindowsSaveDialog(actualOwner, wailsruntime.SaveDialogOptions{
 				Title: title, DefaultDirectory: directory, DefaultFilename: "download.txt",
 			})
 			selected = path != ""
 		} else {
 			var paths []string
-			paths, err = showWindowsOpenDialog(owner, wailsruntime.OpenDialogOptions{
+			paths, err = showWindowsOpenDialog(actualOwner, wailsruntime.OpenDialogOptions{
 				Title: title, DefaultDirectory: directory, DefaultFilename: "source.txt",
 			}, true, false)
 			selected = len(paths) != 0
@@ -231,6 +286,9 @@ func checkHiddenOwnerPicker(t *testing.T, owner uintptr, kind string, accept boo
 		if !checked {
 			return false, errors.New("没有检查到模态选择框激活")
 		}
+		if checks < 3 {
+			return false, fmt.Errorf("弹窗运行期间检查不足：%d", checks)
+		}
 		if selected != accept {
 			return false, fmt.Errorf("选择状态 %v，期望 %v", selected, accept)
 		}
@@ -238,6 +296,9 @@ func checkHiddenOwnerPicker(t *testing.T, owner uintptr, kind string, accept boo
 	})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if enabled, _, _ := windowUser32.NewProc("IsWindowEnabled").Call(owner); enabled == 0 {
+		t.Fatal("关闭选择框后主窗口仍被禁用")
 	}
 	count, _, _ := windowUser32.NewProc("SendMessageW").Call(owner, 0x8000, 0, 0)
 	if int32(count) != -3 {
@@ -271,6 +332,18 @@ func testHiddenPickerOwner(t *testing.T) (uintptr, func()) {
 		class := windowClass{instance: module, name: className}
 		class.size = uint32(unsafe.Sizeof(class))
 		class.proc = syscall.NewCallback(func(hwnd uintptr, msg uint32, wparam, lparam uintptr) uintptr {
+			if msg == 0x8003 || msg == 0x8004 {
+				cursor, _, _ := windowUser32.NewProc("SetCursor").Call(wparam)
+				return cursor
+			}
+			if msg == 0x8001 || msg == 0x8002 {
+				show := uintptr(0)
+				if msg == 0x8002 {
+					show = 1
+				}
+				count, _, _ := windowUser32.NewProc("ShowCursor").Call(show)
+				return count
+			}
 			if msg == 0x8000 { // query this thread's cursor count without changing it
 				windowUser32.NewProc("ShowCursor").Call(1)
 				count, _, _ := windowUser32.NewProc("ShowCursor").Call(0)
@@ -331,10 +404,15 @@ func testHiddenPickerOwner(t *testing.T) (uintptr, func()) {
 }
 
 func driveTestOpenPicker(title string, accept bool) func() {
+	return driveTestOpenPickerAfter(title, accept, 250*time.Millisecond)
+}
+
+func driveTestOpenPickerAfter(title string, accept bool, delay time.Duration) func() {
 	done := make(chan struct{})
 	go func() {
 		caption, _ := windows.UTF16PtrFromString(title)
 		deadline := time.Now().Add(10 * time.Second)
+		var foundAt time.Time
 		for {
 			select {
 			case <-done:
@@ -348,6 +426,12 @@ func driveTestOpenPicker(title string, accept bool) func() {
 			var processID uint32
 			windowUser32.NewProc("GetWindowThreadProcessId").Call(handle, uintptr(unsafe.Pointer(&processID)))
 			if processID != uint32(os.Getpid()) {
+				continue
+			}
+			if foundAt.IsZero() {
+				foundAt = time.Now()
+			}
+			if time.Since(foundAt) < delay {
 				continue
 			}
 			command := uintptr(2) // IDCANCEL
