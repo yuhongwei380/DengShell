@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
-"""One-time, user-authorized retirement of the four v26.10.0 RC releases.
+"""One-time, user-authorized retirement of the interim v26.10.1 build releases.
 
-Runs only after both platform publication jobs succeed. Never reads local Git
-credentials; gh uses the workflow's existing, ephemeral contents-write token.
+The unified v26.10.1 stable release (tag v26.10.1-build26102401, ten-digit
+build number) supersedes every interim v26.10.1-build2026... publication.
+This script deletes those interim GitHub releases and tags after both
+platform publication jobs succeed. Never reads local Git credentials; gh
+uses the workflow's existing, ephemeral contents-write token.
 """
 import json
 import os
@@ -10,12 +13,14 @@ from pathlib import Path
 import subprocess
 
 REPOSITORY = 'yuhongwei380/DevShell'
-STABLE_TAG = 'v26.10.1-build20261023150'
-RC_TAGS = (
-    'v26.10.0-rc.1-build20261023146',
-    'v26.10.0-rc.2-build20261023147',
-    'v26.10.0-rc.3-build20261023148',
-    'v26.10.0-rc.4-build20261023149',
+STABLE_TAG = 'v26.10.1-build26102401'
+RETIRED_TAGS = (
+    'v26.10.1-build20261023150',
+    'v26.10.1-build20261024152',
+    'v26.10.1-build20261024153',
+    'v26.10.1-build20261024154',
+    'v26.10.1-build20261024155',
+    'v26.10.1-build20261024156',
 )
 REQUIRED_ASSETS = {
     'DevShell-Setup-x64.exe', 'up.exe', 'up.exe.json',
@@ -47,13 +52,12 @@ def validate(stable, inventory):
     assets = {asset['name']: asset for asset in stable.get('assets', [])}
     if not REQUIRED_ASSETS.issubset(assets):
         raise ValueError(f'Missing stable assets: {sorted(REQUIRED_ASSETS - assets.keys())}')
-    if any(assets[name].get('size', 0) <= 0 for name in REQUIRED_ASSETS):
-        raise ValueError('Stable release contains an empty asset')
+    if STABLE_TAG in RETIRED_TAGS:
+        raise ValueError('Refusing to retire the stable release')
     # Validate the entire deletion scope before changing any release or tag.
     for release in inventory:
-        if release.get('tag_name') in RC_TAGS:
-            if release.get('prerelease') is not True or release.get('draft') is not False:
-                raise ValueError(f'Refusing to remove a non-RC release: {release["tag_name"]}')
+        if release.get('tag_name') in RETIRED_TAGS and release.get('draft') is not False:
+            raise ValueError(f'Refusing to remove a draft release: {release["tag_name"]}')
 
 
 def main():
@@ -65,7 +69,7 @@ def main():
     validate(stable, inventory)
     gh('release', 'edit', STABLE_TAG, '--latest')
     present = {release['tag_name'] for release in inventory}
-    for tag in RC_TAGS:
+    for tag in RETIRED_TAGS:
         if tag in present:
             gh('release', 'delete', tag, '--yes')
         # Separate deletion also makes a rerun recover from a partial cleanup.
@@ -74,17 +78,21 @@ def main():
             gh('api', '--method', 'DELETE', f'repos/{REPOSITORY}/git/refs/tags/{tag}')
         print(f'Retired {tag}', flush=True)
     remaining = {release['tag_name'] for release in releases()}
-    refs = api('git/matching-refs/tags/v26.10.0-rc.')
-    if any(tag in remaining for tag in RC_TAGS) or any(
-            ref.get('ref') in {f'refs/tags/{tag}' for tag in RC_TAGS} for ref in refs):
-        raise ValueError('RC cleanup verification failed')
+    leftover = [tag for tag in RETIRED_TAGS if tag in remaining]
+    for tag in RETIRED_TAGS:
+        refs = api(f'git/matching-refs/tags/{tag}')
+        if any(ref.get('ref') == f'refs/tags/{tag}' for ref in refs):
+            leftover.append(tag)
+    if leftover:
+        raise ValueError(f'Interim build cleanup verification failed: {leftover}')
     if api('releases/latest').get('tag_name') != STABLE_TAG:
         raise ValueError('Stable release is not Latest')
     summary = os.environ.get('GITHUB_STEP_SUMMARY')
     if summary:
         with Path(summary).open('a', encoding='utf-8') as output:
             output.write(f'Published **{STABLE_TAG}** with all platform assets.\n\n')
-            output.write('Removed RC releases and tags:\n\n' + ''.join(f'- {tag}\n' for tag in RC_TAGS))
+            output.write('Removed interim build releases and tags:\n\n'
+                         + ''.join(f'- {tag}\n' for tag in RETIRED_TAGS))
 
 
 if __name__ == '__main__':

@@ -107,10 +107,10 @@ jobs:
             build/macos-release/build-info.json \
             --clobber
   finalize-26-10-1:
-    name: Finalize v26.10.1 and retire RC tests
+    name: Finalize v26.10.1 and retire interim builds
     needs: [windows, macos]
     # One-time cleanup explicitly authorized for this stable release only.
-    if: ${{ (github.event.inputs.tag || github.ref_name) == 'v26.10.1-build20261023150' }}
+    if: ${{ (github.event.inputs.tag || github.ref_name) == 'v26.10.1-build26102401' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
