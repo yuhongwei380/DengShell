@@ -21,8 +21,8 @@ button,input,select,textarea { font-family:inherit; }
 [data-files-position="right"] .workspace > #files-splitter { grid-row:1; grid-column:2; }
 [data-files-position="right"] .workspace > #files-panel { grid-row:1; grid-column:3; }
 /* Hidden panes release every reserved track, in every supported position. */
-[data-files-position] .workspace.files-hidden { grid-template-rows:minmax(0,1fr); grid-template-columns:minmax(0,1fr); }
-[data-files-position] .workspace.files-hidden > .terminal-panel { grid-row:1; grid-column:1; }
+.workspace.files-hidden { grid-template-rows:minmax(0,1fr); grid-template-columns:minmax(0,1fr); }
+.workspace.files-hidden > .terminal-panel { grid-row:1; grid-column:1; }
 .files-panel .files-position-button { flex:0 0 28px; width:28px; height:28px; margin-left:auto; border-radius:7px; color:var(--accent,#7198b1); }
 .files-position-button svg { width:18px; height:18px; }
 .files-position-button:hover,.files-position-button[aria-pressed="true"] { background:var(--surface-selected,#edf3f7); }

@@ -145,7 +145,7 @@ async function loadProfiles() {
     workspaceInitialized = true;
     const savedPane = readSaved('dengshell.workspace', {}).pane;
     if (['files', 'commands', 'common-apps', 'transfers'].includes(savedPane)) showPane(savedPane, false);
-    setWorkspaceVisible(!layout.filesHidden, false);
+    setWorkspaceVisible(layout.filesHidden === false, false);
   }
   window.DengShellHelp?.acceptConfig(config);
 }
@@ -1184,6 +1184,9 @@ const savedLayout = readSaved('cloudshell.layout', {});
 let layout = savedLayout && typeof savedLayout === 'object' ? savedLayout : {};
 // Adopt the roomier terminal once; subsequent manual pane sizes stay intact.
 if (layout.version !== 2) { delete layout.files; layout.version = 2; save('cloudshell.layout', layout); }
+// A missing visibility preference means this is the first SFTP-panel choice.
+// Start closed; an explicit saved false still restores the panel as open.
+setWorkspaceVisible(layout.filesHidden === false, false);
 function filePanelLimits() {
   const workspace = $('#workspace');
   // The separator is 8px in either direction; its full height in right mode
