@@ -35,6 +35,64 @@ function serverFolderAncestors(tree, id) {
   for (let group = tree.byID.get(id); group && !seen.has(group.id); group = tree.byID.get(group.parentId)) { seen.add(group.id); chain.push(group); }
   return chain.reverse();
 }
+async function reorderServerGroup(id, targetID, before) {
+  if (serverManager.groupOrderSaving || id === targetID) return;
+  const tree = serverGroupTree(), group = tree.byID.get(id), target = tree.byID.get(targetID);
+  if (!group || !target || (group.parentId || '') !== (target.parentId || '')) return;
+  const siblings = tree.children.get(group.parentId || '') || [], current = siblings.map(item => item.id), ids = current.filter(item => item !== id);
+  ids.splice(ids.indexOf(targetID) + (before ? 0 : 1), 0, id);
+  if (ids.every((value, index) => value === current[index])) return;
+  serverManager.groupOrderSaving = true;
+  try {
+    const groups = await post('/api/group-nodes/order', { parentId: group.parentId || '', ids });
+    serverManager.generation++;
+    serverManager.nodes = groups;
+    renderConnections();
+  } finally { serverManager.groupOrderSaving = false; }
+}
+function clearServerGroupDropHint() {
+  for (const row of document.querySelectorAll('#server-folder-list .server-folder-row')) row.classList.remove('server-folder-drop-before', 'server-folder-drop-after');
+}
+function finishServerGroupDrag() {
+  serverManager.groupDrag = null;
+  clearServerGroupDropHint();
+  for (const row of document.querySelectorAll('#server-folder-list .server-folder-dragging')) row.classList.remove('server-folder-dragging');
+}
+function enableServerGroupDrag(group, heading, select) {
+  select.draggable = true;
+  select.title += '\n拖动调整同级分组顺序；Alt + ↑ / ↓ 调整顺序';
+  select.ondragstart = event => {
+    if (serverManager.groupOrderSaving) { event.preventDefault(); return; }
+    closeServerGroupMenu();
+    serverManager.groupDrag = { id: group.id, parentId: group.parentId || '' };
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', group.id);
+    heading.classList.add('server-folder-dragging');
+  };
+  select.ondragend = finishServerGroupDrag;
+  const accepts = () => {
+    const drag = serverManager.groupDrag;
+    return drag && drag.id !== group.id && drag.parentId === (group.parentId || '') && !serverManager.groupOrderSaving;
+  };
+  heading.ondragover = event => {
+    clearServerGroupDropHint();
+    if (!accepts()) return;
+    event.preventDefault(); event.dataTransfer.dropEffect = 'move';
+    const bounds = heading.getBoundingClientRect(), before = event.clientY < bounds.top + bounds.height / 2;
+    heading.classList.add(before ? 'server-folder-drop-before' : 'server-folder-drop-after');
+    const folders = $('#server-folder-list'), pane = folders.getBoundingClientRect();
+    if (event.clientY < pane.top + 24) folders.scrollTop -= 16;
+    else if (event.clientY > pane.bottom - 24) folders.scrollTop += 16;
+  };
+  heading.ondragleave = event => { if (!heading.contains(event.relatedTarget)) clearServerGroupDropHint(); };
+  heading.ondrop = safe(async event => {
+    if (!accepts()) return;
+    event.preventDefault(); event.stopPropagation();
+    const id = serverManager.groupDrag.id, bounds = heading.getBoundingClientRect(), before = event.clientY < bounds.top + bounds.height / 2;
+    finishServerGroupDrag();
+    await reorderServerGroup(id, group.id, before);
+  });
+}
 function renderServerExplorer(tree, query) {
   const folderPane = $('#server-folder-pane'), split = $('#server-manager-body'), folders = $('#server-folder-list');
   const serversTab = serverManager.tab === 'servers';
@@ -70,6 +128,13 @@ function renderServerExplorer(tree, query) {
     select.append(node('span', 'server-folder-count', String(total)));
     select.setAttribute('aria-label', `${all ? '' : `${depth + 1}级目录，`}${group.name}，${total}个连接`);
     select.onkeydown = event => {
+      if (!all && !query && event.altKey && ['ArrowUp', 'ArrowDown'].includes(event.key)) {
+        event.preventDefault();
+        const siblings = tree.children.get(group.parentId || '') || [], index = siblings.findIndex(item => item.id === group.id), before = event.key === 'ArrowUp';
+        const target = siblings[index + (before ? -1 : 1)];
+        if (target) safe(() => reorderServerGroup(group.id, target.id, before))();
+        return;
+      }
       const buttons = [...folders.querySelectorAll('[data-group-action="select"]')], index = buttons.indexOf(select);
       if (['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key)) { event.preventDefault(); buttons[event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : Math.max(0, Math.min(buttons.length - 1, index + (event.key === 'ArrowDown' ? 1 : -1)))]?.focus(); }
       else if (!all && event.key === 'ArrowLeft') { event.preventDefault(); if (children.length && expanded) toggleServerGroup(group.id, true); else if (group.parentId) chooseServerFolder(group.parentId); }
@@ -77,6 +142,7 @@ function renderServerExplorer(tree, query) {
     };
     heading.append(caret, select);
     if (!all) {
+      if (!query) enableServerGroupDrag(group, heading, select);
       const more = serverManagerButton('⋯', event => openServerGroupMenu(group.id, event.currentTarget), 'server-group-more'); more.dataset.groupAction = 'menu'; more.setAttribute('aria-label', `管理分组 ${group.name}`); more.setAttribute('aria-haspopup', 'menu'); heading.append(more);
       row.oncontextmenu = event => { event.preventDefault(); openServerGroupMenu(group.id, heading); };
     }

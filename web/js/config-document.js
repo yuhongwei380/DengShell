@@ -4,7 +4,7 @@
 function initializeConfigDocument() {
   const button = node('button'); button.id = 'connection-config-document'; button.type = 'button'; button.setAttribute('role', 'menuitem');
   button.append(icon('folder'), document.createTextNode('连接配置文档'), node('span', '', '升级与备份'));
-  const menu = $('#settings-menu'); menu.insertBefore(button, menu.querySelector('.scale-setting'));
+  const menu = $('#settings-main-view'); menu.insertBefore(button, menu.querySelector('.scale-setting'));
   const dialog = node('dialog', 'config-document-dialog'); dialog.id = 'config-document-dialog'; dialog.setAttribute('aria-labelledby', 'config-document-title');
   dialog.innerHTML = `<div class="dialog-heading"><div><h2 id="config-document-title">连接配置文档</h2><p>新建、编辑和成功连接后自动保存，升级后从原位置继续读取。</p></div><button type="button" class="icon-button config-document-close" aria-label="关闭连接配置文档"><svg><use href="#i-close"/></svg></button></div>
     <section class="config-document-location"><span>当前配置文件</span><code id="config-document-path"></code><button type="button" id="copy-config-path" class="secondary-button">复制文件路径</button></section>

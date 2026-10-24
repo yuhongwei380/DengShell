@@ -13,6 +13,7 @@ type ServerGroup struct {
 	ParentID        string `json:"parentId"`
 	Emoji           string `json:"emoji"`
 	BackgroundColor string `json:"backgroundColor,omitempty"`
+	Order           int    `json:"order,omitempty"`
 }
 
 func groupIndex(groups []ServerGroup) map[string]ServerGroup {
@@ -135,6 +136,9 @@ func (s *Store) assignProfileGroupLocked(profile *Profile) error {
 	return nil
 }
 func validateGroupInput(group ServerGroup) error {
+	if group.Order < 0 {
+		return errors.New("分组顺序不能为负数")
+	}
 	if group.BackgroundColor != "" {
 		if len(group.BackgroundColor) != 7 || group.BackgroundColor[0] != '#' || strings.Trim(group.BackgroundColor[1:], "0123456789abcdefABCDEF") != "" {
 			return errors.New("分组背景色必须是六位十六进制颜色")
@@ -169,6 +173,12 @@ func (s *Store) saveGroupLocked(group ServerGroup) (ServerGroup, error) {
 	} else if index < 0 {
 		return ServerGroup{}, errors.New("分组不存在")
 	}
+	// Only the reorder operation changes sibling order. Editing keeps it;
+	// new groups and groups moved to another parent follow ordered siblings.
+	group.Order = 0
+	if index >= 0 && s.config.GroupNodes[index].ParentID == group.ParentID {
+		group.Order = s.config.GroupNodes[index].Order
+	}
 	next := append([]ServerGroup{}, s.config.GroupNodes...)
 	if index < 0 {
 		next = append(next, group)
@@ -190,6 +200,47 @@ func (s *Store) SaveGroup(group ServerGroup) (ServerGroup, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.saveGroupLocked(group)
+}
+
+// Reorder a complete sibling set under the store lock, rejecting stale lists
+// rather than dropping a concurrently created or moved group.
+func (s *Store) ReorderGroups(parentID string, ids []string) ([]ServerGroup, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	byID := groupIndex(s.config.GroupNodes)
+	if parentID != "" {
+		if _, ok := byID[parentID]; !ok {
+			return nil, errors.New("父分组不存在，请刷新后重试")
+		}
+	}
+	count := 0
+	for _, group := range s.config.GroupNodes {
+		if group.ParentID == parentID {
+			count++
+		}
+	}
+	if len(ids) != count || count == 0 {
+		return nil, errors.New("分组列表已变化，请刷新后重试")
+	}
+	positions := make(map[string]int, count)
+	for i, id := range ids {
+		group, ok := byID[id]
+		if !ok || group.ParentID != parentID || positions[id] != 0 {
+			return nil, errors.New("只能对同一层级的全部分组排序，且不能重复")
+		}
+		positions[id] = i + 1
+	}
+	old := cloneConnectionConfig(s.config)
+	for i, group := range s.config.GroupNodes {
+		if order := positions[group.ID]; order != 0 {
+			s.config.GroupNodes[i].Order = order
+		}
+	}
+	if err := s.writeLocked(); err != nil {
+		s.config = old
+		return nil, err
+	}
+	return append([]ServerGroup{}, s.config.GroupNodes...), nil
 }
 
 // Move only the group fields, preserving the latest connection and credentials.

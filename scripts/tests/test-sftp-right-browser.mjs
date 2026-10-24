@@ -46,7 +46,7 @@ async function geometry(label,hidden=false){
  if(hidden){eq(s.terminal.x,s.workspace.x,'hidden left edge');eq(s.terminal.y,s.workspace.y,'hidden top edge');eq(s.terminal.right,s.workspace.right,'hidden right edge');eq(s.terminal.bottom,s.workspace.bottom,'hidden bottom edge');}
  else if(s.position==='right'){
   assert(s.files.x>=s.terminal.right-1,'files must be to the right');eq(s.terminal.y,s.workspace.y,'right terminal top');eq(s.files.y,s.workspace.y,'right files top');eq(s.files.bottom,s.workspace.bottom,'right files bottom');eq(s.terminal.bottom,s.workspace.bottom,'right terminal bottom');eq(s.files.right,s.workspace.right,'right files edge');
-  assert.equal(s.orientation,'vertical');assert.equal(s.cursor,'col-resize');assert(s.terminal.width>100&&s.files.width>100,'usable columns');
+  assert.equal(s.orientation,'vertical');assert.equal(s.cursor,'default');assert(s.terminal.width>100&&s.files.width>100,'usable columns');
  }else{
   eq(s.terminal.x,s.workspace.x,'stacked terminal left');eq(s.files.x,s.workspace.x,'stacked files left');eq(s.terminal.right,s.workspace.right,'stacked terminal right');eq(s.files.right,s.workspace.right,'stacked files right');
   if(s.position==='top'){eq(s.files.y,s.workspace.y,'top files start');eq(s.terminal.bottom,s.workspace.bottom,'top terminal end');assert(s.terminal.y>=s.files.bottom-1);}
@@ -98,10 +98,10 @@ try{
   const old=await geometry('initial bottom');await page.click('#toggle-files-position');await page.waitForFunction(()=>appearance.filesPosition==='right');await settle();const right=await geometry('clicked right');await button('right button');assert(right.cols<old.cols&&right.rows>old.rows,'right position should trade columns for rows');await realPTY('clicked right');
   await page.focus('#toggle-files-position');await page.keyboard.press('Enter');await page.waitForFunction(()=>appearance.filesPosition==='bottom');await settle();await geometry('keyboard bottom');await realPTY('keyboard bottom');
  });
- await check('Independent bottom height and right width survive pointer/keyboard resize and toggles',async()=>{
+ await check('Bottom height remains resizable while right width stays fixed across drag, keyboard and toggles',async()=>{
   await position('bottom');await drag('y',-48);const bottom=await geometry('resized bottom');
-  await position('right');const before=await snapshot();await drag('x',-64);const dragged=await geometry('dragged right');assert(dragged.files.width>before.files.width+40);
-  await page.focus('#files-splitter');await page.keyboard.press('ArrowLeft');await settle();const wider=await geometry('keyboard wider');assert(wider.files.width>dragged.files.width+10);
+  await position('right');const before=await snapshot();await drag('x',-64);const dragged=await geometry('dragged right');assert(Math.abs(dragged.files.width-before.files.width)<2);assert(Math.abs(dragged.files.width/dragged.scale-420)<2);
+  await page.focus('#files-splitter');await page.keyboard.press('ArrowLeft');await settle();const wider=await geometry('keyboard fixed');assert(Math.abs(wider.files.width-dragged.files.width)<2);
   await page.keyboard.press('ArrowRight');await settle();const restored=await geometry('keyboard narrower');assert(Math.abs(restored.files.width-dragged.files.width)<2);await realPTY('resized right');
   for(let i=0;i<3;i++){await position('bottom');assert(Math.abs((await snapshot()).files.height-bottom.files.height)<2,'bottom height lost');await position('right');assert(Math.abs((await snapshot()).files.width-dragged.files.width)<2,'right width lost');}
  });

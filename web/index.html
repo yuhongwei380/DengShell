@@ -8,23 +8,23 @@
   <script src="js/bootstrap.js"></script>
   <script>if(location.protocol!=='wails:'&&location.hostname!=='wails.localhost'){const nonce=new URLSearchParams(location.search).get('window');if(/^[A-Za-z0-9_-]{24,96}$/.test(nonce||'')){window.CLOUDSHELL.detachedNonce=nonce;}}</script>
   <script src="js/security-lock.js?v=20260921-v002-b72"></script>
-  <script src="js/theme.js?v=20260920-v002-b70"></script>
+  <script src="js/theme.js?v=20261024-appearance-config"></script>
   <link rel="stylesheet" href="vendor/xterm.css">
   <link rel="stylesheet" href="css/style.css?v=20261020-icon2">
   <link rel="stylesheet" href="css/theme.css?v=20261023-header145">
   <link rel="stylesheet" href="css/workspace-tools.css?v=20261001-composer">
-  <link rel="stylesheet" href="css/appearance.css?v=20261023-notes1">
+  <link rel="stylesheet" href="css/appearance.css?v=20261024-appearance-config">
   <link rel="stylesheet" href="css/process-view.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/workspace-refinements.css?v=20261023-disk1">
   <link rel="stylesheet" href="css/file-browser.css?v=20260921-v002-b72">
   <link rel="stylesheet" href="css/themed-select.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/config-document.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/startup-update.css?v=20261023-tags2">
-  <link rel="stylesheet" href="css/desktop-polish.css?v=20261023-header145">
+  <link rel="stylesheet" href="css/desktop-polish.css?v=20261024-monitor-visible">
   <link rel="stylesheet" href="css/server-manager.css?v=20261023-move145">
   <link rel="stylesheet" href="css/connection-extras.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/help-guide.css?v=20260920-v002-b70">
-  <link rel="stylesheet" href="css/appearance-tools.css?v=20261018-follow1">
+  <link rel="stylesheet" href="css/appearance-tools.css?v=20261024-monitor-visible">
   <link rel="stylesheet" href="css/pinned-nav.css?v=20261023-borderless1">
   <link rel="stylesheet" href="css/font-library.css?v=20260920-v002-b70">
   <link rel="icon" href="assets/dengshell.svg" type="image/svg+xml">
@@ -32,7 +32,7 @@
   <link rel="stylesheet" href="css/desktop-tray.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/latency-chart.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/common-apps.css?v=20261018-follow2">
-  <link rel="stylesheet" href="css/session-windows.css?v=20261023-tabs2">
+  <link rel="stylesheet" href="css/session-windows.css?v=20261024-meta-narrow">
   <link rel="stylesheet" href="css/system-identity.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/chart-styles.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/light-theme.css?v=20260920-v002-b70">
@@ -109,7 +109,7 @@
         <div class="metric"><span>内存</span><div class="meter" id="memory-meter"><i style="width:0" class="memory-fill"></i><b>—</b><em>—</em></div></div>
         <div class="metric"><span>交换</span><div class="meter" id="swap-meter"><i style="width:0"></i><b>—</b><em>—</em></div></div>
         <div id="gpu-metrics" hidden></div>
-        <div class="metric"><span>磁盘</span><div class="meter" id="disk-meter"><i style="width:0"></i><b>—</b><em>—</em></div></div>
+        <div class="disk-resources" id="disk-filesystems" role="group" aria-label="磁盘挂载点容量" hidden></div>
         <div class="network-grid">
           <div class="disk-io" aria-label="磁盘读写速度"><div class="disk-readout read"><span>↓ 读取</span><strong id="disk-read">—</strong></div><div class="disk-readout write"><span>↑ 写入</span><strong id="disk-write">—</strong></div></div>
           <div class="network-card traffic-card"><div class="chart-caption network-caption">网络流量 <select id="network-interface" aria-label="选择真实网卡" title="选择网卡"><option value="">未连接</option></select></div><div class="chart-heading"><b class="upload-color">上行 —</b><b class="download-color">下行 —</b></div><svg id="network-chart" class="chart" role="button" tabindex="0" title="上传与下载共用零起点刻度，单位为每秒字节；点击运行 MTR 路径诊断" viewBox="0 0 270 54" preserveAspectRatio="none" aria-label="网络流量图，上传与下载共用刻度，点击运行 MTR 路径诊断"></svg></div>
@@ -119,7 +119,7 @@
 
       </section>
     </aside>
-    <div class="splitter vertical" id="sidebar-splitter" role="separator" aria-label="调整侧栏宽度" aria-orientation="vertical" aria-valuemin="240" aria-valuemax="460" aria-valuenow="304" tabindex="0"><span></span></div>
+    <div class="pane-spacer" id="sidebar-splitter" aria-hidden="true"></div>
 
     <main class="main-panel">
       <nav class="session-bar" aria-label="SSH 会话">
@@ -140,14 +140,14 @@
         <div id="rdp-viewport" class="rdp-viewport"><div id="rdp-placeholder" class="rdp-placeholder"><strong id="rdp-placeholder-message">连接中…</strong><p>连接后点击画面即可操作远程桌面。</p></div></div>
       </section>
 
-      <div class="workspace" id="workspace">
+      <div class="workspace files-hidden" id="workspace">
         <section class="terminal-panel" aria-label="SSH 终端">
-          <div class="terminal-meta"><span><span class="status-dot green"></span><span id="terminal-meta-host">SSH 终端</span><span class="terminal-protocol" id="terminal-state">待连接</span><span class="session-current-badge" id="terminal-current-badge" hidden>当前连接</span></span><span class="terminal-encoding">UTF-8 <span class="meta-divider">│</span> xterm-256color</span><button class="terminal-popout" id="disconnect" type="button" title="断开连接，保留终端内容" aria-label="断开连接" disabled><svg><use href="#i-disconnect"/></svg></button><button class="terminal-popout" id="reconnect" type="button" title="重新连接" aria-label="重新连接"><svg><use href="#i-reconnect"/></svg></button><button class="terminal-popout" id="clear-terminal" type="button" title="清除终端滚屏" aria-label="清空终端"><svg><use href="#i-erase"/></svg></button><button id="toggle-sftp" class="terminal-popout" type="button" aria-expanded="true" aria-controls="files-panel" title="显示或隐藏 SFTP 面板"><svg><use href="#i-folder"/></svg><span>SFTP</span></button><button id="detach-terminal" class="terminal-popout" title="将当前 SSH 拆分为独立窗口" aria-label="拆分为独立窗口" hidden disabled><svg><use href="#i-popout"/></svg><span>独立窗口</span></button></div>
+          <div class="terminal-meta"><span><span class="status-dot green"></span><span id="terminal-meta-host">SSH 终端</span><span class="terminal-protocol" id="terminal-state">待连接</span><span class="session-current-badge" id="terminal-current-badge" hidden>当前连接</span></span><span class="terminal-encoding">UTF-8 <span class="meta-divider">│</span> xterm-256color</span><button class="terminal-popout" id="disconnect" type="button" title="断开连接，保留终端内容" aria-label="断开连接" disabled><svg><use href="#i-disconnect"/></svg></button><button class="terminal-popout" id="reconnect" type="button" title="重新连接" aria-label="重新连接"><svg><use href="#i-reconnect"/></svg></button><button class="terminal-popout" id="clear-terminal" type="button" title="清除终端滚屏" aria-label="清空终端"><svg><use href="#i-erase"/></svg></button><button id="toggle-sftp" class="terminal-popout" type="button" aria-expanded="false" aria-controls="files-panel" title="显示或隐藏 SFTP 面板"><svg><use href="#i-folder"/></svg><span>SFTP</span></button><button id="detach-terminal" class="terminal-popout" title="将当前 SSH 拆分为独立窗口" aria-label="拆分为独立窗口" hidden disabled><svg><use href="#i-popout"/></svg><span>独立窗口</span></button></div>
           <div class="terminal-output" id="terminal-output"><div class="welcome-state" id="welcome-state"><span class="welcome-icon"><svg><use href="#i-terminal"/></svg></span><h1>你的服务器工作台</h1><p>连接服务器，终端、文件与运行状态尽在眼前。</p><button id="welcome-connect">添加或选择服务器 <svg><use href="#i-chevron"/></svg></button><small>支持密码、私钥和 SSH Agent 登录</small></div></div>
           <div class="terminal-command-bar"><svg><use href="#i-terminal"/></svg><form id="command-form"><textarea id="command-input" rows="1" aria-label="发送命令到服务器" placeholder="输入命令并回车发送 · ↑↓ 历史" autocomplete="off" spellcheck="false"></textarea></form><button class="terminal-tool" id="command-history" title="历史命令" aria-label="历史命令"><svg><use href="#i-history"/></svg></button><button class="terminal-tool" id="font-down" title="缩小终端字体 0.5 px" aria-label="缩小终端字体 0.5 px"><svg><use href="#i-font-decrease"/></svg></button><button class="terminal-tool" id="font-up" title="放大终端字体 0.5 px" aria-label="放大终端字体 0.5 px"><svg><use href="#i-font-increase"/></svg></button></div>
         </section>
-        <div class="splitter horizontal" id="files-splitter" role="separator" aria-label="调整文件面板高度" aria-orientation="horizontal" aria-valuemin="170" aria-valuemax="600" aria-valuenow="370" tabindex="0"><span></span></div>
-        <section class="files-panel" id="files-panel" aria-label="远程文件">
+        <div class="splitter horizontal" id="files-splitter" role="separator" aria-label="调整文件面板高度" aria-orientation="horizontal" aria-valuemin="170" aria-valuemax="600" aria-valuenow="370" tabindex="0" hidden><span></span></div>
+        <section class="files-panel" id="files-panel" aria-label="远程文件" hidden>
           <div class="file-tabs"><button class="file-tab active" data-pane="files"><svg><use href="#i-folder"/></svg>文件</button><button class="file-tab" data-pane="commands"><svg><use href="#i-code"/></svg>命令</button><button class="file-tab" data-pane="common-apps"><svg><use href="#i-layout"/></svg>常用应用</button><button class="file-tab" data-pane="transfers"><svg><use href="#i-upload"/></svg>传输任务<span id="transfer-count" class="count-badge" role="status" aria-live="polite" aria-atomic="true" hidden>0</span></button><label class="follow-label"><input type="checkbox" id="follow-terminal" checked>跟随终端目录</label><button id="toggle-files-position" class="icon-button files-position-button" type="button" title="将 SFTP 放在终端右侧" aria-label="将 SFTP 放在终端右侧" aria-pressed="false" aria-controls="files-panel"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M15 4v16"/></svg></button><span class="files-tip">拖入文件或文件夹上传</span></div>
           <div id="files-view" class="files-view">
             <div class="file-toolbar"><button class="icon-button" id="parent-directory" title="上一级目录" aria-label="上一级目录"><svg><use href="#i-up"/></svg></button><button type="button" class="icon-button" id="directory-favorites-button" title="常用目录" aria-label="常用目录" aria-haspopup="dialog" aria-expanded="false" disabled><svg><use href="#i-bookmark"/></svg></button><form id="path-form" class="path-form"><svg><use href="#i-folder"/></svg><input id="path-input" value="" placeholder="连接后显示远程目录" aria-label="远程目录路径" spellcheck="false"></form><button type="button" class="icon-button" id="path-history-button" title="历史路径：搜索访问过的文件和目录" aria-label="历史路径" disabled><svg><use href="#i-history"/></svg></button><button class="icon-button" id="refresh-files" title="刷新目录" aria-label="刷新目录"><svg><use href="#i-refresh"/></svg></button><span class="toolbar-divider"></span><button class="icon-button" id="mkdir" title="新建文件或文件夹" aria-label="新建文件或文件夹" aria-haspopup="menu" aria-expanded="false"><svg><use href="#i-plus"/></svg></button><button class="upload-button" id="choose-files"><svg><use href="#i-upload"/></svg>上传</button><div class="file-search"><svg><use href="#i-search"/></svg><input id="file-filter" aria-label="筛选文件" placeholder="筛选文件"></div><input type="file" id="file-picker" multiple hidden><input type="file" id="folder-picker" webkitdirectory multiple hidden></div>
@@ -274,20 +274,25 @@
   <div id="upload-menu" class="popup-menu" hidden><button id="upload-files-option">选择文件</button><button id="upload-folder-option">选择文件夹</button></div>
 
   <div class="settings-menu" id="settings-menu" role="menu" aria-label="设置" hidden>
-    <div class="settings-caption">DevShell 设置</div>
-    <button role="menuitem" id="manage-security-lock"><svg><use href="#i-lock"/></svg>安全锁定<span>密码与 2FA</span></button>
-    <button role="menuitem" id="manage-keys"><svg><use href="#i-key"/></svg>密钥管理器<span>私钥与公钥</span></button>
-    <button role="menuitem" id="manage-ui-appearance"><svg><use href="#i-type"/></svg>界面字体与文字颜色<span>字体</span></button>
-    <button role="menuitem" id="manage-shell-fonts"><svg><use href="#i-type"/></svg>Shell 字体与颜色<span>字体</span></button>
-    <button role="menuitem" id="manage-chart-styles"><svg><use href="#i-network"/></svg>曲线样式<span>网速与延迟</span></button>
-    <button role="menuitem" id="manage-backgrounds"><svg><use href="#i-image"/></svg>背景管理器<span>终端背景</span></button>
-    <button role="menuitem" id="manage-proxies"><svg><use href="#i-network"/></svg>代理管理器<span>连接路径</span></button>
-    <button role="menuitem" id="reset-layout" title="恢复默认布局与终端字号" aria-label="恢复默认布局"><svg><use href="#i-layout"/></svg>恢复默认布局<span>布局与字号</span></button>
-    <button role="menuitem" id="help-button" aria-label="使用手册与功能引导" aria-haspopup="dialog"><svg><use href="#i-help-book"/></svg>使用手册与功能引导<span>帮助</span></button>
-    <button role="menuitem" id="release-notes-button" aria-haspopup="dialog" aria-controls="release-notes-dialog"><svg><use href="#i-history"/></svg>更新日志<span>当前版本</span></button>
-    <div class="scale-setting"><label for="ui-scale">界面缩放</label><select id="ui-scale" aria-label="界面缩放"><option value="0.75">75%</option><option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option><option value="2">200%</option></select></div>
-    <p id="scale-effective" hidden></p>
-    
+    <div class="settings-menu-view" id="settings-main-view">
+      <div class="settings-caption">DevShell 设置</div>
+      <button role="menuitem" id="manage-security-lock"><svg><use href="#i-lock"/></svg>安全锁定<span>密码与 2FA</span></button>
+      <button role="menuitem" id="manage-keys"><svg><use href="#i-key"/></svg>密钥管理器<span>私钥与公钥</span></button>
+      <button role="menuitem" id="manage-appearance-config" data-settings-view="appearance" aria-haspopup="menu" aria-controls="settings-appearance-view" aria-expanded="false"><svg><use href="#i-sun"/></svg>外观配置<span>字体与布局</span><svg class="settings-chevron"><use href="#i-chevron"/></svg></button>
+      <button role="menuitem" id="manage-chart-styles"><svg><use href="#i-network"/></svg>曲线样式<span>网速与延迟</span></button>
+      <button role="menuitem" id="manage-proxies"><svg><use href="#i-network"/></svg>代理管理器<span>连接路径</span></button>
+      <button role="menuitem" id="help-button" aria-label="使用手册与功能引导" aria-haspopup="dialog"><svg><use href="#i-help-book"/></svg>使用手册与功能引导<span>帮助</span></button>
+      <button role="menuitem" id="release-notes-button" aria-haspopup="dialog" aria-controls="release-notes-dialog"><svg><use href="#i-history"/></svg>更新日志<span>当前版本</span></button>
+      <div class="scale-setting"><label for="ui-scale">界面缩放</label><select id="ui-scale" aria-label="界面缩放"><option value="0.75">75%</option><option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option><option value="2">200%</option></select></div>
+      <p id="scale-effective" hidden></p>
+    </div>
+    <div class="settings-menu-view" id="settings-appearance-view" role="group" aria-label="外观配置" hidden>
+      <div class="settings-submenu-heading"><button type="button" role="menuitem" id="appearance-settings-back" data-settings-view="main"><svg><use href="#i-chevron"/></svg>返回设置</button><strong>外观配置</strong></div>
+      <button role="menuitem" id="manage-ui-appearance"><svg><use href="#i-type"/></svg>界面字体与文字颜色<span>界面字体</span></button>
+      <button role="menuitem" id="manage-shell-fonts"><svg><use href="#i-type"/></svg>Shell 字体与颜色<span>终端字体</span></button>
+      <button role="menuitem" id="manage-backgrounds"><svg><use href="#i-image"/></svg>背景管理器<span>终端背景</span></button>
+      <button role="menuitem" id="reset-layout" title="恢复默认布局与终端字号" aria-label="恢复默认布局"><svg><use href="#i-layout"/></svg>恢复默认布局<span>布局与字号</span></button>
+    </div>
   </div>
   <dialog id="about-dialog" aria-labelledby="about-title"><div class="dialog-heading"><h2 id="about-title">关于 DevShell</h2><button type="button" class="icon-button" id="close-about" aria-label="关闭版本信息"><svg><use href="#i-close"/></svg></button></div><dl class="about-versions"><dt>软件版本</dt><dd id="about-version"></dd><dt>构建版本</dt><dd id="about-build"></dd></dl></dialog>
   <dialog id="release-notes-dialog" aria-labelledby="release-notes-title"><div class="dialog-heading"><div><h2 id="release-notes-title">更新日志</h2><p id="release-notes-version"></p></div><button type="button" class="icon-button" id="close-release-notes" aria-label="关闭更新日志"><svg><use href="#i-close"/></svg></button></div><div id="release-notes-content"></div></dialog>
@@ -312,7 +317,7 @@
   <dialog id="history-dialog"><div class="dialog-heading"><div><h2>历史命令</h2><p id="history-target"></p></div><button class="icon-button" id="close-history" aria-label="关闭历史命令"><svg><use href="#i-close"/></svg></button></div><input id="history-filter" placeholder="搜索历史命令" aria-label="搜索历史命令"><div id="history-list"></div><p id="history-empty" class="empty-state">在任意 VPS 的终端、输入条或快捷命令中执行的 Shell 命令都会记录到这里。</p><div class="history-footer"><span>最近 2000 条 · 点击填入输入条，回车后执行</span><button class="text-button" id="clear-history">清空历史列表</button></div></dialog>
   <dialog id="diagnostics-dialog"><div class="dialog-heading"><div><h2>MTR 网络诊断</h2><p id="diagnostics-route">本机 → 当前服务器</p></div><button class="icon-button" id="close-diagnostics" aria-label="关闭网络诊断"><svg><use href="#i-close"/></svg></button></div><div class="diagnostics-toolbar"><span id="diagnostics-status" role="status">准备检测</span><button class="upload-button" id="retry-diagnostics">重新检测</button><button class="upload-button" id="cancel-diagnostics">停止</button><button class="upload-button" id="copy-diagnostics"><svg><use href="#i-copy"/></svg>复制结果</button></div><div id="mtr-install-notice" class="mtr-install-notice" hidden><span id="mtr-install-summary"></span><button id="mtr-install-open" class="upload-button">安装 mtr…</button></div><pre id="diagnostics-output" tabindex="0" aria-label="MTR 检测结果">正在开始检测…</pre><p class="diagnostics-note">本机检测遵循系统路由，不通过应用内 SSH 代理。中间节点不回应或限速不代表终点丢包。</p><div class="diagnostics-footer"><button id="diagnostics-local" class="text-button">本机 → 当前服务器</button><button id="diagnostics-remote" class="upload-button">从服务器 MTR 到…</button></div></dialog>
   <dialog id="mtr-install-dialog" aria-labelledby="mtr-install-title"><div class="dialog-heading"><h2 id="mtr-install-title">需要安装 mtr</h2><button id="mtr-install-close" class="icon-button" aria-label="关闭安装窗口"><svg><use href="#i-close"/></svg></button></div><p id="mtr-install-location"></p><p id="mtr-install-description" role="status">正在检查系统与包管理器…</p><pre id="mtr-install-command" tabindex="0" aria-label="将执行的安装命令"></pre><pre id="mtr-install-output" tabindex="0" aria-label="mtr 安装进度" hidden></pre><p class="mtr-install-note" id="mtr-install-note"></p><div class="dialog-buttons"><button id="mtr-install-dismiss">暂不安装</button><button id="mtr-install-confirm" class="primary-button" disabled>确定安装</button></div></dialog>
-  <dialog id="exit-dialog"><form id="exit-form"><h2>退出 DevShell？</h2><p id="exit-description">确认关闭应用。</p><div class="dialog-buttons"><button type="button" id="cancel-exit">继续使用</button><button class="primary-button" type="submit" id="confirm-exit">退出</button></div></form></dialog>
+  <dialog id="exit-dialog"><form id="exit-form"><h2>退出 DevShell？</h2><p id="exit-description">确认关闭应用。</p><div class="dialog-buttons"><button type="button" id="cancel-exit">继续使用</button><button type="button" id="wait-exit-transfers" hidden>等待传输完成</button><button class="primary-button" type="submit" id="confirm-exit">退出</button></div></form></dialog>
 
   <div id="toast" class="toast" role="status" hidden></div>
 
@@ -360,7 +365,7 @@
   <script src="js/command-composer.js?v=20261001-composer"></script>
   <script src="js/workspace-tools.js?v=20260925-v002-b86"></script>
   <script src="js/release-note-tags.js?v=20261023-tags2"></script>
-  <script src="js/appearance.js?v=20261023-tags1"></script>
+  <script src="js/appearance.js?v=20261024-appearance-config"></script>
   <script src="js/ui-appearance.js?v=20261019-brand1"></script>
   <script src="js/font-library.js?v=20261019-brand1"></script>
   <script src="js/path-history.js?v=20260925-v002-b86"></script>
@@ -372,14 +377,14 @@
   <script src="js/themed-select.js?v=20260920-v002-b70"></script>
   <script src="js/terminal-integration.js?v=20261018-follow3"></script>
   <script src="js/mtr-installation.js?v=20261019-brand1"></script>
-  <script src="js/config-document.js?v=20260920-v002-b70"></script>
+  <script src="js/config-document.js?v=20261024-appearance-config"></script>
   <script src="js/startup-update.js?v=20261023-tags1"></script>
   <script src="js/portable-preferences.js?v=20261018-pin2"></script>
   <script src="js/server-manager.js?v=20261019-serial1"></script>
   <script src="js/server-explorer.js?v=20261023-move145"></script>
-  <script src="js/help-guide.js?v=20261019-serial1"></script>
+  <script src="js/help-guide.js?v=20261024-appearance-config"></script>
   <script src="js/chart-styles.js?v=20260920-v002-b70"></script>
-  <script src="js/appearance-tools.js?v=20261019-brand1"></script>
+  <script src="js/appearance-tools.js?v=20261024-monitor-visible"></script>
   <script src="js/terminal-snapshot.js?v=20260920-v002-b70"></script>
   <script src="js/server-addresses.js?v=20261018-addr1"></script>
   <script src="js/window-preview.js?v=20260920-v002-b70"></script>
@@ -393,7 +398,7 @@
   <script src="js/rdp.js?v=20261022-tabs1"></script>
   <script src="js/serial.js?v=20261022-tabs1"></script>
   <script src="js/upload-confirmation.js?v=20260928-overwrite1"></script>
-  <script src="js/app.js?v=20261023-header145"></script>
+  <script src="js/app.js?v=20261024-monitor-visible"></script>
   <script src="js/quick-connect.js?v=20261022-tabs1"></script>
   <script src="js/local-prompt.js?v=20261022-tabs1"></script>
   <script src="js/pinned-nav.js?v=20261022-overflow1"></script>
@@ -404,8 +409,8 @@
   <script src="js/text-search.js?v=20260920-v002-b70"></script>
   <script src="js/text-editor-tools.js?v=20261010-editor-wrap"></script>
   <script src="js/text-editor.js?v=20261010-editor-wrap"></script>
-  <script src="js/file-tools.js?v=20261023-notes1"></script>
+  <script src="js/file-tools.js?v=20261024-appearance-config"></script>
   <script src="js/zmodem-bridge.js?v=20261022-zmodem5"></script>
-  <script src="js/desktop-tray.js?v=20260920-v002-b70"></script>
+  <script src="js/desktop-tray.js?v=20261024-appearance-config"></script>
 </body>
 </html>

@@ -11,11 +11,9 @@
 /* Window buttons sit in the top-right corner with a stronger, visible pill. */
 .titlebar .window-controls { grid-column:3; grid-row:1; justify-self:end; align-self:center; flex-shrink:0; gap:3px; padding:3px; border-radius:11px; background:#a7bed240; }
 .titlebar .window-controls button { color:#33566e; }
-/* Mirror the workspace when the monitor is on the right. */
-[data-monitor-side="right"]:not([data-narrow="true"]) .titlebar { grid-template-columns:minmax(0,1fr) var(--pane-gap) var(--sidebar-width); }
-[data-monitor-side="right"]:not([data-narrow="true"]) .titlebar .brand { grid-column:3; }
-[data-monitor-side="right"]:not([data-narrow="true"]) .titlebar .window-controls { grid-column:3; }
-[data-monitor-side="right"]:not([data-narrow="true"]) .titlebar .pinned-bar { grid-column:1; }
+/* 监控面板隐藏时，标题栏第一列收拢到 logo 宽度，链接栏与主区左对齐。 */
+[data-monitor-visible="false"]:not([data-narrow="true"]) .titlebar { grid-template-columns:auto var(--pane-gap) minmax(0,1fr); }
+[data-monitor-visible="false"]:not([data-narrow="true"]) .titlebar .brand { width:max-content; }
 [data-narrow="true"] .titlebar { display:grid; grid-template-columns:minmax(0,1fr); gap:0; height:auto; min-height:42px; padding-top:4px; }
 [data-narrow="true"] .titlebar .brand { width:max-content; grid-template-columns:repeat(3,28px) auto repeat(2,28px); margin-bottom:3px; }
 [data-narrow="true"] .titlebar .window-controls { grid-column:1; justify-self:end; }

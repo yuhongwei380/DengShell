@@ -55,7 +55,7 @@
     "windowMaximised": false,
     "onboardingCompleted": false,
     "layout": {},
-    "monitorSide": "left",
+    "monitorVisible": true,
     "filesPosition": "right",
     "promptUsernameColor": "",
     "promptHostnameColor": "",

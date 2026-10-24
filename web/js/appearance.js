@@ -328,7 +328,6 @@ function applyUIScale() {
   root.style.setProperty('--view-width', `${width}px`); root.style.setProperty('--view-height', `${height}px`);
   if (width >= 760) { root.dataset.monitorOpen = 'false'; $('#monitor-backdrop').hidden = true; $('#toggle-monitor').setAttribute('aria-expanded', 'false'); }
   root.dataset.compact = width < 1000 ? 'true' : 'false'; root.dataset.narrow = width < 760 ? 'true' : 'false'; root.dataset.short = height < 650 ? 'true' : 'false';
-  root.style.setProperty('--sidebar-default', `${width < 1000 ? 230 : width < 1350 ? 274 : 304}px`);
   root.style.setProperty('--files-default', `${Math.min(300, Math.max(height < 550 ? 115 : 150, height * .25))}px`);
   $('#ui-scale').value = String(requested);
   $('#scale-effective').textContent = effectiveScale < requested ? `当前窗口以 ${Math.round(effectiveScale * 100)}% 显示，放大窗口后恢复` : '';
@@ -350,8 +349,17 @@ function renderAppearanceControls() {
   for (const card of $$('#asset-list [data-font-id]')) reflectFontCardControls(card);
 }
 function setSettingsMenu(open) {
+  if (open) showSettingsMenuView('main');
+  else $('#manage-appearance-config').setAttribute('aria-expanded', 'false');
   $('#settings-menu').hidden = !open; $('#settings-button').setAttribute('aria-expanded', String(open));
   if (open) { positionSettings(); $('#manage-keys').focus(); }
+}
+function showSettingsMenuView(view) {
+  const appearanceView = view === 'appearance';
+  $('#settings-main-view').hidden = appearanceView;
+  $('#settings-appearance-view').hidden = !appearanceView;
+  $('#manage-appearance-config').setAttribute('aria-expanded', String(appearanceView));
+  (appearanceView ? $('#manage-ui-appearance') : $('#manage-appearance-config')).focus();
 }
 function positionSettings() {
   const menu = $('#settings-menu'), rect = $('#settings-button').getBoundingClientRect();
@@ -604,7 +612,7 @@ function initializeAppearance() {
   $('#settings-button').onclick = () => setSettingsMenu($('#settings-menu').hidden);
   $('#about-button').onclick = () => {
     setSettingsMenu(false);
-    $('#about-version').textContent = window.CLOUDSHELL?.version || '—';
+    $('#about-version').textContent = window.CLOUDSHELL?.displayVersion || window.CLOUDSHELL?.version || '—';
     $('#about-build').textContent = String(window.CLOUDSHELL?.build ?? '—');
     if (!$('#about-dialog').open) $('#about-dialog').showModal();
   };
@@ -617,7 +625,7 @@ function initializeAppearance() {
   $('#release-notes-button').onclick = () => {
     setSettingsMenu(false);
     const boot = window.CLOUDSHELL;
-    $('#release-notes-version').textContent = `当前版本 ${boot?.version || '—'} · 构建 ${boot?.build ?? '—'}`;
+    $('#release-notes-version').textContent = `当前版本 ${boot?.displayVersion || boot?.version || '—'} · 构建 ${boot?.build ?? '—'}`;
     const notes = boot?.releaseNotes || '当前版本尚未提供更新说明。';
     if (window.markdownit) $('#release-notes-content').innerHTML = window.markdownit({ html: false, linkify: false, breaks: true }).render(notes);
     else $('#release-notes-content').textContent = notes;
@@ -627,13 +635,24 @@ function initializeAppearance() {
   $('#close-release-notes').onclick = () => $('#release-notes-dialog').close();
   $('#release-notes-dialog').addEventListener('close', () => $('#settings-button').focus());
   document.addEventListener('click', event => { if (!event.target.closest('#settings-menu, #settings-button')) setSettingsMenu(false); });
-  $('#settings-menu').addEventListener('click', event => { if (event.target.closest('button')) setSettingsMenu(false); });
+  $('#settings-menu').addEventListener('click', event => {
+    const button = event.target.closest('button'); if (!button) return;
+    if (button.dataset.settingsView) { showSettingsMenuView(button.dataset.settingsView); return; }
+    setSettingsMenu(false);
+  });
   $('#settings-menu').addEventListener('keydown', event => {
     if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) || event.target.tagName === 'SELECT') return;
     const buttons = [...$('#settings-menu').querySelectorAll('input[type=checkbox],button')].filter(button => !button.disabled && button.getClientRects().length), index = buttons.indexOf(document.activeElement);
     event.preventDefault(); buttons[event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus();
   });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#monitor-backdrop').hidden) $('#monitor-backdrop').click(); if (event.key === 'Escape' && !$('#settings-menu').hidden) { setSettingsMenu(false); $('#settings-button').focus(); } });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !$('#monitor-backdrop').hidden) $('#monitor-backdrop').click();
+    if (event.key === 'Escape' && !$('#settings-menu').hidden) {
+      event.preventDefault();
+      if (!$('#settings-appearance-view').hidden) showSettingsMenuView('main');
+      else { setSettingsMenu(false); $('#settings-button').focus(); }
+    }
+  });
   $('#manage-backgrounds').onclick = safe(() => openAppearance('background'));
   $('#manage-shell-fonts').onclick = safe(() => openAppearance('font'));
   $('#switch-ui-fonts').onclick = safe(() => window.DengUIAppearance.open());

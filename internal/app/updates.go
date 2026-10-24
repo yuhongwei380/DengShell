@@ -25,25 +25,25 @@ import (
 // Version rule for this branch: v<X>.<Y>.<Z> — X is the two-digit year, Y the
 // month without a leading zero, Z the zero-based release index within that
 // month. The first release of October 2026 is v26.10.0.
-const ApplicationVersion = "v26.10.0"
+const ApplicationVersion = "v26.10.1"
 
 // ApplicationDisplayVersion identifies this self-maintained branch in the user
 // interface. ApplicationVersion above stays the functional version that drives
 // update comparison and package metadata; never put branch text into it.
-const ApplicationDisplayVersion = "ver.Phoenix · v26.10.0"
+const ApplicationDisplayVersion = "ver.Phoenix · v26.10.1"
 
 // Package managers use ApplicationVersion without the leading v. It must stay
 // greater than the last upstream package version (0.3.0).
-const ApplicationPackageVersion = "26.10.0"
+const ApplicationPackageVersion = "26.10.1"
 
 // ApplicationBuild is the monotonic anti-rollback build: YYYYMMDD plus a
-// two-digit daily sequence (rule switched on 2026-10-24 from a three-digit
-// sequence). Increase it for every published build, including packaging-only
-// releases; update manifests must exceed it. This release re-baselines
-// v26.10.0 onto the ten-digit scheme as 2026102301: installs at the retired
-// eleven-digit builds (20261023145 and older) must manually install this
-// release once, after which they can continue built-in updates to v26.10.1.
-const ApplicationBuild uint64 = 2026102301
+// two-digit daily sequence (since 2026-10-24; the earlier format was a
+// three-digit sequence). Increase it for every published build, including
+// packaging-only releases; update manifests must exceed it. The 10-digit
+// sequence is numerically below the retired 11-digit high-water mark
+// (20261024156), so installs at any older build must manually install the
+// 2026102401 release once before built-in updates continue normally.
+const ApplicationBuild uint64 = 2026102401
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,
@@ -311,7 +311,9 @@ func checkUpdateTrusted(ctx context.Context, client *http.Client, address, platf
 		result.Reason = "version-rollback"
 		return result
 	}
-	if receipt.Version != "" {
+	// A manually installed newer build supersedes the older receipt's display
+	// version. Its build high-water mark above still prevents replay/rollback.
+	if receipt.Version != "" && (receipt.Build == 0 || receipt.Build >= ApplicationBuild) {
 		order, valid := compareUpdateVersions(descriptor.Version, receipt.Version)
 		if !valid || order < 0 {
 			result.Reason = "version-rollback"
@@ -402,7 +404,7 @@ func ValidateUpdateBuild(configDir string, build uint64, version string) error {
 	if order, ok := compareUpdateVersions(version, ApplicationVersion); !ok || order < 0 {
 		return errors.New("更新版本不能低于当前版本")
 	}
-	if receipt.Version != "" {
+	if receipt.Version != "" && (receipt.Build == 0 || receipt.Build >= ApplicationBuild) {
 		if order, ok := compareUpdateVersions(version, receipt.Version); !ok || order < 0 {
 			return errors.New("更新版本不能低于已安装版本")
 		}

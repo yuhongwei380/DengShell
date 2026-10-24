@@ -54,7 +54,7 @@ function serverGroupTree() {
     if (!children.has(parent)) children.set(parent, []);
     children.get(parent).push(group);
   }
-  for (const list of children.values()) list.sort(compareServerNames);
+  for (const list of children.values()) list.sort((a, b) => (a.order || Infinity) - (b.order || Infinity) || compareServerNames(a, b));
   for (const profile of profiles) {
     if (!members.has(profile.groupId)) members.set(profile.groupId, []);
     members.get(profile.groupId).push(profile);

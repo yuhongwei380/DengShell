@@ -18,7 +18,9 @@ Arch 从 R28 开始支持；旧版须先手动安装一次 R28 或更新版。�
 
 JSON 使用 schema 2，最大 64 KiB。身份包含 product、platform、version 和递增的 build；还包含安装包 size、sha256、包内程序 executableSHA256、notes 以及 signingKeyID、issuedAt、expiresAt、signature。由 `scripts/build/package-release.py` 生成真实文件大小与哈希，再调用发行签名工具。完整签名协议和密钥管理见 [SIGNED-UPDATES.md](SIGNED-UPDATES.md)。Arch 通过已有 platform 字段区分包类型，未改变旧 Windows/DEB 的签名字节协议。
 
-每次发布都递增 `internal/app/updates.go` 中的 ApplicationBuild（规则：`YYYYMMDD` + 三位序号）。版本号使用 `vX.Y.Z`：X 为年份后两位，Y 为月份（不补零），Z 为当月第几个版本（从 0 起）。描述必须与程序构建号一致；已运行版本和安装收据记录的构建高水位均禁止回退。每个包最大 1 GiB。
+每次发布都递增 `internal/app/updates.go` 中的 ApplicationBuild（规则：`YYYYMMDD` + 两位当日序号，2026-10-24 起；此前为三位序号，历史十一位构建号继续有效，已安装旧构建需手动安装新构建一次）。版本号使用 `vX.Y.Z`：X 为年份后两位，Y 为月份（不补零），Z 为当月第几个版本（从 0 起）。描述必须与程序构建号一致；已运行版本和安装收据记录的构建高水位均禁止回退。每个包最大 1 GiB。
+
+手动安装更高构建后，以新程序的软件版本作为版本下限；构建号低于当前程序的旧收据不再保留较高的软件版本下限，但构建高水位仍参与校验。收据没有构建号、与当前构建相同或更高时，继续校验其软件版本。v26.10.2 的旧更新器会拒绝降至 v26.10.1，需手动安装构建 20261024152 一次，之后可正常接收后续 v26.10.1 构建。
 
 ## 下载与信任
 

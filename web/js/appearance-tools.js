@@ -65,7 +65,7 @@ function reflectFontColorDialog(card) {
 }
 function applyWorkspacePlacement() {
   const root = document.documentElement;
-  root.dataset.monitorSide = appearance.monitorSide === 'right' ? 'right' : 'left';
+  root.dataset.monitorVisible = appearance.monitorVisible === false ? 'false' : 'true';
   root.dataset.filesPosition = ['top', 'right'].includes(appearance.filesPosition) ? appearance.filesPosition : 'bottom';
   const right = root.dataset.filesPosition === 'right', toggle = $('#toggle-files-position');
   if (toggle) {
@@ -77,8 +77,15 @@ function applyWorkspacePlacement() {
   const splitter = $('#files-splitter');
   splitter.classList.toggle('vertical', right); splitter.classList.toggle('horizontal', !right);
   splitter.setAttribute('aria-orientation', right ? 'vertical' : 'horizontal');
-  splitter.setAttribute('aria-label', right ? '调整文件面板宽度' : '调整文件面板高度');
-  if ($('#monitor-side')) $('#monitor-side').value = root.dataset.monitorSide;
+  splitter.classList.toggle('fixed-width-gap', right);
+  splitter.tabIndex = right ? -1 : 0;
+  splitter.setAttribute('aria-disabled', String(right));
+  splitter.setAttribute('aria-label', right ? '文件面板固定宽度' : '调整文件面板高度');
+  if (right) {
+    splitter.setAttribute('aria-hidden', 'true');
+    for (const name of ['aria-valuemin', 'aria-valuemax', 'aria-valuenow']) splitter.removeAttribute(name);
+  } else splitter.removeAttribute('aria-hidden');
+  if ($('#monitor-visible')) $('#monitor-visible').value = root.dataset.monitorVisible;
   if ($('#files-position')) $('#files-position').value = root.dataset.filesPosition;
   for (const dialog of movableColorDialogs) clampColorDialog(dialog);
 }
@@ -157,12 +164,13 @@ function openPromptColors() {
   reflectPromptPreview(); if (!dialog.open) dialog.showModal(); clampColorDialog(dialog);
 }
 function initializeAppearanceTools() {
-  const anchor = $('#settings-menu .scale-setting');
-  const promptButton = node('button'); promptButton.id = 'manage-prompt-colors'; promptButton.type = 'button'; promptButton.setAttribute('role', 'menuitem'); promptButton.append(icon('terminal'), document.createTextNode('提示符颜色')); promptButton.onclick = openPromptColors; anchor.before(promptButton);
-  for (const [id, key, title, options] of [['monitor-side', 'monitorSide', '监控位置', [['left', '左侧'], ['right', '右侧']]], ['files-position', 'filesPosition', '文件面板', [['bottom', '终端下方'], ['right', '终端右侧'], ['top', '终端上方']]]]) {
+  const appearanceAnchor = $('#reset-layout');
+  const promptButton = node('button'); promptButton.id = 'manage-prompt-colors'; promptButton.type = 'button'; promptButton.setAttribute('role', 'menuitem'); promptButton.append(icon('terminal'), document.createTextNode('提示符颜色')); promptButton.onclick = openPromptColors; appearanceAnchor.before(promptButton);
+  const settingsAnchor = $('#settings-main-view .scale-setting');
+  for (const [id, key, title, options] of [['monitor-visible', 'monitorVisible', '监控面板', [['true', '显示'], ['false', '隐藏']]], ['files-position', 'filesPosition', '文件面板', [['bottom', '终端下方'], ['right', '终端右侧'], ['top', '终端上方']]]]) {
     const row = node('div', 'scale-setting placement-setting'), label = node('label', '', title), select = node('select'); label.htmlFor = select.id = id; select.setAttribute('aria-label', title);
     for (const [value, text] of options) { const option = node('option', '', text); option.value = value; select.append(option); }
-    select.onchange = safe(() => chooseAppearance({ [key]: select.value })); row.append(label, select); anchor.before(row);
+    select.onchange = safe(() => chooseAppearance({ [key]: key === 'monitorVisible' ? select.value === 'true' : select.value })); row.append(label, select); settingsAnchor.before(row);
   }
   $('#toggle-files-position').onclick = safe(() => chooseAppearance({ filesPosition: appearance.filesPosition === 'right' ? 'bottom' : 'right' }));
   applyWorkspacePlacement();

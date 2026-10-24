@@ -145,7 +145,7 @@ async function loadProfiles() {
     workspaceInitialized = true;
     const savedPane = readSaved('dengshell.workspace', {}).pane;
     if (['files', 'commands', 'common-apps', 'transfers'].includes(savedPane)) showPane(savedPane, false);
-    setWorkspaceVisible(!layout.filesHidden, false);
+    setWorkspaceVisible(layout.filesHidden === false, false);
   }
   window.DengShellHelp?.acceptConfig(config);
 }
@@ -863,6 +863,24 @@ function renderGPUs(stats) {
     return row;
   }));
 }
+function renderDisks(stats) {
+  // Focus the sidebar on large mounted filesystems. Use the same binary
+  // units as prettySize; aliases and virtual volumes are filtered upstream.
+  const disks = (stats?.disks || []).filter(disk => disk.total > 10 * 1024 ** 3);
+  const box = $('#disk-filesystems');
+  box.hidden = !disks.length;
+  box.replaceChildren(...disks.map(disk => {
+    const percent = disk.used / disk.total * 100;
+    const row = node('div', 'metric disk-filesystem');
+    row.title = `挂载点：${disk.path}\n已用 ${prettySize(disk.used)} / 总计 ${prettySize(disk.total)}，可用 ${prettySize(disk.available)}`;
+    const label = node('span', '', disk.path); label.title = disk.path;
+    const bar = node('div', 'meter');
+    const fill = node('i'); fill.style.width = `${Math.max(0, Math.min(100, percent))}%`;
+    bar.append(fill, node('b', '', `${percent.toFixed(1)}%`), node('em', '', `${prettySize(disk.used)} / ${prettySize(disk.total)}`));
+    row.append(label, bar);
+    return row;
+  }));
+}
 function renderMonitor(stats) {
   if (window.DengSystemIdentity) window.DengSystemIdentity.render(stats?.os);
   else { $('#system-os').textContent = stats?.os || '—'; $('#system-os').title = stats?.os || ''; }
@@ -873,11 +891,7 @@ function renderMonitor(stats) {
   meter('#swap-meter', stats?.swapTotal ? stats.swapUsed / stats.swapTotal * 100 : 0, stats ? `${prettySize(stats.swapUsed)} / ${prettySize(stats.swapTotal)}` : '—', !!stats);
   renderGPUs(stats);
   renderProcesses(stats);
-  // The backend filters virtual volumes and deduplicates filesystem aliases.
-  const disks = stats?.disks || [];
-  const diskSpace = disks.reduce((sum, disk) => ({ used: sum.used + disk.used, available: sum.available + disk.available, total: sum.total + disk.total }), { used: 0, available: 0, total: 0 });
-  meter('#disk-meter', diskSpace.total ? diskSpace.used / diskSpace.total * 100 : 0, diskSpace.total ? `${prettySize(diskSpace.used)} / ${prettySize(diskSpace.total)}` : '—', diskSpace.total > 0);
-  $('#disk-meter').title = disks.length ? `文件系统合计（${disks.length} 个）：${disks.slice(0, 12).map(disk => disk.path).join('、')}${disks.length > 12 ? '…' : ''}\n已用 ${prettySize(diskSpace.used)} / 总计 ${prettySize(diskSpace.total)}，可用 ${prettySize(diskSpace.available)}\n容量约每 30 秒更新；不含 SWAP、未挂载空间和重复挂载` : '尚无文件系统容量数据';
+  renderDisks(stats);
   $('#disk-read').textContent = stats?.sampleReady ? prettySize(stats.diskRead) + '/s' : '—'; $('#disk-write').textContent = stats?.sampleReady ? prettySize(stats.diskWrite) + '/s' : '—';
   renderNetwork(stats);
   renderServerAddresses(stats);
@@ -1125,14 +1139,26 @@ function renderTransfers() {
   updateTransferNotice(); $('#transfer-empty').hidden = localTasks.size > 0;
   const label = { queued: '等待上传', uploading: '上传中', done: '已完成', failed: '失败', cancelled: '已取消' };
   $('#transfer-list').replaceChildren(...[...localTasks.values()].map(task => {
-    const row = node('div', 'transfer-row'), info = node('div', 'transfer-info'); const name = node('strong', '', task.name), detail = node('small', '', task.error || task.target); detail.title = task.error || task.target; info.append(name, detail);
-    const progress = node('progress', 'transfer-progress'); progress.max = task.total || 1; progress.value = task.done || 0; progress.setAttribute('aria-label', task.name + ' 上传进度'); info.append(progress);
-    const percent = task.total > 0 ? Math.min(100, Math.round(task.done / task.total * 100)) : 0;
-    const status = node('span', `transfer-state ${task.status}`, `${label[task.status] || task.status}${task.status === 'uploading' ? ' ' + percent + '%' : ''}`);
+    const row = node('div', 'transfer-row'), info = node('div', 'transfer-info'); const name = node('strong', '', task.name), detail = node('small', '', task.error || task.target); name.title = task.name; detail.title = task.error || task.target; info.append(name, detail);
+    const percent = task.status === 'done' ? 100 : task.total > 0 ? Math.max(0, Math.min(100, Math.round((task.done || 0) / task.total * 100))) : 0;
+    const progress = node('div', `transfer-progress ${task.status}`);
+    progress.setAttribute('role', 'progressbar'); progress.setAttribute('aria-label', task.name + ' 上传进度');
+    progress.setAttribute('aria-valuemin', '0'); progress.setAttribute('aria-valuemax', '100'); progress.setAttribute('aria-valuenow', String(percent));
+    const ring = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); ring.setAttribute('viewBox', '0 0 48 48'); ring.setAttribute('aria-hidden', 'true');
+    for (const type of ['track', 'fill']) {
+      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      circle.setAttribute('class', `transfer-ring-${type}`); circle.setAttribute('cx', '24'); circle.setAttribute('cy', '24'); circle.setAttribute('r', '20'); circle.setAttribute('pathLength', '100');
+      if (type === 'fill') circle.setAttribute('stroke-dasharray', `${percent} 100`);
+      ring.append(circle);
+    }
+    progress.append(ring, node('span', 'transfer-percent', `${percent}%`));
+    const status = node('span', `transfer-state ${task.status}`, label[task.status] || task.status);
+    const meta = node('div', 'transfer-meta'); meta.append(node('span', 'transfer-size', prettySize(task.done) + ' / ' + prettySize(task.total)), status); info.append(meta);
+    const actions = node('div', 'transfer-actions');
     const cancel = node('button', 'icon-button'); cancel.title = ['queued', 'uploading'].includes(task.status) ? '取消上传' : '移除记录'; cancel.setAttribute('aria-label', cancel.title); cancel.append(icon('close')); cancel.onclick = safe(() => cancelTask(task));
-    row.append(icon('file'), info, node('span', 'transfer-size', prettySize(task.done) + ' / ' + prettySize(task.total)), status);
-    if (['failed', 'cancelled'].includes(task.status) && (task.file || task.retryable)) { const retry = node('button', 'transfer-retry', task.error?.includes('已存在') ? '覆盖' : '重试'); retry.onclick = safe(() => retryTask(task)); row.append(retry); }
-    row.append(cancel); return row;
+    row.append(progress, info, actions);
+    if (['failed', 'cancelled'].includes(task.status) && (task.file || task.retryable)) { const retry = node('button', 'transfer-retry', task.error?.includes('已存在') ? '覆盖' : '重试'); retry.onclick = safe(() => retryTask(task)); actions.append(retry); }
+    actions.append(cancel); return row;
   }));
 }
 const filesPanel = $('#files-panel'); let dragDepth = 0;
@@ -1158,65 +1184,63 @@ const savedLayout = readSaved('cloudshell.layout', {});
 let layout = savedLayout && typeof savedLayout === 'object' ? savedLayout : {};
 // Adopt the roomier terminal once; subsequent manual pane sizes stay intact.
 if (layout.version !== 2) { delete layout.files; layout.version = 2; save('cloudshell.layout', layout); }
+// A missing visibility preference means this is the first SFTP-panel choice.
+// Start closed; an explicit saved false still restores the panel as open.
+setWorkspaceVisible(layout.filesHidden === false, false);
 function filePanelLimits() {
   const workspace = $('#workspace');
   // The separator is 8px in either direction; its full height in right mode
   // must never overwrite the separately remembered bottom-panel height.
   const maxWidth = Math.max(160, workspace.clientWidth - 240 - 8);
-  return { minWidth: Math.min(280, maxWidth), maxWidth, maxHeight: Math.max(100, workspace.clientHeight - 160 - 8) };
+  return { maxWidth, maxHeight: Math.max(100, workspace.clientHeight - 160 - 8) };
 }
 function clampLayouts() {
-  const maxSidebar = Math.min(460, Math.max(225, logicalWidth() - 400));
-  const { minWidth, maxWidth, maxHeight } = filePanelLimits(), root = document.documentElement;
-  if (Number.isFinite(layout.sidebar)) {
-    layout.sidebar = Math.max(Math.min(240, maxSidebar), Math.min(maxSidebar, layout.sidebar));
-    root.style.setProperty('--sidebar-width', `${layout.sidebar}px`);
-  }
-  // Clamp displayed sizes to this window without losing the user's preferred
-  // dimensions when temporarily switching position, resizing or hiding panes.
+  const root = document.documentElement;
+  // Fixed side panels leave window growth to the terminal. Old saved widths
+  // must not override the defaults; only constrain SFTP in a small window.
+  root.style.setProperty('--sidebar-width', '304px');
+  const { maxWidth, maxHeight } = filePanelLimits();
+  root.style.setProperty('--files-width', `${Math.min(420, maxWidth)}px`);
+  // Top/bottom SFTP heights remain independently resizable.
   if (Number.isFinite(layout.files)) root.style.setProperty('--files-height', `${Math.max(100, Math.min(maxHeight, layout.files))}px`);
-  const preferredWidth = Number.isFinite(layout.filesWidth) ? layout.filesWidth : Math.min(480, Math.max(320, $('#workspace').clientWidth * .42));
-  root.style.setProperty('--files-width', `${Math.max(minWidth, Math.min(maxWidth, preferredWidth))}px`);
-  $('#sidebar-splitter').setAttribute('aria-valuenow', Math.round($('.sidebar').offsetWidth));
-  $('#sidebar-splitter').setAttribute('aria-valuemax', maxSidebar);
   const right = appearance.filesPosition === 'right', splitter = $('#files-splitter');
-  splitter.setAttribute('aria-valuemin', right ? minWidth : 100);
-  splitter.setAttribute('aria-valuemax', right ? maxWidth : maxHeight);
-  splitter.setAttribute('aria-valuenow', Math.round($('#files-panel')[right ? 'clientWidth' : 'clientHeight']));
+  if (!right) {
+    splitter.setAttribute('aria-valuemin', 100);
+    splitter.setAttribute('aria-valuemax', maxHeight);
+    splitter.setAttribute('aria-valuenow', Math.round($('#files-panel').clientHeight));
+  }
 }
-function resizeSidebar(width) { layout.sidebar = width; clampLayouts(); }
 function resizeFiles(event) {
-  const rect = $('#workspace').getBoundingClientRect(), { minWidth, maxWidth, maxHeight } = filePanelLimits();
-  if (appearance.filesPosition === 'right') layout.filesWidth = Math.max(minWidth, Math.min(maxWidth, (rect.right - event.clientX) / effectiveScale));
-  else layout.files = Math.max(100, Math.min(maxHeight, (appearance.filesPosition === 'top' ? event.clientY - rect.top : rect.bottom - event.clientY) / effectiveScale));
+  if (appearance.filesPosition === 'right') return;
+  const rect = $('#workspace').getBoundingClientRect(), { maxHeight } = filePanelLimits();
+  layout.files = Math.max(100, Math.min(maxHeight, (appearance.filesPosition === 'top' ? event.clientY - rect.top : rect.bottom - event.clientY) / effectiveScale));
   clampLayouts();
 }
 function bindSplitter(selector, handler, keyboardHandler) {
   const splitter = $(selector);
   let dragging = false;
   splitter.addEventListener('pointerdown', event => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || splitter.getAttribute('aria-disabled') === 'true') return;
     dragging = true;
     splitter.setPointerCapture(event.pointerId);
     document.body.style.userSelect = 'none';
     document.body.style.cursor = getComputedStyle(splitter).cursor;
   });
   splitter.addEventListener('pointermove', event => { if (dragging) handler(event); });
-  const stop = () => { dragging = false; document.body.style.userSelect = ''; document.body.style.cursor = ''; save('cloudshell.layout', layout); };
+  const stop = () => { if (!dragging) return; dragging = false; document.body.style.userSelect = ''; document.body.style.cursor = ''; save('cloudshell.layout', layout); };
   splitter.addEventListener('pointerup', stop);
   splitter.addEventListener('pointercancel', stop);
   splitter.addEventListener('lostpointercapture', stop);
   splitter.addEventListener('keydown', event => {
+    if (splitter.getAttribute('aria-disabled') === 'true') return;
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
     event.preventDefault(); keyboardHandler(event.key); save('cloudshell.layout', layout);
   });
 }
-bindSplitter('#sidebar-splitter', event => { const rect = $('.sidebar').getBoundingClientRect(); resizeSidebar((appearance.monitorSide === 'right' ? rect.right - event.clientX : event.clientX - rect.left) / effectiveScale); }, key => { if (key === 'ArrowLeft' || key === 'ArrowRight') resizeSidebar($('.sidebar').offsetWidth + (key === 'ArrowLeft' ? -12 : 12) * (appearance.monitorSide === 'right' ? -1 : 1)); });
 bindSplitter('#files-splitter', resizeFiles, key => {
-  const { minWidth, maxWidth, maxHeight } = filePanelLimits();
-  if (appearance.filesPosition === 'right') {
-    if (key === 'ArrowLeft' || key === 'ArrowRight') layout.filesWidth = Math.max(minWidth, Math.min(maxWidth, $('#files-panel').clientWidth + (key === 'ArrowLeft' ? 20 : -20)));
-  } else if (key === 'ArrowUp' || key === 'ArrowDown') {
+  if (appearance.filesPosition === 'right') return;
+  const { maxHeight } = filePanelLimits();
+  if (key === 'ArrowUp' || key === 'ArrowDown') {
     layout.files = Math.max(100, Math.min(maxHeight, $('#files-panel').clientHeight + (key === 'ArrowUp' ? 20 : -20) * (appearance.filesPosition === 'top' ? -1 : 1)));
   }
   clampLayouts();
@@ -1230,7 +1254,7 @@ $('#reset-layout').onclick = () => {
   document.documentElement.style.removeProperty('--terminal-font');
   terminalFont = 14; changeFont(0);
   clampLayouts();
-  chooseAppearance({ monitorSide: 'left', filesPosition: 'right' }).catch(error => toast(error.message));
+  chooseAppearance({ monitorVisible: true, filesPosition: 'right' }).catch(error => toast(error.message));
   toast('已恢复默认布局与终端字号');
 };
 window.addEventListener('resize', () => {

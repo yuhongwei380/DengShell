@@ -69,7 +69,7 @@ func (d *Desktop) DetachWindow(input app.WindowHandoffRequest) error {
 func (d *Desktop) reserveDetachedStart(nonce string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if d.updateInstalling || d.quitConfirmed || d.quitPending {
+	if d.updateInstalling || d.quitConfirmed || d.quitPending || d.installerQuitPending {
 		return errors.New("主窗口正在退出或更新，暂时不能拆分终端")
 	}
 	if d.children == nil {

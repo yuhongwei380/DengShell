@@ -91,6 +91,22 @@ func (d *Desktop) startDesktopLifecycle(ctx context.Context, iconPath string) {
 				return
 			case <-ticker.C:
 				events := platformTrayEvents()
+				if events&8 != 0 {
+					d.CancelQuit()
+					runtime.EventsEmit(ctx, "dengshell:installer-quit-cancelled")
+				} else if events&4 != 0 {
+					d.requestInstallerQuit()
+				}
+				d.mu.Lock()
+				finishInstallQuit := d.installerQuitApproved && len(d.children) == 0 && len(d.pendingWindows) == 0
+				if finishInstallQuit {
+					d.quitConfirmed = true
+				}
+				d.mu.Unlock()
+				if finishInstallQuit {
+					runtime.Quit(ctx)
+					return
+				}
 				if events&1 != 0 {
 					d.RestoreWindow()
 				}
@@ -127,7 +143,7 @@ func (d *Desktop) InstallUpdate(id string) error {
 	}
 
 	d.mu.Lock()
-	if d.detachedNonce != "" || len(d.children) > 0 {
+	if d.detachedNonce != "" || len(d.children) > 0 || d.installerQuitPending {
 		d.mu.Unlock()
 		return errors.New("请先关闭独立窗口，再在主窗口中更新")
 	}

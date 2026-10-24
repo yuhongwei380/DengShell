@@ -7,13 +7,10 @@ import (
 	"path/filepath"
 )
 
-// Native dialogs are modal to the main window, and Wails dispatches them onto
-// the UI thread. A modal loop pumps that thread's messages, so a second picker
-// request is created inside the first dialog's modal loop: two nested modal
-// dialogs on one window. Windows then restores the second dialog to the folder
-// the first one used (the same persisted role) and leaves the pointer invisible
-// while navigating. Only one picker may be open at a time; a repeat request is
-// simply refused.
+// Native dialogs are modal to the main window. Only one picker may be open at
+// a time: repeated handshake events or concurrent requests must not create
+// nested dialogs. On Windows, platform dialogs also use an independent STA
+// and disable main without attaching its input queue to the file picker.
 //
 // The starting folder is pinned as well. Without it the OS decides, based on
 // what it persisted for the dialog role, which reads as jumping back to a folder

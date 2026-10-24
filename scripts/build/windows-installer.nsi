@@ -10,8 +10,10 @@ InstallDirRegKey HKCU "Software\DevShell" "InstallDir"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
 SetCompressorDictSize 16
-ShowInstDetails show
-ShowUninstDetails show
+ShowInstDetails hide
+ShowUninstDetails hide
+BrandingText "DevShell"
+SetFont "Microsoft YaHei UI" 9
 VIProductVersion "${PACKAGE_VERSION}.${BUILD_REVISION}"
 VIAddVersionKey /LANG=2052 "ProductName" "DevShell"
 VIAddVersionKey /LANG=2052 "FileDescription" "DevShell 当前用户安装程序"
@@ -21,7 +23,7 @@ VIAddVersionKey /LANG=2052 "LegalCopyright" "DevShell contributors · MIT"
 !define MUI_UNICON "${ICON}"
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "安装 DevShell"
-!define MUI_WELCOMEPAGE_TEXT "将 DevShell 安装到当前用户目录，并创建开始菜单和桌面快捷方式。$\r$\n$\r$\n升级前请先退出 DevShell。原有 data 配置、密钥、字体和背景会保留；此前 DengShell 的安装位置与数据会自动沿用。$\r$\n$\r$\n应用首次启动会检查 WebView2，缺少时提供安装指引。"
+!define MUI_WELCOMEPAGE_TEXT "将 DevShell 安装到当前用户目录，并创建开始菜单和桌面快捷方式。$\r$\n$\r$\n若 DevShell 正在运行，安装器会提示关闭并自动继续。请先保存编辑并完成传输。原有 data 配置、密钥、字体和背景会保留；此前 DengShell 的安装位置与数据会自动沿用。$\r$\n$\r$\n应用首次启动会检查 WebView2，缺少时提供安装指引。"
 !insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_LICENSE "${LICENSE_FILE}"
 !insertmacro MUI_PAGE_DIRECTORY
@@ -59,13 +61,52 @@ FunctionEnd
 Section "DevShell" SEC_MAIN
   SetShellVarContext current
   SetRegView 64
-  SetOutPath "$INSTDIR"
-  SetOverwrite on
+  InitPluginsDir
+  SetDetailsPrint textonly
+  DetailPrint "正在准备安装文件…"
+  SetDetailsPrint listonly
+  SetOutPath "$PLUGINSDIR\payload"
+  ; No extraction into the live installation until shutdown is complete. Try
+  ; suppresses NSIS's Abort/Retry/Ignore box; errors are handled explicitly.
+  SetOverwrite try
   ClearErrors
   File /r "${FILESPEC}"
-  IfErrors 0 +3
-    MessageBox MB_OK|MB_ICONSTOP "程序文件未能完整写入。请退出 DevShell 后重新运行安装器。"
+  SetOutPath "$PLUGINSDIR"
+  File /oname=installer-control.exe "${INSTALLER_CONTROL}"
+  ${If} ${Errors}
+    MessageBox MB_OK|MB_ICONSTOP "无法准备安装文件，现有 DevShell 未修改。请检查磁盘空间后重新安装。" /SD IDOK
+    SetErrorLevel 1
     Abort
+  ${EndIf}
+  StrCpy $1 ""
+  ${If} ${Silent}
+    StrCpy $1 "--silent"
+  ${EndIf}
+  SetDetailsPrint both
+  DetailPrint "正在检查并等待 DevShell 退出…"
+  SetDetailsPrint listonly
+  ClearErrors
+  ExecWait '"$PLUGINSDIR\installer-control.exe" --directory "$INSTDIR" --payload "$PLUGINSDIR\payload" --owner $HWNDPARENT $1' $0
+  SetDetailsPrint both
+  ${If} ${Errors}
+    MessageBox MB_OK|MB_ICONSTOP "安装助手无法启动，现有 DevShell 未修改。" /SD IDOK
+    SetErrorLevel 1
+    Abort
+  ${EndIf}
+  ${If} $0 != 0
+    ${If} $0 == 1602
+      DetailPrint "安装已取消。"
+    ${Else}
+      SetDetailsView show
+      DetailPrint "安装未完成，请查看上方提示。"
+    ${EndIf}
+    SetErrorLevel $0
+    Abort
+  ${EndIf}
+  DetailPrint "正在完成安装…"
+  SetDetailsPrint listonly
+  SetOutPath "$INSTDIR"
+  SetOverwrite on
   ; Rename migration: drop the previous DengShell program file, shortcuts and
   ; registry entries; personal data under data\ is untouched.
   Delete "$INSTDIR\DengShell.exe"
@@ -89,6 +130,8 @@ Section "DevShell" SEC_MAIN
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DevShell" "EstimatedSize" ${ESTIMATED_SIZE}
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DevShell" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\DevShell" "NoRepair" 1
+  SetDetailsPrint both
+  DetailPrint "安装完成。"
 SectionEnd
 
 Function un.onInit

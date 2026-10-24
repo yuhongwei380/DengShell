@@ -11,14 +11,14 @@ func TestAppearanceWorkspacePromptDefaultsAndPersistence(t *testing.T) {
 	if err := json.Unmarshal([]byte(`{"fontId":"builtin:fira-code","fontColors":{"builtin:fira-code":"#aabbcc"}}`), &legacy); err != nil {
 		t.Fatal(err)
 	}
-	if legacy.MonitorSide != "left" || legacy.FilesPosition != "right" || legacy.MinimizeAction != "ask" || legacy.PromptUsernameColor != "" || legacy.ExternalEditor != "" {
+	if legacy.MonitorVisible != true || legacy.FilesPosition != "right" || legacy.MinimizeAction != "ask" || legacy.PromptUsernameColor != "" || legacy.ExternalEditor != "" {
 		t.Fatalf("legacy defaults changed: %+v", legacy)
 	}
 	store, err := OpenStore(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	legacy.MonitorSide = "right"
+	legacy.MonitorVisible = false
 	legacy.FilesPosition = "top"
 	legacy.MinimizeAction = "tray"
 	legacy.PromptUsernameColor = "#ABCDEF"
@@ -32,7 +32,7 @@ func TestAppearanceWorkspacePromptDefaultsAndPersistence(t *testing.T) {
 		t.Fatal(err)
 	}
 	saved := reopened.List().Appearance
-	if saved.MonitorSide != "right" || saved.FilesPosition != "top" || saved.MinimizeAction != "tray" || saved.PromptUsernameColor != "#abcdef" || saved.PromptHostnameColor != "#0123ef" || saved.ExternalEditor != legacy.ExternalEditor || saved.FontColors["builtin:fira-code"] != "#aabbcc" {
+	if saved.MonitorVisible != false || saved.FilesPosition != "top" || saved.MinimizeAction != "tray" || saved.PromptUsernameColor != "#abcdef" || saved.PromptHostnameColor != "#0123ef" || saved.ExternalEditor != legacy.ExternalEditor || saved.FontColors["builtin:fira-code"] != "#aabbcc" {
 		t.Fatalf("appearance did not persist: %+v", saved)
 	}
 	saved.PromptUsernameColor = ""
@@ -51,7 +51,6 @@ func TestAppearanceWorkspacePromptRejectsInvalidPreferences(t *testing.T) {
 		name   string
 		change func(*Appearance)
 	}{
-		{"monitor", func(a *Appearance) { a.MonitorSide = "center" }},
 		{"files", func(a *Appearance) { a.FilesPosition = "beside" }},
 		{"minimize", func(a *Appearance) { a.MinimizeAction = "quit" }},
 		{"username short", func(a *Appearance) { a.PromptUsernameColor = "#fff" }},
@@ -67,7 +66,7 @@ func TestAppearanceWorkspacePromptRejectsInvalidPreferences(t *testing.T) {
 			if _, err := store.SaveAppearance(a); err == nil {
 				t.Fatal("invalid preference accepted")
 			}
-			if store.List().Appearance.MonitorSide != "left" || store.List().Appearance.PromptUsernameColor != "" {
+			if !store.List().Appearance.MonitorVisible || store.List().Appearance.PromptUsernameColor != "" {
 				t.Fatal("invalid save mutated store")
 			}
 		})

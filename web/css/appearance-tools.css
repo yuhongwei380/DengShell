@@ -4,10 +4,14 @@ button,input,select,textarea { font-family:inherit; }
 /* Explicit grid locations keep visual order and splitter direction independent. */
 .app-shell > .sidebar { grid-column:1; grid-row:1; }
 .app-shell > #sidebar-splitter { grid-column:2; grid-row:1; }
+.splitter.fixed-width-gap { cursor:default; touch-action:auto; }
+.splitter.fixed-width-gap span { display:none; }
 .app-shell > .main-panel { grid-column:3; grid-row:1; }
-[data-monitor-side="right"]:not([data-narrow="true"]) .app-shell { grid-template-columns:minmax(0,1fr) var(--pane-gap) var(--sidebar-width); }
-[data-monitor-side="right"]:not([data-narrow="true"]) .app-shell > .sidebar { grid-column:3; }
-[data-monitor-side="right"]:not([data-narrow="true"]) .app-shell > .main-panel { grid-column:1; }
+/* 监控面板固定在左侧；隐藏时释放它占用的整条列轨道。 */
+[data-monitor-visible="false"]:not([data-narrow="true"]) .app-shell { grid-template-columns:minmax(0,1fr); }
+[data-monitor-visible="false"]:not([data-narrow="true"]) .app-shell > .sidebar,
+[data-monitor-visible="false"]:not([data-narrow="true"]) .app-shell > #sidebar-splitter { display:none; }
+[data-monitor-visible="false"]:not([data-narrow="true"]) .app-shell > .main-panel { grid-column:1; }
 .workspace { grid-template-columns:minmax(0,1fr); }
 .workspace > .terminal-panel { grid-row:1; grid-column:1; }
 .workspace > #files-splitter { grid-row:2; grid-column:1; }
@@ -19,8 +23,8 @@ button,input,select,textarea { font-family:inherit; }
 [data-files-position="right"] .workspace > #files-splitter { grid-row:1; grid-column:2; }
 [data-files-position="right"] .workspace > #files-panel { grid-row:1; grid-column:3; }
 /* Hidden panes release every reserved track, in every supported position. */
-[data-files-position] .workspace.files-hidden { grid-template-rows:minmax(0,1fr); grid-template-columns:minmax(0,1fr); }
-[data-files-position] .workspace.files-hidden > .terminal-panel { grid-row:1; grid-column:1; }
+.workspace.files-hidden { grid-template-rows:minmax(0,1fr); grid-template-columns:minmax(0,1fr); }
+.workspace.files-hidden > .terminal-panel { grid-row:1; grid-column:1; }
 .files-panel .files-position-button { flex:0 0 28px; width:28px; height:28px; margin-left:auto; border-radius:7px; color:var(--accent,#7198b1); }
 .files-position-button svg { width:18px; height:18px; }
 .files-position-button:hover,.files-position-button[aria-pressed="true"] { background:var(--surface-selected,#edf3f7); }
@@ -41,7 +45,6 @@ button,input,select,textarea { font-family:inherit; }
   [data-files-position="right"] .file-content > .directory-tree { display:none; }
 }
 [data-narrow="true"] .app-shell > .main-panel { grid-column:1; }
-[data-narrow="true"][data-monitor-side="right"][data-monitor-open="true"] .sidebar { left:auto; right:8px; }
 .placement-setting .themed-select { min-width:112px; }
 /* Short, consistent latency bars; color no longer changes with bar position. */
 #ping-status.icmp-card { padding:8px 10px 6px; min-height:0; }

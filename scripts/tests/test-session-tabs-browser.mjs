@@ -32,9 +32,9 @@ try {
    await page.waitForSelector(dialog+'[open]');assert.equal(await page.$eval('#settings-menu',e=>e.hidden),true);
    if(await page.$(close))await page.click(close);else await page.$eval(dialog,e=>e.close());
  }
- await page.evaluate(()=>chooseAppearance({monitorSide:'right',filesPosition:'top',terminalFontSize:19}));
+ await page.evaluate(()=>chooseAppearance({monitorVisible:false,filesPosition:'top',terminalFontSize:19}));
  await page.click('#settings-button');await page.click('#reset-layout');
- await page.waitForFunction(()=>appearance.monitorSide==='left'&&appearance.filesPosition==='right'&&terminalFont===14);
+ await page.waitForFunction(()=>appearance.monitorVisible===true&&appearance.filesPosition==='right'&&terminalFont===14);
  await page.evaluate(()=>{DengShellHelp.replayGuide()});
  for(let i=0;i<12;i++){
    await page.waitForFunction(n=>document.querySelector('#help-guide-step').textContent.startsWith(n+' / '),{},i+1);await new Promise(r=>setTimeout(r,80));

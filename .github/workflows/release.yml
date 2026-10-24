@@ -58,10 +58,12 @@ jobs:
           $tag = "${{ github.event.inputs.tag || github.ref_name }}"
           $version = (Select-String -Path internal/app/updates.go -Pattern 'const ApplicationVersion = "([^"]+)"').Matches[0].Groups[1].Value
           $notes = "docs/release/RELEASE-$version.md"
-          $releaseOptions = @()
-          if ($tag -in @('v26.10.0', 'v26.10.0-build26102301')) { $releaseOptions = @('--latest=false') }
+          $releaseOptions = @('--latest')
+          if ($tag -match '-(rc|alpha|beta)([.-]|$)') {
+            $releaseOptions = @('--prerelease', '--latest=false')
+          }
           if (gh release view $tag 2>$null) {
-            gh release edit $tag --title "DevShell $tag" --notes-file $notes
+            gh release edit $tag --title "DevShell $tag" --notes-file $notes @releaseOptions
           } else {
             gh release create $tag --title "DevShell $tag" --notes-file $notes @releaseOptions
           }
@@ -87,12 +89,14 @@ jobs:
           tag="${{ github.event.inputs.tag || github.ref_name }}"
           version=$(sed -n 's/^const ApplicationVersion = "\([^"]*\)".*/\1/p' internal/app/updates.go)
           notes="docs/release/RELEASE-$version.md"
-          latest_option=()
-          if [[ "$tag" == "v26.10.0" || "$tag" == "v26.10.0-build26102301" ]]; then latest_option=(--latest=false); fi
+          release_options=(--latest)
+          if [[ "$tag" =~ -(rc|alpha|beta)([.-]|$) ]]; then
+            release_options=(--prerelease --latest=false)
+          fi
           if gh release view "$tag" >/dev/null 2>&1; then
-            gh release edit "$tag" --title "DevShell $tag" --notes-file "$notes"
+            gh release edit "$tag" --title "DevShell $tag" --notes-file "$notes" "${release_options[@]}"
           else
-            gh release create "$tag" --title "DevShell $tag" --notes-file "$notes" "${latest_option[@]}"
+            gh release create "$tag" --title "DevShell $tag" --notes-file "$notes" "${release_options[@]}"
           fi
           gh release upload "$tag" \
             build/macos-release/DevShell-macos-universal.dmg \
@@ -102,29 +106,18 @@ jobs:
             build/macos-release/SHA256SUMS.txt \
             build/macos-release/build-info.json \
             --clobber
-  retire-legacy-v26-10-0:
-    # One-time cleanup authorized for the v26.10.0 re-baseline release:
-    # remove the retired v26.10.0 release and tag, keep latest on v26.10.1.
-    if: github.event_name == 'push' && github.ref == 'refs/tags/v26.10.0-build26102301'
+  finalize-26-10-1:
+    name: Finalize v26.10.1 and retire interim builds
     needs: [windows, macos]
+    # One-time cleanup explicitly authorized for this stable release only.
+    if: ${{ (github.event.inputs.tag || github.ref_name) == 'v26.10.1-build26102401' }}
     runs-on: ubuntu-latest
     steps:
-      - name: Delete retired v26.10.0 release and tag
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+      - name: Verify stable assets and remove RC releases and tags
         env:
           GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if gh release view v26.10.0 >/dev/null 2>&1; then
-            gh release delete v26.10.0 --yes
-            echo "Deleted retired v26.10.0 release"
-          fi
-          if gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v26.10.0" --jq '.[].ref' | grep -qx 'refs/tags/v26.10.0'; then
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/v26.10.0"
-            echo "Deleted retired v26.10.0 tag"
-          fi
-          latest=$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name')
-          if [[ "$latest" != "v26.10.1-build26102401" ]]; then
-            echo "Expected latest release v26.10.1-build26102401 but found $latest" >&2
-            exit 1
-          fi
+          GH_REPO: ${{ github.repository }}
+        run: python3 scripts/build/finalize-v26.10.1.py

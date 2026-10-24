@@ -3,8 +3,10 @@ package main
 import (
 	"cloudshell/internal/app"
 	"cloudshell/internal/desktop"
+	"cloudshell/internal/installguard"
 	"cloudshell/internal/updater"
 	"embed"
+	"errors"
 	"flag"
 	"io/fs"
 	"log"
@@ -21,6 +23,15 @@ var desktopIcon []byte
 
 func main() {
 	if updater.HandleFlag() {
+		return
+	}
+	if err := installguard.CheckLaunch(); err != nil {
+		// Do not leave this executable mapped behind a blocking error dialog
+		// while the installer is waiting to replace it.
+		if !errors.Is(err, installguard.ErrInstalling) {
+			showStartupError(err.Error())
+		}
+		log.Print(err)
 		return
 	}
 	detached := flag.Bool("detached-window", false, "internal independent window")
