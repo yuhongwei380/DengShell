@@ -29,7 +29,7 @@ type Appearance struct {
 	WindowHeight        int                        `json:"windowHeight"`
 	WindowMaximised     bool                       `json:"windowMaximised"`
 	OnboardingCompleted bool                       `json:"onboardingCompleted"`
-	MonitorSide         string                     `json:"monitorSide"`
+	MonitorVisible      bool                       `json:"monitorVisible"`
 	FilesPosition       string                     `json:"filesPosition"`
 	PromptUsernameColor string                     `json:"promptUsernameColor"`
 	PromptHostnameColor string                     `json:"promptHostnameColor"`
@@ -39,7 +39,7 @@ type Appearance struct {
 }
 
 func defaultAppearance() Appearance {
-	return Appearance{UIFontID: defaultUIFontID, UITextColors: map[string]string{}, FontID: "builtin:jetbrains-mono", FontColors: map[string]string{}, FontBold: map[string]bool{}, ChartStyles: map[string]ChartLineStyle{}, BackgroundID: "builtin:none", BackgroundOpacity: .42, BackgroundVersion: 2, UIScale: 1, TerminalFontSize: 14, Theme: "system", MonitorSide: "left", FilesPosition: "right", MinimizeAction: "ask", Layout: map[string]json.RawMessage{}}
+	return Appearance{UIFontID: defaultUIFontID, UITextColors: map[string]string{}, FontID: "builtin:jetbrains-mono", FontColors: map[string]string{}, FontBold: map[string]bool{}, ChartStyles: map[string]ChartLineStyle{}, BackgroundID: "builtin:none", BackgroundOpacity: .42, BackgroundVersion: 2, UIScale: 1, TerminalFontSize: 14, Theme: "system", MonitorVisible: true, FilesPosition: "right", MinimizeAction: "ask", Layout: map[string]json.RawMessage{}}
 }
 
 // Old releases combined 18% image opacity with a dark multiply tint. Keep
@@ -149,17 +149,11 @@ func (s *Store) saveAppearanceLocked(value Appearance) (Appearance, error) {
 	if len(value.ExternalEditor) > 4096 || strings.ContainsAny(value.ExternalEditor, "\x00\r\n") {
 		return Appearance{}, errors.New("外部编辑器路径无效")
 	}
-	if value.MonitorSide == "" {
-		value.MonitorSide = "left"
-	}
 	if value.FilesPosition == "" {
 		value.FilesPosition = "right"
 	}
 	if value.MinimizeAction == "" {
 		value.MinimizeAction = "ask"
-	}
-	if value.MonitorSide != "left" && value.MonitorSide != "right" {
-		return Appearance{}, errors.New("监控位置应为 left 或 right")
 	}
 	if value.FilesPosition != "top" && value.FilesPosition != "bottom" && value.FilesPosition != "right" {
 		return Appearance{}, errors.New("文件面板位置应为 top、bottom 或 right")

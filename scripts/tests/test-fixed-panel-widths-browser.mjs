@@ -9,7 +9,7 @@ const { default: puppeteer } = await import(path.isAbsolute(modulePath) ? pathTo
 const fixture = JSON.parse(fs.readFileSync(path.join(stage, 'browser-fixture.json')));
 const setup = await fetch(new URL('/api/appearance/patch', fixture.url), {
   method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CloudShell-Token': fixture.token },
-  body: JSON.stringify({ onboardingCompleted: true, uiScale: 1, filesPosition: 'right', monitorSide: 'left', layout: { 'cloudshell.layout': { version: 2, sidebar: 450, filesWidth: 650, files: 210 } } }),
+  body: JSON.stringify({ onboardingCompleted: true, uiScale: 1, filesPosition: 'right', monitorVisible: true, layout: { 'cloudshell.layout': { version: 2, sidebar: 450, filesWidth: 650, files: 210 } } }),
 });
 assert(setup.ok, 'legacy width fixture saved');
 const profileDir = fs.mkdtempSync(path.join(stage, 'edge-fixed-panels-'));
@@ -71,9 +71,13 @@ try {
     await page.evaluate(scale => { appearance.uiScale = scale; applyUIScale(); }, scale);
     assert.equal((await fixed('UI scale ' + scale)).files, 420);
   }
-  await page.evaluate(async () => { await chooseAppearance({ uiScale: 1, monitorSide: 'right' }); });
-  await fixed('monitor moved right');
-  await page.evaluate(async () => { await chooseAppearance({ monitorSide: 'left' }); });
+  await page.evaluate(async () => { await chooseAppearance({ uiScale: 1, monitorVisible: false }); });
+  await settle();
+  assert.equal(await page.$eval('.sidebar', el => el.getBoundingClientRect().width), 0, 'monitor hidden by appearance setting');
+  const hiddenMonitor = await snapshot(); assert(!hiddenMonitor.overflow && !hiddenMonitor.pageOverflow, 'hidden monitor: no overflow');
+  assert(hiddenMonitor.terminal > 1200, 'hidden monitor: terminal takes the released column');
+  await page.evaluate(async () => { await chooseAppearance({ monitorVisible: true }); });
+  await fixed('monitor shown again');
   const beforeHide = await fixed('before hiding SFTP');
   await page.click('#toggle-sftp'); await settle();
   const hidden = await snapshot(); assert.equal(hidden.terminal, hidden.workspace); assert(hidden.terminal > beforeHide.terminal);

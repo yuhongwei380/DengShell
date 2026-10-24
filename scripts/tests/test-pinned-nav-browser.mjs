@@ -263,20 +263,20 @@ try {
   assert.deepEqual(clickCalls.connect, [created[1]], 'chip click must call connect for the pinned profile');
   assert.deepEqual(clickCalls.activate, [], 'chip click must not merely activate the existing session');
   checks.push('Clicking a chip with an existing active session still opens a new connection');
-  // Long labels and moving/resizing the monitor column must also reflow the
+  // Long labels and hiding/resizing the monitor column must also reflow the
   // header, even when there is no window resize event.
   await page.evaluate(() => {
     profiles.find(profile => profile.id === appearance.layout['dengshell.pinned.v1'][1]).name = '很长的服务器连接名称 '.repeat(5);
     DengPinnedNav.render();
-    appearance.monitorSide = 'right'; applyWorkspacePlacement();
+    appearance.monitorVisible = false; applyWorkspacePlacement();
   });
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   assert.equal((await inspectLayout()).clipped, false);
-  await page.evaluate(() => { appearance.monitorSide = 'left'; applyWorkspacePlacement(); document.documentElement.style.setProperty('--sidebar-width', '540px'); });
+  await page.evaluate(() => { appearance.monitorVisible = true; applyWorkspacePlacement(); document.documentElement.style.setProperty('--sidebar-width', '540px'); });
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
   assert.equal((await inspectLayout()).clipped, false);
   await page.evaluate(() => { document.documentElement.style.removeProperty('--sidebar-width'); });
-  checks.push('Long names, monitor placement and sidebar width changes reflow without cropping');
+  checks.push('Long names, monitor visibility and sidebar width changes reflow without cropping');
   await page.setViewport({ width: 2800, height: 900 });
   await page.waitForFunction(() => document.querySelectorAll('.pinned-chip:not([hidden])').length === 7 && document.querySelector('.pinned-more-wrap').hidden);
   checks.push('Growing the window restores all remaining connections and hides the ellipsis');
