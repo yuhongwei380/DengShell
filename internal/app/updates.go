@@ -40,7 +40,7 @@ const ApplicationPackageVersion = "26.10.1"
 // three-digit daily sequence. Increase it for every published build, including
 // packaging-only releases; update manifests must exceed it. The sequence tracks
 // the upstream DengShell build numbering (107–114 ported on 2026-10-18).
-const ApplicationBuild uint64 = 20261024153
+const ApplicationBuild uint64 = 20261024154
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,

@@ -4,6 +4,8 @@ button,input,select,textarea { font-family:inherit; }
 /* Explicit grid locations keep visual order and splitter direction independent. */
 .app-shell > .sidebar { grid-column:1; grid-row:1; }
 .app-shell > #sidebar-splitter { grid-column:2; grid-row:1; }
+.splitter.fixed-width-gap { cursor:default; touch-action:auto; }
+.splitter.fixed-width-gap span { display:none; }
 .app-shell > .main-panel { grid-column:3; grid-row:1; }
 [data-monitor-side="right"]:not([data-narrow="true"]) .app-shell { grid-template-columns:minmax(0,1fr) var(--pane-gap) var(--sidebar-width); }
 [data-monitor-side="right"]:not([data-narrow="true"]) .app-shell > .sidebar { grid-column:3; }

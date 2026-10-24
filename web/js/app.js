@@ -1189,60 +1189,55 @@ function filePanelLimits() {
   // The separator is 8px in either direction; its full height in right mode
   // must never overwrite the separately remembered bottom-panel height.
   const maxWidth = Math.max(160, workspace.clientWidth - 240 - 8);
-  return { minWidth: Math.min(280, maxWidth), maxWidth, maxHeight: Math.max(100, workspace.clientHeight - 160 - 8) };
+  return { maxWidth, maxHeight: Math.max(100, workspace.clientHeight - 160 - 8) };
 }
 function clampLayouts() {
-  const maxSidebar = Math.min(460, Math.max(225, logicalWidth() - 400));
-  const { minWidth, maxWidth, maxHeight } = filePanelLimits(), root = document.documentElement;
-  if (Number.isFinite(layout.sidebar)) {
-    layout.sidebar = Math.max(Math.min(240, maxSidebar), Math.min(maxSidebar, layout.sidebar));
-    root.style.setProperty('--sidebar-width', `${layout.sidebar}px`);
-  }
-  // Clamp displayed sizes to this window without losing the user's preferred
-  // dimensions when temporarily switching position, resizing or hiding panes.
+  const root = document.documentElement;
+  // Fixed side panels leave window growth to the terminal. Old saved widths
+  // must not override the defaults; only constrain SFTP in a small window.
+  root.style.setProperty('--sidebar-width', '304px');
+  const { maxWidth, maxHeight } = filePanelLimits();
+  root.style.setProperty('--files-width', `${Math.min(420, maxWidth)}px`);
+  // Top/bottom SFTP heights remain independently resizable.
   if (Number.isFinite(layout.files)) root.style.setProperty('--files-height', `${Math.max(100, Math.min(maxHeight, layout.files))}px`);
-  const preferredWidth = Number.isFinite(layout.filesWidth) ? layout.filesWidth : Math.min(480, Math.max(320, $('#workspace').clientWidth * .42));
-  root.style.setProperty('--files-width', `${Math.max(minWidth, Math.min(maxWidth, preferredWidth))}px`);
-  $('#sidebar-splitter').setAttribute('aria-valuenow', Math.round($('.sidebar').offsetWidth));
-  $('#sidebar-splitter').setAttribute('aria-valuemax', maxSidebar);
   const right = appearance.filesPosition === 'right', splitter = $('#files-splitter');
-  splitter.setAttribute('aria-valuemin', right ? minWidth : 100);
-  splitter.setAttribute('aria-valuemax', right ? maxWidth : maxHeight);
-  splitter.setAttribute('aria-valuenow', Math.round($('#files-panel')[right ? 'clientWidth' : 'clientHeight']));
+  if (!right) {
+    splitter.setAttribute('aria-valuemin', 100);
+    splitter.setAttribute('aria-valuemax', maxHeight);
+    splitter.setAttribute('aria-valuenow', Math.round($('#files-panel').clientHeight));
+  }
 }
-function resizeSidebar(width) { layout.sidebar = width; clampLayouts(); }
 function resizeFiles(event) {
-  const rect = $('#workspace').getBoundingClientRect(), { minWidth, maxWidth, maxHeight } = filePanelLimits();
-  if (appearance.filesPosition === 'right') layout.filesWidth = Math.max(minWidth, Math.min(maxWidth, (rect.right - event.clientX) / effectiveScale));
-  else layout.files = Math.max(100, Math.min(maxHeight, (appearance.filesPosition === 'top' ? event.clientY - rect.top : rect.bottom - event.clientY) / effectiveScale));
+  if (appearance.filesPosition === 'right') return;
+  const rect = $('#workspace').getBoundingClientRect(), { maxHeight } = filePanelLimits();
+  layout.files = Math.max(100, Math.min(maxHeight, (appearance.filesPosition === 'top' ? event.clientY - rect.top : rect.bottom - event.clientY) / effectiveScale));
   clampLayouts();
 }
 function bindSplitter(selector, handler, keyboardHandler) {
   const splitter = $(selector);
   let dragging = false;
   splitter.addEventListener('pointerdown', event => {
-    if (event.button !== 0) return;
+    if (event.button !== 0 || splitter.getAttribute('aria-disabled') === 'true') return;
     dragging = true;
     splitter.setPointerCapture(event.pointerId);
     document.body.style.userSelect = 'none';
     document.body.style.cursor = getComputedStyle(splitter).cursor;
   });
   splitter.addEventListener('pointermove', event => { if (dragging) handler(event); });
-  const stop = () => { dragging = false; document.body.style.userSelect = ''; document.body.style.cursor = ''; save('cloudshell.layout', layout); };
+  const stop = () => { if (!dragging) return; dragging = false; document.body.style.userSelect = ''; document.body.style.cursor = ''; save('cloudshell.layout', layout); };
   splitter.addEventListener('pointerup', stop);
   splitter.addEventListener('pointercancel', stop);
   splitter.addEventListener('lostpointercapture', stop);
   splitter.addEventListener('keydown', event => {
+    if (splitter.getAttribute('aria-disabled') === 'true') return;
     if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
     event.preventDefault(); keyboardHandler(event.key); save('cloudshell.layout', layout);
   });
 }
-bindSplitter('#sidebar-splitter', event => { const rect = $('.sidebar').getBoundingClientRect(); resizeSidebar((appearance.monitorSide === 'right' ? rect.right - event.clientX : event.clientX - rect.left) / effectiveScale); }, key => { if (key === 'ArrowLeft' || key === 'ArrowRight') resizeSidebar($('.sidebar').offsetWidth + (key === 'ArrowLeft' ? -12 : 12) * (appearance.monitorSide === 'right' ? -1 : 1)); });
 bindSplitter('#files-splitter', resizeFiles, key => {
-  const { minWidth, maxWidth, maxHeight } = filePanelLimits();
-  if (appearance.filesPosition === 'right') {
-    if (key === 'ArrowLeft' || key === 'ArrowRight') layout.filesWidth = Math.max(minWidth, Math.min(maxWidth, $('#files-panel').clientWidth + (key === 'ArrowLeft' ? 20 : -20)));
-  } else if (key === 'ArrowUp' || key === 'ArrowDown') {
+  if (appearance.filesPosition === 'right') return;
+  const { maxHeight } = filePanelLimits();
+  if (key === 'ArrowUp' || key === 'ArrowDown') {
     layout.files = Math.max(100, Math.min(maxHeight, $('#files-panel').clientHeight + (key === 'ArrowUp' ? 20 : -20) * (appearance.filesPosition === 'top' ? -1 : 1)));
   }
   clampLayouts();

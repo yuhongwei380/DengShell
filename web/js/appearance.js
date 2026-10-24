@@ -328,7 +328,6 @@ function applyUIScale() {
   root.style.setProperty('--view-width', `${width}px`); root.style.setProperty('--view-height', `${height}px`);
   if (width >= 760) { root.dataset.monitorOpen = 'false'; $('#monitor-backdrop').hidden = true; $('#toggle-monitor').setAttribute('aria-expanded', 'false'); }
   root.dataset.compact = width < 1000 ? 'true' : 'false'; root.dataset.narrow = width < 760 ? 'true' : 'false'; root.dataset.short = height < 650 ? 'true' : 'false';
-  root.style.setProperty('--sidebar-default', `${width < 1000 ? 230 : width < 1350 ? 274 : 304}px`);
   root.style.setProperty('--files-default', `${Math.min(300, Math.max(height < 550 ? 115 : 150, height * .25))}px`);
   $('#ui-scale').value = String(requested);
   $('#scale-effective').textContent = effectiveScale < requested ? `当前窗口以 ${Math.round(effectiveScale * 100)}% 显示，放大窗口后恢复` : '';

@@ -77,7 +77,14 @@ function applyWorkspacePlacement() {
   const splitter = $('#files-splitter');
   splitter.classList.toggle('vertical', right); splitter.classList.toggle('horizontal', !right);
   splitter.setAttribute('aria-orientation', right ? 'vertical' : 'horizontal');
-  splitter.setAttribute('aria-label', right ? '调整文件面板宽度' : '调整文件面板高度');
+  splitter.classList.toggle('fixed-width-gap', right);
+  splitter.tabIndex = right ? -1 : 0;
+  splitter.setAttribute('aria-disabled', String(right));
+  splitter.setAttribute('aria-label', right ? '文件面板固定宽度' : '调整文件面板高度');
+  if (right) {
+    splitter.setAttribute('aria-hidden', 'true');
+    for (const name of ['aria-valuemin', 'aria-valuemax', 'aria-valuenow']) splitter.removeAttribute(name);
+  } else splitter.removeAttribute('aria-hidden');
   if ($('#monitor-side')) $('#monitor-side').value = root.dataset.monitorSide;
   if ($('#files-position')) $('#files-position').value = root.dataset.filesPosition;
   for (const dialog of movableColorDialogs) clampColorDialog(dialog);
