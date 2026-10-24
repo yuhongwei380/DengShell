@@ -164,12 +164,13 @@ function openPromptColors() {
   reflectPromptPreview(); if (!dialog.open) dialog.showModal(); clampColorDialog(dialog);
 }
 function initializeAppearanceTools() {
-  const anchor = $('#settings-menu .scale-setting');
-  const promptButton = node('button'); promptButton.id = 'manage-prompt-colors'; promptButton.type = 'button'; promptButton.setAttribute('role', 'menuitem'); promptButton.append(icon('terminal'), document.createTextNode('提示符颜色')); promptButton.onclick = openPromptColors; anchor.before(promptButton);
+  const appearanceAnchor = $('#reset-layout');
+  const promptButton = node('button'); promptButton.id = 'manage-prompt-colors'; promptButton.type = 'button'; promptButton.setAttribute('role', 'menuitem'); promptButton.append(icon('terminal'), document.createTextNode('提示符颜色')); promptButton.onclick = openPromptColors; appearanceAnchor.before(promptButton);
+  const settingsAnchor = $('#settings-main-view .scale-setting');
   for (const [id, key, title, options] of [['monitor-side', 'monitorSide', '监控位置', [['left', '左侧'], ['right', '右侧']]], ['files-position', 'filesPosition', '文件面板', [['bottom', '终端下方'], ['right', '终端右侧'], ['top', '终端上方']]]]) {
     const row = node('div', 'scale-setting placement-setting'), label = node('label', '', title), select = node('select'); label.htmlFor = select.id = id; select.setAttribute('aria-label', title);
     for (const [value, text] of options) { const option = node('option', '', text); option.value = value; select.append(option); }
-    select.onchange = safe(() => chooseAppearance({ [key]: select.value })); row.append(label, select); anchor.before(row);
+    select.onchange = safe(() => chooseAppearance({ [key]: select.value })); row.append(label, select); settingsAnchor.before(row);
   }
   $('#toggle-files-position').onclick = safe(() => chooseAppearance({ filesPosition: appearance.filesPosition === 'right' ? 'bottom' : 'right' }));
   applyWorkspacePlacement();

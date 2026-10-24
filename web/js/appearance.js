@@ -349,8 +349,17 @@ function renderAppearanceControls() {
   for (const card of $$('#asset-list [data-font-id]')) reflectFontCardControls(card);
 }
 function setSettingsMenu(open) {
+  if (open) showSettingsMenuView('main');
+  else $('#manage-appearance-config').setAttribute('aria-expanded', 'false');
   $('#settings-menu').hidden = !open; $('#settings-button').setAttribute('aria-expanded', String(open));
   if (open) { positionSettings(); $('#manage-keys').focus(); }
+}
+function showSettingsMenuView(view) {
+  const appearanceView = view === 'appearance';
+  $('#settings-main-view').hidden = appearanceView;
+  $('#settings-appearance-view').hidden = !appearanceView;
+  $('#manage-appearance-config').setAttribute('aria-expanded', String(appearanceView));
+  (appearanceView ? $('#manage-ui-appearance') : $('#manage-appearance-config')).focus();
 }
 function positionSettings() {
   const menu = $('#settings-menu'), rect = $('#settings-button').getBoundingClientRect();
@@ -626,13 +635,24 @@ function initializeAppearance() {
   $('#close-release-notes').onclick = () => $('#release-notes-dialog').close();
   $('#release-notes-dialog').addEventListener('close', () => $('#settings-button').focus());
   document.addEventListener('click', event => { if (!event.target.closest('#settings-menu, #settings-button')) setSettingsMenu(false); });
-  $('#settings-menu').addEventListener('click', event => { if (event.target.closest('button')) setSettingsMenu(false); });
+  $('#settings-menu').addEventListener('click', event => {
+    const button = event.target.closest('button'); if (!button) return;
+    if (button.dataset.settingsView) { showSettingsMenuView(button.dataset.settingsView); return; }
+    setSettingsMenu(false);
+  });
   $('#settings-menu').addEventListener('keydown', event => {
     if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(event.key) || event.target.tagName === 'SELECT') return;
     const buttons = [...$('#settings-menu').querySelectorAll('input[type=checkbox],button')].filter(button => !button.disabled && button.getClientRects().length), index = buttons.indexOf(document.activeElement);
     event.preventDefault(); buttons[event.key === 'Home' ? 0 : event.key === 'End' ? buttons.length - 1 : (index + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length].focus();
   });
-  document.addEventListener('keydown', event => { if (event.key === 'Escape' && !$('#monitor-backdrop').hidden) $('#monitor-backdrop').click(); if (event.key === 'Escape' && !$('#settings-menu').hidden) { setSettingsMenu(false); $('#settings-button').focus(); } });
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && !$('#monitor-backdrop').hidden) $('#monitor-backdrop').click();
+    if (event.key === 'Escape' && !$('#settings-menu').hidden) {
+      event.preventDefault();
+      if (!$('#settings-appearance-view').hidden) showSettingsMenuView('main');
+      else { setSettingsMenu(false); $('#settings-button').focus(); }
+    }
+  });
   $('#manage-backgrounds').onclick = safe(() => openAppearance('background'));
   $('#manage-shell-fonts').onclick = safe(() => openAppearance('font'));
   $('#switch-ui-fonts').onclick = safe(() => window.DengUIAppearance.open());

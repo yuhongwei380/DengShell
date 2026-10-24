@@ -8,12 +8,12 @@
   <script src="js/bootstrap.js"></script>
   <script>if(location.protocol!=='wails:'&&location.hostname!=='wails.localhost'){const nonce=new URLSearchParams(location.search).get('window');if(/^[A-Za-z0-9_-]{24,96}$/.test(nonce||'')){window.CLOUDSHELL.detachedNonce=nonce;}}</script>
   <script src="js/security-lock.js?v=20260921-v002-b72"></script>
-  <script src="js/theme.js?v=20260920-v002-b70"></script>
+  <script src="js/theme.js?v=20261024-appearance-config"></script>
   <link rel="stylesheet" href="vendor/xterm.css">
   <link rel="stylesheet" href="css/style.css?v=20261020-icon2">
   <link rel="stylesheet" href="css/theme.css?v=20261023-header145">
   <link rel="stylesheet" href="css/workspace-tools.css?v=20261001-composer">
-  <link rel="stylesheet" href="css/appearance.css?v=20261023-notes1">
+  <link rel="stylesheet" href="css/appearance.css?v=20261024-appearance-config">
   <link rel="stylesheet" href="css/process-view.css?v=20260920-v002-b70">
   <link rel="stylesheet" href="css/workspace-refinements.css?v=20261023-disk1">
   <link rel="stylesheet" href="css/file-browser.css?v=20260921-v002-b72">
@@ -274,20 +274,25 @@
   <div id="upload-menu" class="popup-menu" hidden><button id="upload-files-option">选择文件</button><button id="upload-folder-option">选择文件夹</button></div>
 
   <div class="settings-menu" id="settings-menu" role="menu" aria-label="设置" hidden>
-    <div class="settings-caption">DevShell 设置</div>
-    <button role="menuitem" id="manage-security-lock"><svg><use href="#i-lock"/></svg>安全锁定<span>密码与 2FA</span></button>
-    <button role="menuitem" id="manage-keys"><svg><use href="#i-key"/></svg>密钥管理器<span>私钥与公钥</span></button>
-    <button role="menuitem" id="manage-ui-appearance"><svg><use href="#i-type"/></svg>界面字体与文字颜色<span>字体</span></button>
-    <button role="menuitem" id="manage-shell-fonts"><svg><use href="#i-type"/></svg>Shell 字体与颜色<span>字体</span></button>
-    <button role="menuitem" id="manage-chart-styles"><svg><use href="#i-network"/></svg>曲线样式<span>网速与延迟</span></button>
-    <button role="menuitem" id="manage-backgrounds"><svg><use href="#i-image"/></svg>背景管理器<span>终端背景</span></button>
-    <button role="menuitem" id="manage-proxies"><svg><use href="#i-network"/></svg>代理管理器<span>连接路径</span></button>
-    <button role="menuitem" id="reset-layout" title="恢复默认布局与终端字号" aria-label="恢复默认布局"><svg><use href="#i-layout"/></svg>恢复默认布局<span>布局与字号</span></button>
-    <button role="menuitem" id="help-button" aria-label="使用手册与功能引导" aria-haspopup="dialog"><svg><use href="#i-help-book"/></svg>使用手册与功能引导<span>帮助</span></button>
-    <button role="menuitem" id="release-notes-button" aria-haspopup="dialog" aria-controls="release-notes-dialog"><svg><use href="#i-history"/></svg>更新日志<span>当前版本</span></button>
-    <div class="scale-setting"><label for="ui-scale">界面缩放</label><select id="ui-scale" aria-label="界面缩放"><option value="0.75">75%</option><option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option><option value="2">200%</option></select></div>
-    <p id="scale-effective" hidden></p>
-    
+    <div class="settings-menu-view" id="settings-main-view">
+      <div class="settings-caption">DevShell 设置</div>
+      <button role="menuitem" id="manage-security-lock"><svg><use href="#i-lock"/></svg>安全锁定<span>密码与 2FA</span></button>
+      <button role="menuitem" id="manage-keys"><svg><use href="#i-key"/></svg>密钥管理器<span>私钥与公钥</span></button>
+      <button role="menuitem" id="manage-appearance-config" data-settings-view="appearance" aria-haspopup="menu" aria-controls="settings-appearance-view" aria-expanded="false"><svg><use href="#i-sun"/></svg>外观配置<span>字体与布局</span><svg class="settings-chevron"><use href="#i-chevron"/></svg></button>
+      <button role="menuitem" id="manage-chart-styles"><svg><use href="#i-network"/></svg>曲线样式<span>网速与延迟</span></button>
+      <button role="menuitem" id="manage-proxies"><svg><use href="#i-network"/></svg>代理管理器<span>连接路径</span></button>
+      <button role="menuitem" id="help-button" aria-label="使用手册与功能引导" aria-haspopup="dialog"><svg><use href="#i-help-book"/></svg>使用手册与功能引导<span>帮助</span></button>
+      <button role="menuitem" id="release-notes-button" aria-haspopup="dialog" aria-controls="release-notes-dialog"><svg><use href="#i-history"/></svg>更新日志<span>当前版本</span></button>
+      <div class="scale-setting"><label for="ui-scale">界面缩放</label><select id="ui-scale" aria-label="界面缩放"><option value="0.75">75%</option><option value="0.9">90%</option><option value="1">100%</option><option value="1.1">110%</option><option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option><option value="2">200%</option></select></div>
+      <p id="scale-effective" hidden></p>
+    </div>
+    <div class="settings-menu-view" id="settings-appearance-view" role="group" aria-label="外观配置" hidden>
+      <div class="settings-submenu-heading"><button type="button" role="menuitem" id="appearance-settings-back" data-settings-view="main"><svg><use href="#i-chevron"/></svg>返回设置</button><strong>外观配置</strong></div>
+      <button role="menuitem" id="manage-ui-appearance"><svg><use href="#i-type"/></svg>界面字体与文字颜色<span>界面字体</span></button>
+      <button role="menuitem" id="manage-shell-fonts"><svg><use href="#i-type"/></svg>Shell 字体与颜色<span>终端字体</span></button>
+      <button role="menuitem" id="manage-backgrounds"><svg><use href="#i-image"/></svg>背景管理器<span>终端背景</span></button>
+      <button role="menuitem" id="reset-layout" title="恢复默认布局与终端字号" aria-label="恢复默认布局"><svg><use href="#i-layout"/></svg>恢复默认布局<span>布局与字号</span></button>
+    </div>
   </div>
   <dialog id="about-dialog" aria-labelledby="about-title"><div class="dialog-heading"><h2 id="about-title">关于 DevShell</h2><button type="button" class="icon-button" id="close-about" aria-label="关闭版本信息"><svg><use href="#i-close"/></svg></button></div><dl class="about-versions"><dt>软件版本</dt><dd id="about-version"></dd><dt>构建版本</dt><dd id="about-build"></dd></dl></dialog>
   <dialog id="release-notes-dialog" aria-labelledby="release-notes-title"><div class="dialog-heading"><div><h2 id="release-notes-title">更新日志</h2><p id="release-notes-version"></p></div><button type="button" class="icon-button" id="close-release-notes" aria-label="关闭更新日志"><svg><use href="#i-close"/></svg></button></div><div id="release-notes-content"></div></dialog>
@@ -360,7 +365,7 @@
   <script src="js/command-composer.js?v=20261001-composer"></script>
   <script src="js/workspace-tools.js?v=20260925-v002-b86"></script>
   <script src="js/release-note-tags.js?v=20261023-tags2"></script>
-  <script src="js/appearance.js?v=20261023-tags1"></script>
+  <script src="js/appearance.js?v=20261024-appearance-config"></script>
   <script src="js/ui-appearance.js?v=20261019-brand1"></script>
   <script src="js/font-library.js?v=20261019-brand1"></script>
   <script src="js/path-history.js?v=20260925-v002-b86"></script>
@@ -372,14 +377,14 @@
   <script src="js/themed-select.js?v=20260920-v002-b70"></script>
   <script src="js/terminal-integration.js?v=20261018-follow3"></script>
   <script src="js/mtr-installation.js?v=20261019-brand1"></script>
-  <script src="js/config-document.js?v=20260920-v002-b70"></script>
+  <script src="js/config-document.js?v=20261024-appearance-config"></script>
   <script src="js/startup-update.js?v=20261023-tags1"></script>
   <script src="js/portable-preferences.js?v=20261018-pin2"></script>
   <script src="js/server-manager.js?v=20261019-serial1"></script>
   <script src="js/server-explorer.js?v=20261023-move145"></script>
-  <script src="js/help-guide.js?v=20261019-serial1"></script>
+  <script src="js/help-guide.js?v=20261024-appearance-config"></script>
   <script src="js/chart-styles.js?v=20260920-v002-b70"></script>
-  <script src="js/appearance-tools.js?v=20261019-brand1"></script>
+  <script src="js/appearance-tools.js?v=20261024-appearance-config"></script>
   <script src="js/terminal-snapshot.js?v=20260920-v002-b70"></script>
   <script src="js/server-addresses.js?v=20261018-addr1"></script>
   <script src="js/window-preview.js?v=20260920-v002-b70"></script>
@@ -404,8 +409,8 @@
   <script src="js/text-search.js?v=20260920-v002-b70"></script>
   <script src="js/text-editor-tools.js?v=20261010-editor-wrap"></script>
   <script src="js/text-editor.js?v=20261010-editor-wrap"></script>
-  <script src="js/file-tools.js?v=20261023-notes1"></script>
+  <script src="js/file-tools.js?v=20261024-appearance-config"></script>
   <script src="js/zmodem-bridge.js?v=20261022-zmodem5"></script>
-  <script src="js/desktop-tray.js?v=20260920-v002-b70"></script>
+  <script src="js/desktop-tray.js?v=20261024-appearance-config"></script>
 </body>
 </html>

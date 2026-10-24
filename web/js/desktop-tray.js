@@ -12,7 +12,7 @@
  }
  document.addEventListener('DOMContentLoaded',async()=>{
   if(!desktopPage)return;await waitForDesktop();if(!native()?.MinimizeState)return;
-  const menu=document.getElementById('settings-menu');const row=document.createElement('label');row.className='tray-setting';row.innerHTML='<span>最小化到系统托盘<small id="minimize-to-tray-hint"></small></span><input id="minimize-to-tray" type="checkbox" role="switch">';menu.prepend(row);
+  const menu=document.getElementById('settings-main-view');const row=document.createElement('label');row.className='tray-setting';row.innerHTML='<span>最小化到系统托盘<small id="minimize-to-tray-hint"></small></span><input id="minimize-to-tray" type="checkbox" role="switch">';menu.prepend(row);
   row.querySelector('input').addEventListener('change',async event=>{const input=event.target;input.disabled=true;try{await persistAppearance({minimizeAction:input.checked?'tray':'minimize'});}catch(e){toast(e.message)}finally{await refresh()}});
   runtime.EventsOn('dengshell:window-visibility',value=>setHidden(!!value.hidden));runtime.EventsOn('dengshell:choose-minimize',value=>{state=value;showChoice()});runtime.EventsOn('dengshell:tray-unavailable',()=>{toast('系统托盘已不可用，窗口已恢复显示');refresh().catch(()=>{})});document.getElementById('settings-button').addEventListener('click',()=>refresh().catch(()=>{}));await refresh();
  },{once:true});
