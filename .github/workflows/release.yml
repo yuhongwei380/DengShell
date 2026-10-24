@@ -59,7 +59,7 @@ jobs:
           $version = (Select-String -Path internal/app/updates.go -Pattern 'const ApplicationVersion = "([^"]+)"').Matches[0].Groups[1].Value
           $notes = "docs/release/RELEASE-$version.md"
           $releaseOptions = @()
-          if ($tag -eq "v26.10.0") { $releaseOptions = @('--latest=false') }
+          if ($tag -in @('v26.10.0', 'v26.10.0-build26102301')) { $releaseOptions = @('--latest=false') }
           if (gh release view $tag 2>$null) {
             gh release edit $tag --title "DevShell $tag" --notes-file $notes
           } else {
@@ -88,7 +88,7 @@ jobs:
           version=$(sed -n 's/^const ApplicationVersion = "\([^"]*\)".*/\1/p' internal/app/updates.go)
           notes="docs/release/RELEASE-$version.md"
           latest_option=()
-          if [[ "$tag" == "v26.10.0" ]]; then latest_option=(--latest=false); fi
+          if [[ "$tag" == "v26.10.0" || "$tag" == "v26.10.0-build26102301" ]]; then latest_option=(--latest=false); fi
           if gh release view "$tag" >/dev/null 2>&1; then
             gh release edit "$tag" --title "DevShell $tag" --notes-file "$notes"
           else
@@ -102,29 +102,29 @@ jobs:
             build/macos-release/SHA256SUMS.txt \
             build/macos-release/build-info.json \
             --clobber
-  cleanup-v26-10-0-builds:
-    if: github.event_name == 'push' && github.ref == 'refs/tags/v26.10.0'
+  retire-legacy-v26-10-0:
+    # One-time cleanup authorized for the v26.10.0 re-baseline release:
+    # remove the retired v26.10.0 release and tag, keep latest on v26.10.1.
+    if: github.event_name == 'push' && github.ref == 'refs/tags/v26.10.0-build26102301'
     needs: [windows, macos]
     runs-on: ubuntu-latest
     steps:
-      - name: Delete historical v26.10.0 build releases and tags
+      - name: Delete retired v26.10.0 release and tag
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          release_rows=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases" \
-            --jq '.[] | select(.tag_name | startswith("v26.10.0-build")) | [.id, .tag_name] | @tsv')
-          while IFS=$'\t' read -r release_id tag; do
-            [[ -n "$release_id" ]] || continue
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${release_id}"
-            echo "Deleted release $tag"
-          done <<< "$release_rows"
-
-          tag_refs=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v26.10.0-build" \
-            --jq '.[].ref')
-          while IFS= read -r ref; do
-            [[ -n "$ref" ]] || continue
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/${ref#refs/}"
-            echo "Deleted tag ${ref#refs/tags/}"
-          done <<< "$tag_refs"
+          if gh release view v26.10.0 >/dev/null 2>&1; then
+            gh release delete v26.10.0 --yes
+            echo "Deleted retired v26.10.0 release"
+          fi
+          if gh api "repos/${GITHUB_REPOSITORY}/git/matching-refs/tags/v26.10.0" --jq '.[].ref' | grep -qx 'refs/tags/v26.10.0'; then
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/tags/v26.10.0"
+            echo "Deleted retired v26.10.0 tag"
+          fi
+          latest=$(gh api "repos/${GITHUB_REPOSITORY}/releases/latest" --jq '.tag_name')
+          if [[ "$latest" != "v26.10.1-build26102401" ]]; then
+            echo "Expected latest release v26.10.1-build26102401 but found $latest" >&2
+            exit 1
+          fi

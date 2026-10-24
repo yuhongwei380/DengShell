@@ -37,10 +37,13 @@ const ApplicationDisplayVersion = "ver.Phoenix · v26.10.0"
 const ApplicationPackageVersion = "26.10.0"
 
 // ApplicationBuild is the monotonic anti-rollback build: YYYYMMDD plus a
-// three-digit daily sequence. Increase it for every published build, including
-// packaging-only releases; update manifests must exceed it. The sequence tracks
-// the upstream DengShell build numbering (107–114 ported on 2026-10-18).
-const ApplicationBuild uint64 = 20261023145
+// two-digit daily sequence (rule switched on 2026-10-24 from a three-digit
+// sequence). Increase it for every published build, including packaging-only
+// releases; update manifests must exceed it. This release re-baselines
+// v26.10.0 onto the ten-digit scheme as 2026102301: installs at the retired
+// eleven-digit builds (20261023145 and older) must manually install this
+// release once, after which they can continue built-in updates to v26.10.1.
+const ApplicationBuild uint64 = 2026102301
 
 // Updates are published as GitHub Release assets of the maintained repository.
 // Release assets must be named exactly: up.exe / up.exe.json,
