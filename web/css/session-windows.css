@@ -9,7 +9,9 @@
 .terminal-meta>span:first-child{min-width:0;overflow:hidden;white-space:nowrap}
 #terminal-meta-host{overflow:hidden;text-overflow:ellipsis}
 [data-narrow="true"] .terminal-meta .terminal-encoding{display:none}
-[data-narrow="true"] .terminal-popout{margin-left:auto}
+/* 窄窗口下把整组操作按钮推到右侧：只给首个可见按钮加 auto margin；
+   若每个按钮都加，剩余空间会被均分，按钮反而在整行散开。 */
+[data-narrow="true"] .terminal-popout:first-of-type{margin-left:auto}
 @media(max-width:760px){.terminal-popout span{display:none}.terminal-popout{width:28px;padding:6px}.terminal-meta .terminal-encoding{display:none}}
 .session-tab-dragging,.session-tab-dragging *{cursor:grabbing!important;user-select:none!important}
 .session-drag-preview{position:fixed;left:0;top:0;z-index:100000;pointer-events:none;width:224px;max-width:calc(100vw - 16px);padding:13px 16px;border:1px solid var(--border);border-radius:16px;color:var(--text,#43576b);background:var(--surface,#fff);box-shadow:0 12px 36px #102e3b36;font-size:12px;backdrop-filter:blur(18px);will-change:transform;transition:border-color .16s,box-shadow .16s}
